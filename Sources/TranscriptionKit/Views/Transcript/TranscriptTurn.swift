@@ -1,0 +1,78 @@
+import Foundation
+
+/// A rendered speaker turn: consecutive transcript segments from one speaker, grouped for
+/// display so the UI shows "Speaker 2 said …" once with its lines beneath, not a chip per
+/// segment. Value type, `Equatable`/`Identifiable` so SwiftUI diffs turns cheaply.
+public struct TranscriptTurn: Identifiable, Equatable {
+    public struct Line: Identifiable, Equatable {
+        public let id: String
+        public let text: String
+        public let start: TimeInterval
+        public let isProvisional: Bool
+        /// Whisper legibility score [0,1] for the confidence affordance.
+        public let asrScore: Float
+
+        public init(id: String, text: String, start: TimeInterval, isProvisional: Bool, asrScore: Float) {
+            self.id = id
+            self.text = text
+            self.start = start
+            self.isProvisional = isProvisional
+            self.asrScore = asrScore
+        }
+    }
+
+    public let id: String
+    public let speaker: SpeakerID
+    public let speakerConfidence: Float
+    public let start: TimeInterval
+    public var lines: [Line]
+    public var isProvisional: Bool
+
+    /// Group attributed segments (already time-sorted) into consecutive same-speaker turns.
+    public static func group(_ segments: [AttributedSegment]) -> [TranscriptTurn] {
+        var turns: [TranscriptTurn] = []
+        for segment in segments {
+            let line = Line(id: segment.id,
+                            text: segment.asr.text,
+                            start: segment.asr.start,
+                            isProvisional: segment.isProvisional,
+                            asrScore: Confidence.asrScore(segment.asr))
+            if var last = turns.last, last.speaker == segment.speaker {
+                last.lines.append(line)
+                last.isProvisional = last.isProvisional || segment.isProvisional
+                turns[turns.count - 1] = last
+            } else {
+                turns.append(TranscriptTurn(id: segment.id,
+                                            speaker: segment.speaker,
+                                            speakerConfidence: segment.speakerConfidence,
+                                            start: segment.asr.start,
+                                            lines: [line],
+                                            isProvisional: segment.isProvisional))
+            }
+        }
+        return turns
+    }
+
+    /// Group stored segments (library history) into turns for the same rendering.
+    public static func group(stored: [StoredSegment]) -> [TranscriptTurn] {
+        let sorted = stored.sorted { $0.start < $1.start }
+        var turns: [TranscriptTurn] = []
+        for segment in sorted {
+            let asrScore = Confidence.asrScore(
+                AsrSegment(track: .mixed, start: segment.start, end: segment.end, text: segment.text,
+                           avgLogprob: segment.avgLogprob, noSpeechProb: segment.noSpeechProb,
+                           compressionRatio: segment.compressionRatio))
+            let line = Line(id: segment.id.uuidString, text: segment.text, start: segment.start,
+                            isProvisional: false, asrScore: asrScore)
+            if var last = turns.last, last.speaker == segment.speaker {
+                last.lines.append(line)
+                turns[turns.count - 1] = last
+            } else {
+                turns.append(TranscriptTurn(id: segment.id.uuidString, speaker: segment.speaker,
+                                            speakerConfidence: segment.speakerConfidence,
+                                            start: segment.start, lines: [line], isProvisional: false))
+            }
+        }
+        return turns
+    }
+}
