@@ -1,0 +1,93 @@
+name: TranscriptionStudio
+options:
+  bundleIdPrefix: com.fcttechnologies
+  createIntermediateGroups: true
+
+# All real code lives in the local Swift package (Package.swift in this directory);
+# the app targets are thin shells. Regenerate the project with `xcodegen generate`
+# (the .xcodeproj is gitignored so worktree builds never conflict on pbxproj).
+packages:
+  TranscriptionStudioPackage:
+    path: .
+
+targets:
+  TranscriptionStudio:
+    type: application
+    platform: macOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: Sources/MacApp
+    dependencies:
+      - package: TranscriptionStudioPackage
+        product: TranscriptionKit
+      - package: TranscriptionStudioPackage
+        product: TranscriptionMacKit
+    info:
+      path: Sources/MacApp/Info.plist
+      properties:
+        NSMicrophoneUsageDescription: >-
+          Transcription Studio records from your microphone to transcribe and
+          identify speakers — entirely on this device. Nothing leaves your Mac.
+        NSAudioCaptureUsageDescription: >-
+          Transcription Studio captures system audio to transcribe meetings and
+          calls — entirely on this device. Nothing leaves your Mac.
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Transcription Studio
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_DEBUG_DYLIB: YES
+
+  TranscriptionStudioiOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: Sources/iOSApp
+    dependencies:
+      - package: TranscriptionStudioPackage
+        product: TranscriptionKit
+    info:
+      path: Sources/iOSApp/Info.plist
+      properties:
+        NSMicrophoneUsageDescription: >-
+          Transcription Studio records from your microphone to transcribe and
+          identify speakers — entirely on this device. Nothing leaves your phone.
+        UIBackgroundModes:
+          - audio
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Transcription Studio
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_DEBUG_DYLIB: YES
+
+schemes:
+  TranscriptionStudio:
+    build:
+      targets:
+        TranscriptionStudio: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+  TranscriptionStudioiOS:
+    build:
+      targets:
+        TranscriptionStudioiOS: all
+    run:
+      config: Debug
