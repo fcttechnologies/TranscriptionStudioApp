@@ -1,10 +1,8 @@
-// DiarizationBackend — the explicit, cheap seam for choosing the diarizer. SpeakerKit is the
-// shipping default (it runs today, fully offline, and drives the ≥85% ground-truth gate);
-// Sortformer is opt-in and lights up once a re-exported model loads on the current toolchain
-// (see Documentation/SORTFORMER-STATUS.md). The inspector's A/B view builds one of each.
-//
-// Swapping the default after a re-export is a one-line change (`.default`), and the app can offer
-// both to the user without touching engine code.
+// DiarizationBackend — the explicit, cheap seam for choosing the diarizer. Sortformer (on a
+// locally re-exported Core AI model — Documentation/SORTFORMER-STATUS.md) is the default: it
+// passes the ground-truth gates and is the only backend with live streaming. SpeakerKit is the
+// independent cross-check (the inspector's A/B builds one of each) and the fallback when the
+// Sortformer model isn't provisioned. Swapping defaults is a one-line change (`.default`).
 
 import Foundation
 
@@ -14,8 +12,8 @@ public enum DiarizationBackend: String, Sendable, CaseIterable, Codable {
     /// NVIDIA Streaming Sortformer on Core AI. Opt-in; supports live streaming.
     case sortformer
 
-    /// The shipping default backend. Flip to `.sortformer` here once the re-export loads.
-    public static let `default`: DiarizationBackend = .speakerKit
+    /// The shipping default backend.
+    public static let `default`: DiarizationBackend = .sortformer
 
     public var displayName: String {
         switch self {

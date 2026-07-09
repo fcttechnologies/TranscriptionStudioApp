@@ -4,7 +4,13 @@ import TranscriptionKit
 
 @main
 struct TranscriptionStudioiOSApp: App {
-    @State private var app = AppModel.live()
+    @State private var app = AppModel.live(captureFactory: { mode, sessionID, recorder in
+        // iOS records from the microphone in every mode (meeting capture is Mac-only and
+        // the surface doesn't exist here).
+        _ = mode
+        return [.init(source: MicCaptureSource(track: .mixed, sessionID: sessionID, recorder: recorder),
+                      tracks: [.mixed])]
+    })
 
     var body: some Scene {
         WindowGroup {

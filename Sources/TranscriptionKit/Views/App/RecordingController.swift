@@ -54,6 +54,7 @@ public final class RecordingController {
     private let loadSampler: SystemLoadSampler
     private let modelContext: ModelContext
     private let settings: AppSettings
+    private let captureFactory: CaptureFactory
 
     // Run bookkeeping.
     @ObservationIgnored private var tasks: [Task<Void, Never>] = []
@@ -73,7 +74,8 @@ public final class RecordingController {
                 inspector: InspectorStore,
                 loadSampler: SystemLoadSampler,
                 modelContext: ModelContext,
-                settings: AppSettings) {
+                settings: AppSettings,
+                captureFactory: @escaping CaptureFactory = RecordingController.mockCaptureFactory) {
         self.asr = asr
         self.diarizer = diarizer
         self.recorder = recorder
@@ -81,19 +83,33 @@ public final class RecordingController {
         self.loadSampler = loadSampler
         self.modelContext = modelContext
         self.settings = settings
+        self.captureFactory = captureFactory
     }
 
-    /// A capture input: its source and the track it carries.
-    private struct Input { let source: CaptureSource; let track: AudioTrack }
+    /// A capture input: a source and the tracks it will emit. A room mic emits one track;
+    /// a meeting source emits two (`.microphone` + `.system`) on one shared clock — chunks
+    /// are routed by their own `track` tag, so both shapes flow through the same fan-out.
+    public struct CaptureInput {
+        public let source: any CaptureSource
+        public let tracks: [AudioTrack]
+        public init(source: any CaptureSource, tracks: [AudioTrack]) {
+            self.source = source
+            self.tracks = tracks
+        }
+    }
 
-    /// The tracks a mode records. Meeting separates the local mic ("Me") from system audio.
-    private func inputs(for mode: Mode) -> [Input] {
+    /// Builds the capture inputs for a recording run. The shells inject the real hardware
+    /// factory (mic / ScreenCaptureKit); previews and tests keep the mock default.
+    public typealias CaptureFactory = @MainActor (Mode, UUID, PipelineRecorder) -> [CaptureInput]
+
+    /// The default factory: deterministic mock sources (previews, tests, engine-less demos).
+    public static let mockCaptureFactory: CaptureFactory = { mode, _, _ in
         switch mode {
         case .room:
-            [Input(source: MockCaptureSource(track: .mixed), track: .mixed)]
+            [CaptureInput(source: MockCaptureSource(track: .mixed), tracks: [.mixed])]
         case .meeting:
-            [Input(source: MockCaptureSource(track: .microphone), track: .microphone),
-             Input(source: MockCaptureSource(track: .system), track: .system)]
+            [CaptureInput(source: MockCaptureSource(track: .microphone), tracks: [.microphone]),
+             CaptureInput(source: MockCaptureSource(track: .system), tracks: [.system])]
         }
     }
 
@@ -112,10 +128,11 @@ public final class RecordingController {
                                       message: "Recording started (\(mode.title))",
                                       metadata: ["mode": mode.rawValue]))
 
-        let inputs = inputs(for: mode)
+        let inputs = captureFactory(mode, sessionID, recorder)
         sources = inputs.map(\.source)
+        let allTracks = inputs.flatMap(\.tracks)
         // The diarizer runs on the first non-mic track (mixed in room, system in meeting).
-        let diarTrack = inputs.first { $0.track != .microphone }?.track ?? inputs[0].track
+        let diarTrack = allTracks.first { $0 != .microphone } ?? allTracks[0]
 
         // Per-track derived streams for the ASR engine, plus one for the diarizer.
         var asrStreams: [(AudioTrack, AsyncThrowingStream<AudioChunk, Error>)] = []
@@ -123,10 +140,10 @@ public final class RecordingController {
         var asrConts: [AudioTrack: AsyncThrowingStream<AudioChunk, Error>.Continuation] = [:]
         var diarCont: AsyncThrowingStream<AudioChunk, Error>.Continuation?
 
-        for input in inputs {
+        for track in allTracks {
             let (stream, cont) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
-            asrStreams.append((input.track, stream))
-            asrConts[input.track] = cont
+            asrStreams.append((track, stream))
+            asrConts[track] = cont
         }
         do {
             let (stream, cont) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
@@ -134,30 +151,32 @@ public final class RecordingController {
             diarCont = cont
         }
 
-        // Fan-out: consume each capture source once, feed ASR (+ diarizer for its track),
-        // meter, waveform, and the archive buffer.
+        // Fan-out: consume each capture source once, routing every chunk by its own track
+        // tag (a meeting source emits two tracks on one stream) into ASR (+ the diarizer
+        // for its track), the meter/waveform, and the archive buffer.
+        let asrRouting = asrConts
+        let diarSink = diarCont
         for input in inputs {
             let source = input.source
-            let track = input.track
-            let asrCont = asrConts[track]
-            let feedsDiar = (track == diarTrack)
+            let ownedTracks = input.tracks
+            let feedsDiarSource = ownedTracks.contains(diarTrack)
             let task = Task { [weak self] in
                 do {
                     try await source.start()
                     for try await chunk in source.chunks {
                         guard let self else { break }
                         await self.waitWhilePaused()
-                        self.ingest(chunk: chunk, feedsDiar: feedsDiar)
-                        asrCont?.yield(chunk)
-                        if feedsDiar { diarCont?.yield(chunk) }
+                        self.ingest(chunk: chunk)
+                        asrRouting[chunk.track]?.yield(chunk)
+                        if chunk.track == diarTrack { diarSink?.yield(chunk) }
                     }
                 } catch {
                     self?.recorder.record(PipelineEvent(sessionID: self?.sessionID,
                                                         stage: .capture, level: .error,
                                                         message: "Capture failed: \(error.localizedDescription)"))
                 }
-                asrCont?.finish()
-                if feedsDiar { diarCont?.finish() }
+                for track in ownedTracks { asrRouting[track]?.finish() }
+                if feedsDiarSource { diarSink?.finish() }
             }
             tasks.append(task)
         }
@@ -236,7 +255,7 @@ public final class RecordingController {
 
     // MARK: Ingest + fuse
 
-    private func ingest(chunk: AudioChunk, feedsDiar: Bool) {
+    private func ingest(chunk: AudioChunk) {
         let rms = Self.rms(chunk.samples)
         // Fast attack, slow release ballistics for a natural meter.
         let coefficient = rms > level ? DesignMetrics.levelAttack : DesignMetrics.levelRelease
@@ -245,10 +264,9 @@ public final class RecordingController {
         if waveform.count > DesignMetrics.waveformSampleCount * 2 {
             waveform.removeFirst(waveform.count - DesignMetrics.waveformSampleCount * 2)
         }
-        // Mix into the archive buffer at the chunk's time offset.
-        if feedsDiar || sources.count == 1 {
-            mixIntoArchive(chunk)
-        }
+        // Mix every track into the archive at the chunk's time offset — mic and system
+        // share one session clock, so summing yields the full mixed meeting audio.
+        mixIntoArchive(chunk)
     }
 
     private func mixIntoArchive(_ chunk: AudioChunk) {

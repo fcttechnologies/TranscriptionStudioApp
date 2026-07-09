@@ -5,7 +5,17 @@ import TranscriptionMacKit
 
 @main
 struct TranscriptionStudioApp: App {
-    @State private var app = AppModel.live()
+    @State private var app = AppModel.live(captureFactory: { mode, sessionID, recorder in
+        switch mode {
+        case .room:
+            [.init(source: MicCaptureSource(track: .mixed, sessionID: sessionID, recorder: recorder),
+                   tracks: [.mixed])]
+        case .meeting:
+            // One ScreenCaptureKit stream carries both tracks on a shared clock.
+            [.init(source: MeetingCaptureSource(sessionID: sessionID, recorder: recorder),
+                   tracks: [.microphone, .system])]
+        }
+    })
 
     var body: some Scene {
         WindowGroup {

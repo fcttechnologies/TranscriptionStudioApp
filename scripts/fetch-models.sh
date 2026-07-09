@@ -1,11 +1,23 @@
 #!/bin/bash
 # Fetch the Sortformer diarizer artifacts into Application Support (the app also has a
 # runtime downloader; this is the dev/CI shortcut). WhisperKit downloads its own models.
+#
+# ⚠️ The HF-published .aimodel does NOT load on current toolchains (stale IR — see
+# Documentation/SORTFORMER-STATUS.md); it still provides the mel filterbank + metadata,
+# and the model dir is a starting point for the documented local re-export. A provisioned
+# re-export (marked by sortformer_manifest.json) is never touched by this script.
 set -euo pipefail
 
 BASE="https://huggingface.co/mlboydaisuke/Streaming-Sortformer-Diar-CoreAI/resolve/main"
 DEST="$HOME/Library/Application Support/TranscriptionStudio/Models"
 MODEL_DIR="$DEST/sortformer_float16.aimodel"
+
+# A local manifest marks a provisioned (possibly re-exported) model set — leave it alone.
+if [[ -f "$DEST/sortformer_manifest.json" ]]; then
+  echo "Provisioned model set present (sortformer_manifest.json) — nothing to do."
+  echo "Delete the manifest first if you really want to re-fetch the HF originals."
+  exit 0
+fi
 
 mkdir -p "$MODEL_DIR"
 

@@ -1,77 +1,67 @@
-# Sortformer (Core AI) — load status & re-export handoff
+# Sortformer (Core AI) — model provenance & re-export handoff
 
-**Status (2026-07-09): the Sortformer diarizer's neural core does NOT load on the current
-toolchain.** The full Swift port is complete and unit-verified independently of the model (mel
-golden gate + AOSC synthetic gates pass); only the live forward pass is blocked. **SpeakerKit
-(Pyannote/CoreML) is the shipping default diarizer** and passes the ≥85% ground-truth attribution
-gate for real. The Sortformer path lights up the moment a re-exported model loads — the swap is
-one line (`DiarizationBackend.default`) plus flipping the env flag on the real-model test.
+**Status: WORKING via a locally re-exported model.** The HF-published conversion
+(`mlboydaisuke/Streaming-Sortformer-Diar-CoreAI`) does **not** load on the current toolchain;
+the model shipping on this machine was **re-exported locally from the NVIDIA checkpoint with
+the current public Core AI stack** and passes every gate: it loads clean, clears the ≥85%
+ground-truth attribution gate on both clips, agrees with SpeakerKit, and runs ~66× realtime on
+the M4. `DiarizationBackend.default == .sortformer`; SpeakerKit is the independent A/B
+cross-check and the fallback when the model isn't provisioned.
 
-## Symptom (exact)
+This file documents why the HF original fails and how to regenerate the re-export on a fresh
+machine (the artifact is a local product — it is not in git and not on HF).
 
-Loading `sortformer_float16.aimodel` via `AIModel(contentsOf:options:)` (GPU +
-`expectFrequentReshapes`) aborts the process during graph specialization:
+## Why the HF original fails (exact symptom)
+
+Loading the HF `sortformer_float16.aimodel` via `AIModel(contentsOf:options:)` aborts the
+process during graph specialization:
 
 ```
-loc(...LayerNorm$121 / TFEncoderBlock$18 / ... / export_sortformer.py:42 ...):
+loc(...LayerNorm$121 / ... / export_sortformer.py:42 ...):
   error: expected AICode versioned location, got: loc(...)
-loc(...): error: Failed to convert to versioned IR
+error: Failed to convert to versioned IR
 LLVM ERROR: cannot unwrap empty `odiec_module_t`
 ```
 
-Reproduced on **macOS 26A5378j, Xcode 27A5218g, Apple M4**, and:
+- Compute-unit independent (`.gpu`/`.cpu`), wrapper independent (raw `CoreAI` framework,
+  coreai-kit `GraphModel`, and the public `coreai-core` Python runtime all abort identically).
+- The abort is **fatal and uncatchable** — a load can never be used as a fallible probe, which
+  is why the real-model tests are env-gated (`SORTFORMER_MODEL_OK=1`), not auto-detected.
+- The bundle is intact (`AIModelAsset.summary()` → `functions: ["main"]`; sizes match HF) —
+  the block is stale IR, not corruption: the export was made on an internal/dev toolchain
+  whose debug-info fused-location metadata predates the current versioned-location scheme;
+  the `ConvertDebugInfoToVersionedLocations` pass rejects it.
+- AOT does not rescue that file: the correct AOT invocation is `xcrun coreai-build compile`
+  (the Metal-toolchain-bundled binary — `xcrun aimodelc`'s "requires the Metal Toolchain"
+  error is a detection-bug decoy), but the versioned-IR pass runs there too.
 
-- **compute-unit independent** — same abort on `.gpu` and `.cpu`.
-- **wrapper independent** — identical abort via the raw `CoreAI` framework (`AIModel`), via
-  coreai-kit's `GraphModel`, and (per the unblock lane) via the **public `coreai-core` Python
-  runtime**. Not an Xcode-beta artifact.
-- The failure is a **fatal, uncatchable `abort()`** — it cannot be caught as a Swift error, so the
-  runner MUST NOT attempt the load as a fallible probe. This is why the real-model test is env-gated
-  (`SORTFORMER_MODEL_OK=1`), not auto-detected.
+## Regenerating the re-export (proven recipe, ~15 min)
 
-## Root cause
+1. Python **3.10–3.13** venv (3.14 makes pip silently exclude all coreai wheels):
+   `pip install coreai-torch` (0.4.1, pins `coreai-core==1.0.0b2`) + `torch` + `numpy`.
+2. Clone `github.com/apple/coreai-models` (BSD-3), `pip install --no-deps -e` it.
+3. Download `nvidia/diar_streaming_sortformer_4spk-v2` (.nemo, CC-BY-4.0, ~471MB) from HF;
+   extract `model_weights.ckpt`.
+4. Drive the export with the zoo recipe (`/tmp/coreai-model-zoo/conversion/sortformer_diar/`,
+   or the adapted driver preserved at `/tmp/sortformer-reexport/export_reexport.py`). Two
+   known API drifts vs the zoo's `export_sortformer.py`: current `export_to_coreai` has no
+   `externalize_modules` param, and `save_asset` needs a `Path` (not `str`). Export takes ~11s.
+5. Verify: `xcrun coreai-build compile <m>.aimodel --output /tmp/x --platform macOS` (must
+   pass all arch targets), then a **subprocess** Swift load test (exit 0, `LOAD_OK`).
+6. Stage into `~/Library/Application Support/TranscriptionStudio/Models/`:
+   `sortformer_float16.aimodel` + **`sortformer_manifest.json`** with the new `main.mlirb`
+   byte size and sha256 — the manifest name/schema is `SortformerModelStore`'s contract
+   (`{"files":[{"name":...,"bytes":...,"sha256":...}]}`). Without it the store falls back to
+   HF-original sizes, fails verification, and **re-downloads the broken HF model over yours**.
+7. Prove it end to end: `SORTFORMER_MODEL_OK=1 swift test --filter Sortformer`.
 
-The HF-published `.aimodel` was exported on an Apple engineer's **internal/dev Core AI toolchain
-build**. Its MLIR carries **debug-info fused-location metadata that predates the current
-versioned-location scheme**, and the `ConvertDebugInfoToVersionedLocations` pass aborts on it. **No
-load flag escapes it** — it is a property of the serialized model, not of how it's loaded.
-
-## The bundle itself is intact (not a partial/poisoned file)
-
-- `AIModelAsset(contentsOf:).summary()` **succeeds** → `functions: ["main"]`.
-- `main.mlirb` is exactly **236655368** bytes (the HF original; matched byte-for-byte against the
-  live HF `x-linked-size`, repo last-modified 2026-07-06). The mel filterbank is 131584 bytes.
-- So the block is purely the stale-IR incompatibility above — the model is well-formed, just
-  exported by an older IR emitter.
-
-## What unblocks it
-
-1. **Re-export the model against the current public toolchain** (coreai-torch / coreai-core + the
-   NVIDIA `diar_streaming_sortformer_4spk-v2` checkpoint, CC-BY-4.0). This is the real fix and is
-   **in progress in a separate lane**. A freshly-exported `sortformer_float16.aimodel` dropped into
-   `~/Library/Application Support/TranscriptionStudio/Models/` is picked up automatically —
-   `SortformerModelStore` is **manifest-driven** and treats a locally-provisioned model as
-   first-class (no HF re-download; a re-export writes its own `sortformer_manifest.json` with the new
-   size, which WILL differ from 236655368).
-2. **AOT compile** (`xcrun coreai-build compile <m>.aimodel --output <m>.aimodelc`) — the correct AOT
-   invocation is `coreai-build` (the Metal-toolchain-bundled binary), **not** `xcrun aimodelc`, whose
-   "Core AI requires the Metal Toolchain" gate is a **detection-bug decoy** (it fires even with the
-   Metal Toolchain installed). **However, AOT does not rescue THIS file** — the versioned-IR pass
-   runs in the AOT path too and hits the same abort. AOT only helps once the model is re-exported
-   from a current toolchain.
-
-## How to light it up after a re-export
-
-1. Drop the re-exported `sortformer_float16.aimodel` (+ its `sortformer_manifest.json`) into the
-   Models directory.
-2. Verify it loads: `SORTFORMER_MODEL_OK=1 swift test --filter SortformerRealModelTests` — this runs
-   the attribution gate through the real model on both clips and cross-checks against SpeakerKit.
-3. If green, flip `DiarizationBackend.default` to `.sortformer` (streaming diarization; SpeakerKit
-   remains the A/B cross-check and the iOS graceful-degradation fallback).
+Current staged artifact: exported 2026-07-09 (coreai-torch 0.4.1), `main.mlirb` =
+236,887,041 bytes, sha256 `71a8098…4b0843`; eager-PyTorch vs exported-graph cosine 0.9999
+on both chunk paths. Provenance: `reexport-provenance.json` next to the artifacts. The HF
+originals are kept as `sortformer_float16.aimodel.hf-orig` / `.hf-redownload`.
 
 ## Environment note
 
-The **Metal Toolchain (27A5218h)** was installed during this investigation
-(`xcodebuild -downloadComponent metalToolchain`). It is required for any Core AI AOT compilation
-(`coreai-build compile`) and for on-device Core AI graph specialization. Registered in
-`setup/REBUILD.md` for the parent workspace if the AOT path is adopted.
+The **Metal Toolchain** (27A5218h) was installed for Core AI AOT work
+(`xcodebuild -downloadComponent metalToolchain`) — needed by `coreai-build compile` and
+on-device graph specialization.

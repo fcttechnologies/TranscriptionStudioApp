@@ -36,13 +36,17 @@ public final class AppModel {
     /// The session the Library should focus (set when opening a finished job's result).
     public var selectedSessionID: UUID?
 
+    /// Designated init: the diagnostics spine is built by the caller so engines can be
+    /// constructed logging through the same recorder the inspector observes.
     public init(modelContext: ModelContext,
-                asr: any AsrEngine = MockAsrEngine(),
-                diarizer: any DiarizationEngine = MockDiarizationEngine(),
-                crossCheckDiarizer: any DiarizationEngine = PreviewAltDiarizer()) {
-        let inspector = InspectorStore()
+                inspector: InspectorStore,
+                recorder: PipelineRecorder,
+                asr: any AsrEngine,
+                diarizer: any DiarizationEngine,
+                crossCheckDiarizer: any DiarizationEngine,
+                captureFactory: @escaping RecordingController.CaptureFactory) {
         self.inspector = inspector
-        self.recorder = PipelineRecorder(store: inspector)
+        self.recorder = recorder
         self.loadSampler = SystemLoadSampler(store: inspector)
         self.jobs = JobStore()
         self.settings = AppSettings()
@@ -53,15 +57,52 @@ public final class AppModel {
         self.playback = PlaybackController()
         self.recording = RecordingController(asr: asr,
                                              diarizer: diarizer,
-                                             recorder: self.recorder,
+                                             recorder: recorder,
                                              inspector: inspector,
                                              loadSampler: self.loadSampler,
                                              modelContext: modelContext,
-                                             settings: self.settings)
+                                             settings: self.settings,
+                                             captureFactory: captureFactory)
     }
 
-    /// Build an app model bound to the shared persistent container.
-    public static func live() -> AppModel {
+    /// Mock-default convenience (previews, tests, engine-less demos).
+    public convenience init(modelContext: ModelContext,
+                            asr: any AsrEngine = MockAsrEngine(),
+                            diarizer: any DiarizationEngine = MockDiarizationEngine(),
+                            crossCheckDiarizer: any DiarizationEngine = PreviewAltDiarizer(),
+                            captureFactory: @escaping RecordingController.CaptureFactory =
+                                RecordingController.mockCaptureFactory) {
+        let inspector = InspectorStore()
+        self.init(modelContext: modelContext,
+                  inspector: inspector,
+                  recorder: PipelineRecorder(store: inspector),
+                  asr: asr,
+                  diarizer: diarizer,
+                  crossCheckDiarizer: crossCheckDiarizer,
+                  captureFactory: captureFactory)
+    }
+
+    /// Build the real app: WhisperKit ASR, the default diarization backend (the other
+    /// backend wired as the inspector's A/B cross-check), the shared persistent container,
+    /// and the platform's hardware capture factory (injected by each shell — mic on both
+    /// platforms, ScreenCaptureKit meeting capture on the Mac).
+    public static func live(captureFactory: @escaping RecordingController.CaptureFactory)
+        -> AppModel {
+        let inspector = InspectorStore()
+        let recorder = PipelineRecorder(store: inspector)
+        let backend = DiarizationBackend.default
+        let crossCheck: DiarizationBackend = backend == .sortformer ? .speakerKit : .sortformer
+        return AppModel(modelContext: ModelContext(AppModelContainer.shared),
+                        inspector: inspector,
+                        recorder: recorder,
+                        asr: WhisperKitAsrEngine(),
+                        diarizer: backend.makeEngine(recorder: recorder),
+                        crossCheckDiarizer: crossCheck.makeEngine(recorder: recorder),
+                        captureFactory: captureFactory)
+    }
+
+    /// Mock-engine app model (previews, engine-less demos).
+    public static func mock() -> AppModel {
         AppModel(modelContext: ModelContext(AppModelContainer.shared))
     }
 
