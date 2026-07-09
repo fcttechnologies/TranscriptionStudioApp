@@ -1,0 +1,5 @@
+TranscriptionStudioApp/
+.DS_Store
+build/
+*.xcuserstate
+DerivedData/
