@@ -18,10 +18,31 @@ re-measured for DER — so nothing about it is trusted; everything below makes i
    builds two-voice dialogues (`say`, acoustically distinct voices) with machine-known
    turn boundaries (`TestResources/*.json`). The test diarizes the WAV, optimally maps
    anonymous slots to ground-truth speakers, and asserts frame-level speaker-attribution
-   accuracy over a threshold. The long variant (>60s) forces cache compression to fire —
-   a short clip never exercises it.
+   accuracy ≥ 85%. The long variant (>60s) forces cache compression to fire — a short clip
+   never exercises it. **As-built:** this gate runs FOR REAL through SpeakerKit (the shipping
+   default): short **92.6%** / long **93.1%** on this Mac. The Sortformer version of the same
+   gate is env-gated — see below.
 4. **Cross-check** — SpeakerKit (Argmax, an independent diarizer) over the same clips;
-   large disagreement fails loudly and is inspectable in-app.
+   large disagreement fails loudly and is inspectable in-app. Env-gated (needs a loadable
+   Sortformer model).
+
+### The Sortformer model gate is env-flagged, not auto-probed
+
+`Documentation/SORTFORMER-STATUS.md` has the full story: the currently-published Sortformer
+`.aimodel` does not specialize on this toolchain, and the failure is a **fatal, uncatchable
+`LLVM ERROR` process abort** — it cannot be caught and recovered as a Swift error, so the code
+can NOT "try to load, fall back on failure." Any test that loads the model must therefore be
+**explicitly opted in by a human** who knows the model loads, via the environment flag:
+
+```
+SORTFORMER_MODEL_OK=1 swift test --filter SortformerRealModelTests
+```
+
+Without the flag, `SortformerRealModelTests` is skipped and the suite stays green. The mel
+frontend and AOSC math are verified independently of the model (gates 1–2 above, always on), and
+the full streaming loop + AOSC compression are exercised end-to-end with a fake graph
+(`SortformerLoopTests`), so everything except the neural forward's *values* is covered without the
+model. Flip the flag on once a re-exported model is provisioned.
 
 ## The human loop (Fernando, daily)
 

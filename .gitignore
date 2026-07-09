@@ -9,3 +9,4 @@ TranscriptionStudio.xcodeproj/
 .swiftpm/
 # Synthesized verification audio — regenerate with scripts/make-verification-audio.sh.
 TestResources/
+.venv-verify/

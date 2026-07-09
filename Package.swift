@@ -28,7 +28,13 @@ let package = Package(
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
                 .product(name: "SpeakerKit", package: "argmax-oss-swift")
             ],
-            path: "Sources/TranscriptionKit"
+            path: "Sources/TranscriptionKit",
+            linkerSettings: [
+                // The Sortformer diarizer runs on the raw Core AI system framework (macOS 27).
+                // iOS-device linking is added by the app target (Lane C); the code is
+                // `#if canImport(CoreAI)`-guarded so the iOS simulator build (no CoreAI) still compiles.
+                .linkedFramework("CoreAI", .when(platforms: [.macOS]))
+            ]
         ),
         .target(
             name: "TranscriptionMacKit",
@@ -38,7 +44,8 @@ let package = Package(
         .testTarget(
             name: "TranscriptionKitTests",
             dependencies: ["TranscriptionKit"],
-            path: "Tests/TranscriptionKitTests"
+            path: "Tests/TranscriptionKitTests",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "TranscriptionMacKitTests",
