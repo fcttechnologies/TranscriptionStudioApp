@@ -36,7 +36,7 @@ public struct TranscribeView: View {
         .navigationTitle("Transcribe")
         .background(.background)
         .fileImporter(isPresented: $isImporting,
-                      allowedContentTypes: [.audio, .movie, .mpeg4Movie, .mp3, .wav, .mpeg4Audio],
+                      allowedContentTypes: SupportedMediaExtensions.contentTypes,
                       allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {
                 for url in urls { startFile(url) }
@@ -90,7 +90,11 @@ public struct TranscribeView: View {
                         .scaleEffect(isTargeted && !reduceMotion ? 1.08 : 1)
                     VStack(spacing: 2) {
                         Text("Drop audio or video here").font(.headline)
+                        #if os(macOS)
                         Text("or click to choose a file").font(.subheadline).foregroundStyle(.secondary)
+                        #else
+                        Text("or tap to choose a file").font(.subheadline).foregroundStyle(.secondary)
+                        #endif
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -150,8 +154,7 @@ public struct TranscribeView: View {
 
     private func startFile(_ url: URL) {
         let name = url.deletingPathExtension().lastPathComponent
-        app.startTranscription(title: name.isEmpty ? "Audio file" : name,
-                               source: .file(name: url.lastPathComponent, durationHint: 30))
+        app.startTranscription(title: name.isEmpty ? "Audio file" : name, source: .file(url))
     }
 
     private func open(_ job: TranscriptionJob) {

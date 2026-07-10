@@ -73,8 +73,19 @@ public final class JobStore {
     public private(set) var jobs: [TranscriptionJob] = []
     /// Seconds a terminal job stays listed before sweep.
     public var retention: TimeInterval = 60 * 60
+    /// The periodic sweeper — terminal jobs are otherwise only swept on `add`, so a session
+    /// that stops adding jobs would keep finished cards past `retention` indefinitely.
+    @ObservationIgnored private var sweepTask: Task<Void, Never>?
 
-    public init() {}
+    public init(sweepInterval: TimeInterval = 60) {
+        sweepTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(sweepInterval))
+                guard let self else { return }
+                self.sweep()
+            }
+        }
+    }
 
     public func add(_ job: TranscriptionJob) {
         jobs.append(job)

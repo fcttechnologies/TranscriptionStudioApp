@@ -12,7 +12,7 @@ public struct SettingsView: View {
     public var body: some View {
         @Bindable var settings = app.settings
         Form {
-            Section("Speech recognition") {
+            Section {
                 Picker("Whisper model", selection: $settings.whisperModel) {
                     ForEach(AppSettings.WhisperModel.allCases) { model in
                         Text(model.displayName).tag(model)
@@ -21,6 +21,10 @@ public struct SettingsView: View {
                 Text(settings.whisperModel.detail)
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("Capture word-level timestamps", isOn: $settings.wordTimestamps)
+            } header: {
+                Text("Speech recognition")
+            } footer: {
+                Text("Applies to new transcription jobs immediately. Recording uses the model loaded at launch — a change takes effect next launch.")
             }
             Section("Diarization") {
                 Picker("Backend", selection: $settings.diarizerBackend) {

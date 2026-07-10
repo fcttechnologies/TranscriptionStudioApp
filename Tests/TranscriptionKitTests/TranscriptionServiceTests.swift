@@ -1,7 +1,48 @@
 import Foundation
+import Synchronization
 import SwiftData
 import Testing
 @testable import TranscriptionKit
+
+/// A diarizer that fails on demand, to prove the pipeline degrades gracefully (transcript
+/// still produced, speakers unknown) rather than failing the whole job.
+private final class FailingDiarizationEngine: DiarizationEngine, @unchecked Sendable {
+    let backendName = "Failing"
+    let failOnPrepare: Bool
+    init(failOnPrepare: Bool) { self.failOnPrepare = failOnPrepare }
+
+    struct Boom: Error {}
+
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        if failOnPrepare { throw Boom() }
+    }
+    func diarize(samples: [Float]) async throws -> DiarizationResult { throw Boom() }
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<DiarizationUpdate, Error> {
+        AsyncThrowingStream { $0.finish() }
+    }
+}
+
+/// Wraps `MockAsrEngine`, recording that `prepare` ran (with progress) and what
+/// `wordTimestamps` value the job passed through to transcription.
+private final class SpyAsrEngine: AsrEngine, @unchecked Sendable {
+    private let inner = MockAsrEngine()
+    let prepareProgressCount = Mutex(0)
+    let wordTimestampsSeen = Mutex<Bool?>(nil)
+
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        try await inner.prepare { progress in
+            self.prepareProgressCount.withLock { $0 += 1 }
+            onProgress(progress)
+        }
+    }
+    func transcribe(samples: [Float], track: AudioTrack, wordTimestamps: Bool) async throws -> [AsrSegment] {
+        wordTimestampsSeen.withLock { $0 = wordTimestamps }
+        return try await inner.transcribe(samples: samples, track: track, wordTimestamps: wordTimestamps)
+    }
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<AsrUpdate, Error> {
+        inner.stream(chunks: chunks)
+    }
+}
 
 /// A deterministic `URLAudioDownloading` fake — no subprocess, no network — so
 /// `TranscriptionService`'s URL-job orchestration is exercisable in a plain unit test.
@@ -57,10 +98,16 @@ struct TranscriptionServiceTests {
         return url
     }
 
-    private func makeService(context: ModelContext) -> (TranscriptionService, PipelineRecorder, InspectorStore) {
+    private func makeService(context: ModelContext,
+                             asr: any AsrEngine = MockAsrEngine(),
+                             diarizer: any DiarizationEngine = MockDiarizationEngine(),
+                             wordTimestamps: Bool = false)
+        -> (TranscriptionService, PipelineRecorder, InspectorStore) {
         let store = InspectorStore()
         let recorder = PipelineRecorder(store: store)
-        let service = TranscriptionService(asrEngine: MockAsrEngine(), modelContext: context, recorder: recorder)
+        let service = TranscriptionService(asrEngine: asr, diarizer: diarizer, modelContext: context,
+                                           recorder: recorder, inspector: store,
+                                           wordTimestamps: wordTimestamps, modelName: "mock-model")
         return (service, recorder, store)
     }
 
@@ -162,5 +209,79 @@ struct TranscriptionServiceTests {
         #expect(stages.contains(.asr))
         #expect(stages.contains(.persistence))
         #expect(store.events.allSatisfy { $0.duration == nil || $0.duration! >= 0 })
+    }
+
+    // The real runner path: model prep runs (progress surfaced), the diarizer runs and its
+    // frames reach the inspector, fusion attributes a speaker, and the ingested audio is
+    // archived to a WAV so the session is click-to-playable. Also proves a plain (non
+    // security-scoped) URL ingests fine — startAccessingSecurityScopedResource returns
+    // false and is handled gracefully.
+    @Test func fileJobPreparesDiarizesFusesAndArchives() async throws {
+        let wav = try Self.makeTestWav()
+        defer { try? FileManager.default.removeItem(at: wav) }
+
+        let context = ModelContextFactory.makeInMemory()
+        let spy = SpyAsrEngine()
+        let (service, _, store) = makeService(context: context, asr: spy, wordTimestamps: true)
+        let job = TranscriptionJob(title: "Real path", steps: TranscriptionService.fileJobSteps)
+
+        let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
+        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
+
+        #expect(job.state == .done)
+        // Prepare ran and reported progress; the job's chosen wordTimestamps flowed through.
+        #expect(spy.prepareProgressCount.withLock { $0 } > 0)
+        #expect(spy.wordTimestampsSeen.withLock { $0 } == true)
+
+        // Diarizer frames reached the inspector, and fusion attributed at least one speaker.
+        #expect(store.latestSpeakerFrames[sessionID] != nil)
+        await Task.yield(); await Task.yield()
+        let stages = Set(store.events.map(\.stage))
+        #expect(stages.contains(.diarizeCommit))
+        #expect(stages.contains(.fusion))
+
+        let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
+        #expect(session.audioFileName != nil)
+        #expect((session.segments ?? []).contains { $0.speakerSlot >= 0 })
+    }
+
+    // A diarizer that can't prepare/diarize doesn't fail the job: a transcript is still
+    // produced with speakers unknown, and the failure is recorded as a warning event.
+    @Test func fileJobDegradesGracefullyWhenDiarizerFails() async throws {
+        let wav = try Self.makeTestWav()
+        defer { try? FileManager.default.removeItem(at: wav) }
+
+        let context = ModelContextFactory.makeInMemory()
+        let (service, _, store) = makeService(context: context, diarizer: FailingDiarizationEngine(failOnPrepare: true))
+        let job = TranscriptionJob(title: "No diarizer", steps: TranscriptionService.fileJobSteps)
+
+        let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
+        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
+
+        #expect(job.state == .done)
+        await Task.yield(); await Task.yield()
+        #expect(store.events.contains { $0.level == .warning && $0.stage == .diarizeCommit })
+
+        let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
+        #expect(!session.fullText.isEmpty)
+        // No diarization coverage → every segment is unknown (speakerSlot == -2).
+        #expect((session.segments ?? []).allSatisfy { $0.speakerSlot == -2 })
+    }
+
+    // A diarizer that prepares but throws during diarize also degrades gracefully.
+    @Test func fileJobDegradesGracefullyWhenDiarizeThrows() async throws {
+        let wav = try Self.makeTestWav()
+        defer { try? FileManager.default.removeItem(at: wav) }
+
+        let context = ModelContextFactory.makeInMemory()
+        let (service, _, store) = makeService(context: context, diarizer: FailingDiarizationEngine(failOnPrepare: false))
+        let job = TranscriptionJob(title: "Diarize throws", steps: TranscriptionService.fileJobSteps)
+
+        let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
+        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
+
+        #expect(job.state == .done)
+        await Task.yield(); await Task.yield()
+        #expect(store.events.contains { $0.level == .warning && $0.stage == .diarizeCommit })
     }
 }

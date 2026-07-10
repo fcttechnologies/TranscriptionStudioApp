@@ -60,7 +60,7 @@ public struct InspectorView: View {
                                                      sessionID: app.recording.sessionID)
                     case .asr: InspectorAsrTable(segments: app.recording.segments)
                     case .load: InspectorLoad(store: app.inspector)
-                    case .compare: InspectorDiarizerAB(primary: app.recording.liveTurns,
+                    case .compare: InspectorDiarizerAB(recording: app.recording,
                                                        crossCheck: app.crossCheckDiarizer)
                     }
                 }

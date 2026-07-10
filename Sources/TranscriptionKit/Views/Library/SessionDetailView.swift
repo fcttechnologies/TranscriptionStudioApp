@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppIntents
 
 /// A saved session's transcript with playback. Renders the stored attributed segments as
 /// speaker turns (with the subtle confidence affordance), and — when the session's audio was
@@ -13,6 +14,8 @@ public struct SessionDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var playingLineID: String?
     @State private var hasAudio = false
+    @State private var exportFormat: TranscriptExport.Format?
+    @State private var showingIntelligence = false
 
     public init(session: TranscriptSession) {
         self.session = session
@@ -51,14 +54,58 @@ public struct SessionDetailView: View {
         #endif
         .toolbar {
             ToolbarItem {
+                Button("Intelligence", systemImage: "sparkles") { showingIntelligence = true }
+                    .accessibilityIdentifier("session.intelligence")
+            }
+            ToolbarItem {
                 Button("Copy transcript", systemImage: "doc.on.doc") { copyTranscript() }
                     .accessibilityIdentifier("session.copy")
             }
+            ToolbarItem {
+                Menu {
+                    ForEach(TranscriptExport.Format.allCases) { format in
+                        Button(format.displayName) { exportFormat = format }
+                    }
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .accessibilityIdentifier("session.export")
+            }
+        }
+        .fileExporter(isPresented: exportBinding,
+                      document: exportDocument,
+                      contentType: exportFormat.map(TranscriptExportDocument.contentType(for:)) ?? .plainText,
+                      defaultFilename: exportFileName) { _ in
+            exportFormat = nil
+        }
+        .sheet(isPresented: $showingIntelligence) {
+            SessionIntelligenceSheet(session: session)
         }
         .modifier(PlayheadTracker(playback: app.playback, lineStarts: lineStarts,
                                   playingLineID: $playingLineID))
+        // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing.
+        .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
+                                              identifier: session.id.uuidString))
         .onAppear { hasAudio = app.playback.load(fileName: session.audioFileName) }
         .onDisappear { app.playback.stop() }
+    }
+
+    // MARK: Export
+
+    private var exportBinding: Binding<Bool> {
+        Binding(get: { exportFormat != nil }, set: { if !$0 { exportFormat = nil } })
+    }
+
+    private var exportDocument: TranscriptExportDocument? {
+        guard let exportFormat else { return nil }
+        let text = TranscriptExport.render(TranscriptExport.items(from: session),
+                                           as: exportFormat, title: session.title)
+        return TranscriptExportDocument(text: text, format: exportFormat)
+    }
+
+    private var exportFileName: String {
+        let base = session.title.isEmpty ? "Transcript" : session.title
+        return "\(base).\(exportFormat?.fileExtension ?? "txt")"
     }
 
     private var header: some View {

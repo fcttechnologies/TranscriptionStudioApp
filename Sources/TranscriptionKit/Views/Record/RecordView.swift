@@ -1,16 +1,18 @@
 import SwiftUI
 
 /// The Record surface — the showcase centerpiece. Idle: pick a mode (Room / Meeting), with
-/// Meeting surfacing its screen-recording permission states. Live: a level meter, a scrolling
-/// waveform, the elapsed clock, the speaker-attributed live transcript, and calm controls.
-/// Feel: alive, precise, calm — springs, no gimmicks.
+/// Meeting surfacing its real screen-recording permission ladder and Room surfacing a mic card
+/// when access is denied. Preparing: the engine download/load progress. Live: the recording
+/// layout. Feel: alive, precise, calm — springs, no gimmicks.
 public struct RecordView: View {
     let availableModes: [RecordingController.Mode]
 
     @Environment(AppModel.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.openURL) private var openURL
     @State private var selectedMode: RecordingController.Mode = .room
-    @State private var meetingPermission: MeetingPermission = .notDetermined
+    @State private var screenStatus: ScreenCapturePermission.Status = .granted
+    @State private var micStatus: MicrophonePermission.Status = .authorized
 
     public init(availableModes: [RecordingController.Mode] = RecordingController.Mode.allCases) {
         self.availableModes = availableModes
@@ -18,14 +20,26 @@ public struct RecordView: View {
 
     public var body: some View {
         Group {
-            if app.recording.isRecording {
+            switch app.recording.phase {
+            case .preparing(let progress):
+                RecordPreparingView(progress: progress)
+            case .recording, .finishing:
                 RecordLiveView()
-            } else {
+            case .idle:
                 setup
             }
         }
         .navigationTitle("Record")
-        .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: app.recording.isRecording)
+        .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: app.recording.isActive)
+        .onAppear(perform: refreshPermissions)
+        .alert("Couldn't record",
+               isPresented: Binding(get: { app.recording.lastError != nil },
+                                    set: { if !$0 { app.recording.clearError() } }),
+               presenting: app.recording.lastError) { _ in
+            Button("OK", role: .cancel) { }
+        } message: { error in
+            Text(error.message)
+        }
     }
 
     // MARK: Setup (idle)
@@ -38,16 +52,18 @@ public struct RecordView: View {
                     ForEach(availableModes) { mode in
                         ModeCard(mode: mode, isSelected: selectedMode == mode) {
                             withAnimation(reduceMotion ? nil : DesignMetrics.snappySpring) { selectedMode = mode }
+                            refreshPermissions()
                         }
                     }
                 }
                 if selectedMode == .meeting {
-                    MeetingPermissionCard(state: meetingPermission) {
-                        withAnimation(reduceMotion ? nil : DesignMetrics.standardSpring) {
-                            meetingPermission = meetingPermission.next
-                        }
-                    }
-                    .transition(.motionAware(.top, reduceMotion: reduceMotion))
+                    ScreenRecordingCard(status: screenStatus, action: grantScreenRecording,
+                                        openSettings: { openURL(ScreenCapturePermission.settingsURL) })
+                        .transition(.motionAware(.top, reduceMotion: reduceMotion))
+                }
+                if selectedMode == .room && micStatus == .denied {
+                    MicrophoneCard { openURL(MicrophonePermission.settingsURL) }
+                        .transition(.motionAware(.top, reduceMotion: reduceMotion))
                 }
                 recordButton
                     .padding(.top, DesignMetrics.spacingS)
@@ -60,7 +76,10 @@ public struct RecordView: View {
     }
 
     private var canStart: Bool {
-        selectedMode != .meeting || meetingPermission == .granted
+        switch selectedMode {
+        case .room: micStatus != .denied
+        case .meeting: screenStatus == .granted
+        }
     }
 
     private var recordButton: some View {
@@ -86,19 +105,43 @@ public struct RecordView: View {
         .accessibilityIdentifier("record.start")
         .accessibilityLabel("Start recording")
     }
+
+    // MARK: Permission flow
+
+    private func refreshPermissions() {
+        micStatus = MicrophonePermission.preflight()
+        screenStatus = ScreenCapturePermission.preflight()
+    }
+
+    private func grantScreenRecording() {
+        withAnimation(reduceMotion ? nil : DesignMetrics.standardSpring) {
+            screenStatus = ScreenCapturePermission.request()
+        }
+    }
 }
 
-/// The (mock) meeting-capture permission ladder — a stand-in for the real ScreenCaptureKit
-/// TCC flow that Lane B wires: not determined → needs the screen-recording grant → granted.
-enum MeetingPermission {
-    case notDetermined, needsGrant, granted
+/// The preparing phase — model download/load progress, shown before capture begins.
+private struct RecordPreparingView: View {
+    let progress: EnginePreparationProgress
 
-    var next: MeetingPermission {
-        switch self {
-        case .notDetermined: .needsGrant
-        case .needsGrant: .granted
-        case .granted: .granted
+    var body: some View {
+        VStack(spacing: DesignMetrics.spacingL) {
+            if let fraction = progress.fraction {
+                ProgressView(value: fraction) {
+                    Text(progress.phase)
+                } currentValueLabel: {
+                    Text(fraction, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                }
+                .frame(maxWidth: 320)
+            } else {
+                ProgressView { Text(progress.phase) }
+            }
         }
+        .padding(DesignMetrics.spacingXL)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.background)
+        .accessibilityIdentifier("record.preparing")
     }
 }
 
@@ -140,10 +183,12 @@ private struct ModeCard: View {
     }
 }
 
-/// The meeting-mode permission explainer — shows the current state and the next action.
-private struct MeetingPermissionCard: View {
-    let state: MeetingPermission
+/// The meeting-mode Screen Recording permission ladder — the real macOS TCC flow: request the
+/// grant, explain the restart-after-first-grant quirk, and deep-link to System Settings on denial.
+private struct ScreenRecordingCard: View {
+    let status: ScreenCapturePermission.Status
     let action: () -> Void
+    let openSettings: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: DesignMetrics.spacingM) {
@@ -153,8 +198,15 @@ private struct MeetingPermissionCard: View {
                 Image(systemName: icon).foregroundStyle(tint)
             }
             Text(explanation).font(.caption).foregroundStyle(.secondary)
-            if state != .granted {
-                PrimaryButton(buttonTitle, systemImage: "lock.open", action: action)
+            switch status {
+            case .granted:
+                EmptyView()
+            case .notDetermined:
+                PrimaryButton("Grant Screen Recording", systemImage: "lock.open", action: action)
+            case .needsRestart:
+                EmptyView()
+            case .denied:
+                PrimaryButton("Open System Settings", systemImage: "gear", action: openSettings)
             }
         }
         .padding(DesignMetrics.spacingL)
@@ -164,37 +216,62 @@ private struct MeetingPermissionCard: View {
     }
 
     private var icon: String {
-        switch state {
-        case .notDetermined: "questionmark.circle"
-        case .needsGrant: "exclamationmark.shield"
+        switch status {
         case .granted: "checkmark.shield.fill"
+        case .notDetermined: "questionmark.circle"
+        case .needsRestart: "arrow.clockwise.circle"
+        case .denied: "exclamationmark.shield"
         }
     }
     private var tint: Color {
-        switch state {
-        case .notDetermined: .secondary
-        case .needsGrant: .orange
+        switch status {
         case .granted: .green
+        case .notDetermined: .secondary
+        case .needsRestart: .blue
+        case .denied: .orange
         }
     }
     private var title: String {
-        switch state {
-        case .notDetermined: "Screen recording permission"
-        case .needsGrant: "Permission needed"
+        switch status {
         case .granted: "Ready to capture the meeting"
+        case .notDetermined: "Screen recording permission"
+        case .needsRestart: "Relaunch to finish enabling"
+        case .denied: "Permission denied"
         }
     }
     private var explanation: String {
-        switch state {
-        case .notDetermined:
-            "Meeting mode captures system audio via ScreenCaptureKit, which macOS gates behind the Screen Recording permission. Everything stays on this device."
-        case .needsGrant:
-            "Grant Transcription Studio the Screen Recording permission in System Settings, then relaunch to capture meeting audio."
+        switch status {
         case .granted:
             "System audio and your mic will be captured as separate tracks — you're attributed as “Me”, everyone else is diarized."
+        case .notDetermined:
+            "Meeting mode captures system audio via ScreenCaptureKit, which macOS gates behind the Screen Recording permission. Everything stays on this device."
+        case .needsRestart:
+            "Screen Recording is granted. macOS needs Transcription Studio to relaunch before it can capture — quit and reopen, then start the meeting."
+        case .denied:
+            "Screen Recording is turned off for Transcription Studio. Enable it in System Settings › Privacy & Security › Screen Recording, then relaunch."
         }
     }
-    private var buttonTitle: LocalizedStringKey {
-        state == .notDetermined ? "Continue" : "Grant Screen Recording"
+}
+
+/// The room-mode microphone card — shown only when mic access is denied, with a deep link to
+/// the microphone privacy settings so the recording isn't started into silence.
+private struct MicrophoneCard: View {
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignMetrics.spacingM) {
+            Label {
+                Text("Microphone access denied").font(.subheadline.weight(.semibold))
+            } icon: {
+                Image(systemName: "mic.slash").foregroundStyle(.orange)
+            }
+            Text("Room recording needs the microphone. Enable it for Transcription Studio in System Settings, then try again.")
+                .font(.caption).foregroundStyle(.secondary)
+            PrimaryButton("Open System Settings", systemImage: "gear", action: openSettings)
+        }
+        .padding(DesignMetrics.spacingL)
+        .cardStyle(cornerRadius: DesignMetrics.modeCardCorner)
+        .overlay(RoundedRectangle(cornerRadius: DesignMetrics.modeCardCorner)
+            .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1))
     }
 }
