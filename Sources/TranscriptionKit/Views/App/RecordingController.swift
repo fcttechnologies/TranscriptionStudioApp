@@ -568,6 +568,7 @@ public final class RecordingController {
                                       message: "Session saved",
                                       metadata: ["segments": "\(segments.count)"]))
         try? modelContext.save()
+        TranscriptSpotlightIndex.index(session)
         return sessionID
     }
 

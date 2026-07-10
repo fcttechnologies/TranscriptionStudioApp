@@ -4,19 +4,29 @@ import TranscriptionKit
 
 @main
 struct TranscriptionStudioiOSApp: App {
-    @State private var app = AppModel.live(captureFactory: { mode, sessionID, recorder in
-        // iOS records from the microphone in every mode (meeting capture is Mac-only and
-        // the surface doesn't exist here).
-        _ = mode
-        return [.init(source: MicCaptureSource(track: .mixed, sessionID: sessionID, recorder: recorder),
-                      tracks: [.mixed])]
-    })
+    @State private var app: AppModel
+
+    init() {
+        let model = AppModel.live(captureFactory: { mode, sessionID, recorder in
+            // iOS records from the microphone in every mode (meeting capture is Mac-only and
+            // the surface doesn't exist here).
+            _ = mode
+            return [.init(source: MicCaptureSource(track: .mixed, sessionID: sessionID, recorder: recorder),
+                          tracks: [.mixed])]
+        })
+        // Register the live model so App Intents (Siri/Shortcuts) resolve it via @Dependency.
+        TranscriptionAppIntents.registerDependencies(appModel: model)
+        _app = State(initialValue: model)
+    }
 
     var body: some Scene {
         WindowGroup {
             IOSRootView()
                 .environment(app)
-                .task { app.seedSampleSessionIfNeeded() }
+                .task {
+                    app.seedSampleSessionIfNeeded()
+                    TranscriptSpotlightIndex.reindexAll()
+                }
         }
         .modelContainer(AppModelContainer.shared)
     }
@@ -24,7 +34,8 @@ struct TranscriptionStudioiOSApp: App {
 
 /// The iOS shell: a tab per surface, iPhone-native (not a shrunk Mac). No URL ingest and no
 /// meeting mode (both are Mac-only capabilities); the Inspector is a sheet rather than a
-/// trailing column. A Settings tab hosts the shared settings form.
+/// trailing column. Settings is reached from a gear on the Library nav bar (there's no Mac-
+/// style Settings scene on iOS).
 struct IOSRootView: View {
     @Environment(AppModel.self) private var app
 
