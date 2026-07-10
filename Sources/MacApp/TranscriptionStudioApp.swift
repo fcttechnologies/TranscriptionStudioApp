@@ -15,13 +15,17 @@ struct TranscriptionStudioApp: App {
             [.init(source: MeetingCaptureSource(sessionID: sessionID, recorder: recorder),
                    tracks: [.microphone, .system])]
         }
-    })
+    }, urlDownloader: URLIngestService())
 
     var body: some Scene {
         WindowGroup {
             MacRootView()
                 .environment(app)
-                .task { app.seedSampleSessionIfNeeded() }
+                .task {
+                    // Wipe any per-job temp dirs left by a previous run (web-app parity).
+                    URLIngestService.sweepStartupTemp()
+                    app.seedSampleSessionIfNeeded()
+                }
         }
         .modelContainer(AppModelContainer.shared)
         .defaultSize(width: 1140, height: 740)
