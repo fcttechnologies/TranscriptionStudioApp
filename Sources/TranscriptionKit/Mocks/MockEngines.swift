@@ -62,6 +62,17 @@ public final class MockAsrEngine: AsrEngine, Sendable {
                         }
                         continuation.yield(AsrUpdate(confirmed: confirmed, unconfirmed: [live]))
                     }
+                    // Final pass: confirm whatever remains (mirrors WhisperKit's confirm-all-on-
+                    // finish), so the drained stop keeps the tail instead of dropping unconfirmed.
+                    let confirmedEnd = confirmed.last?.end ?? 0
+                    if accumulatedSeconds > confirmedEnd {
+                        confirmed.append(AsrSegment(track: track,
+                                                    start: confirmedEnd,
+                                                    end: accumulatedSeconds,
+                                                    text: "Mock confirmed sentence \(confirmed.count + 1).",
+                                                    avgLogprob: -0.3, noSpeechProb: 0.05,
+                                                    compressionRatio: 1.5))
+                    }
                     continuation.yield(AsrUpdate(confirmed: confirmed, unconfirmed: []))
                     continuation.finish()
                 } catch {

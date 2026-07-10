@@ -65,7 +65,7 @@ public struct AsrUpdate: Sendable {
 }
 
 /// Model preparation progress (download + load + prewarm), for first-run UX.
-public struct EnginePreparationProgress: Sendable {
+public struct EnginePreparationProgress: Sendable, Equatable {
     public let phase: String
     /// 0...1, or nil when indeterminate.
     public let fraction: Double?
