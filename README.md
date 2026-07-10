@@ -24,3 +24,18 @@ it the app runs with SpeakerKit diarization; WhisperKit self-downloads on first 
 Tests: `swift test`; real-model gates `SORTFORMER_MODEL_OK=1 swift test --filter Sortformer`;
 concurrency bench `CONCURRENT_BENCH=1 swift test --filter ConcurrentLoadBench`.
 Verification audio: `scripts/make-verification-audio.sh` (writes `TestResources/`).
+
+## Headless CLI
+
+`transcribe-cli` (macOS) drives the same pipeline from the command line — a URL
+(yt-dlp-supported) or a local media file → transcript on stdout, progress/errors on
+stderr. Transcribe-only (no diarization); the Jarvis `transcribe` tool shells out to it.
+
+```bash
+swift build -c release --product transcribe-cli
+.build/release/transcribe-cli "https://youtube.com/watch?v=…"        # plain text
+.build/release/transcribe-cli path/to/media.mp4 --json               # segments + timestamps
+.build/release/transcribe-cli --help                                  # all flags
+```
+
+The WhisperKit model self-provisions on first use (download progress → stderr).

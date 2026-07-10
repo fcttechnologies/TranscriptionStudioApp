@@ -94,7 +94,10 @@ public actor WhisperKitAsrEngine: AsrEngine {
         guard let whisperKit else { throw AsrEngineError.notPrepared }
         guard !samples.isEmpty else { return [] }
 
-        var options = DecodingOptions(wordTimestamps: wordTimestamps)
+        // skipSpecialTokens: segment.text otherwise carries Whisper's raw markers
+        // (`<|startoftranscript|>`, `<|4.20|>` …) into transcripts; timings are unaffected
+        // (they come from the timestamp tokens, which stay decoded either way).
+        var options = DecodingOptions(skipSpecialTokens: true, wordTimestamps: wordTimestamps)
         options.chunkingStrategy = .vad
         let results = try await whisperKit.transcribe(audioArray: samples, decodeOptions: options)
         return results
@@ -177,7 +180,7 @@ public actor WhisperKitAsrEngine: AsrEngine {
             return DecodePass(newlyConfirmed: [], unconfirmed: [], confirmedEndTime: confirmedEndTime)
         }
 
-        var options = DecodingOptions(wordTimestamps: false)
+        var options = DecodingOptions(skipSpecialTokens: true, wordTimestamps: false)
         options.clipTimestamps = [Float(confirmedEndTime)]
         let results = try await whisperKit.transcribe(audioArray: buffer, decodeOptions: options)
         let segments = results.flatMap(\.segments)

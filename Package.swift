@@ -14,7 +14,10 @@ let package = Package(
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
         // The macOS-only feature kit: yt-dlp/ffmpeg URL ingest, ScreenCaptureKit
         // meeting capture, and the Mac window shell.
-        .library(name: "TranscriptionMacKit", targets: ["TranscriptionMacKit"])
+        .library(name: "TranscriptionMacKit", targets: ["TranscriptionMacKit"]),
+        // Headless transcription CLI (macOS): URL or file → transcript on stdout.
+        // Drives the same TranscriptionKit/MacKit pipeline the app uses.
+        .executable(name: "transcribe-cli", targets: ["transcribe-cli"])
     ],
     dependencies: [
         // WhisperKit (on-device ASR) + SpeakerKit (the diarizer cross-check
@@ -40,6 +43,11 @@ let package = Package(
             name: "TranscriptionMacKit",
             dependencies: ["TranscriptionKit"],
             path: "Sources/TranscriptionMacKit"
+        ),
+        .executableTarget(
+            name: "transcribe-cli",
+            dependencies: ["TranscriptionMacKit"],
+            path: "Sources/TranscribeCLI"
         ),
         .testTarget(
             name: "TranscriptionKitTests",
