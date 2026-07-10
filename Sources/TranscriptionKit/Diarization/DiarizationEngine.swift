@@ -57,6 +57,11 @@ public protocol DiarizationEngine: AnyObject, Sendable {
     /// Human-readable backend name for the inspector's A/B view.
     var backendName: String { get }
 
+    /// Whether the live `stream(chunks:)` path is real. When false (a full-clip clustering
+    /// diarizer like Pyannote), the recording controller buffers the diar-track samples and
+    /// runs one full-buffer `diarize(samples:)` during the finishing phase instead.
+    var supportsStreaming: Bool { get }
+
     /// Idempotent: download/load/warm the model as needed.
     func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws
 
@@ -66,4 +71,10 @@ public protocol DiarizationEngine: AnyObject, Sendable {
     /// Live diarization over a chunk stream (single track). Emits updates on preview
     /// passes and on chunk commits; finishes when the input finishes (final commit last).
     func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<DiarizationUpdate, Error>
+}
+
+public extension DiarizationEngine {
+    /// Streaming diarizers (Sortformer, the mock) are the default; a full-clip backend
+    /// overrides this to false so the controller runs a single full-buffer pass at stop.
+    var supportsStreaming: Bool { true }
 }

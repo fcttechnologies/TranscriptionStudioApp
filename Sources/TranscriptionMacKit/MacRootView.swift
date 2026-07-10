@@ -15,7 +15,7 @@ public struct MacRootView: View {
             List(AppSurface.allCases, selection: $app.selectedSurface) { surface in
                 SurfaceRow(surface: surface,
                            runningJobs: app.jobs.jobs.filter { $0.state == .running || $0.state == .queued }.count,
-                           isRecording: surface == .record && app.recording.isRecording)
+                           isRecording: surface == .record && app.recording.isActive)
                     .tag(surface)
             }
             .navigationTitle("Transcription Studio")
@@ -81,7 +81,7 @@ public struct AppCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("New Recording") {
                 app.selectedSurface = .record
-                if !app.recording.isRecording { app.recording.start(mode: .room) }
+                if !app.recording.isActive { app.recording.start(mode: .room) }
             }
             .keyboardShortcut("n", modifiers: .command)
         }

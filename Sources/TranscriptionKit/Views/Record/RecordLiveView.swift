@@ -9,6 +9,7 @@ struct RecordLiveView: View {
     var body: some View {
         VStack(spacing: 0) {
             RecordHeader(recording: app.recording)
+            RecordNoticeBar(recording: app.recording)
             Divider()
             RecordTranscript(recording: app.recording)
             Divider()
@@ -42,6 +43,25 @@ private struct RecordHeader: View {
                 .subSurface()
         }
         .padding(DesignMetrics.spacingL)
+    }
+}
+
+/// A small in-line notice: currently "diarization unavailable — transcribing without speakers",
+/// shown when the diarizer couldn't be prepared so the run degrades to ASR-only.
+private struct RecordNoticeBar: View {
+    let recording: RecordingController
+
+    var body: some View {
+        if recording.diarizationUnavailable {
+            Label("Diarization unavailable — transcribing without speakers.",
+                  systemImage: "person.crop.circle.badge.exclamationmark")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, DesignMetrics.spacingL)
+                .padding(.bottom, DesignMetrics.spacingS)
+                .accessibilityIdentifier("record.diarizationUnavailable")
+        }
     }
 }
 
@@ -81,12 +101,37 @@ private struct RecordTranscript: View {
     }
 }
 
-/// Pause / resume and stop, plus a caption of how many turns are captured so far.
+/// Pause / resume and stop while recording; a "Finishing transcript…" indicator while the
+/// engines drain their final passes after stop.
 private struct RecordControls: View {
     let recording: RecordingController
     let app: AppModel
 
     var body: some View {
+        Group {
+            if recording.phase == .finishing {
+                finishing
+            } else {
+                controls
+            }
+        }
+        .padding(DesignMetrics.spacingL)
+    }
+
+    private var finishing: some View {
+        HStack(spacing: DesignMetrics.spacingM) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Finishing transcript…")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityIdentifier("record.finishing")
+    }
+
+    private var controls: some View {
         HStack(spacing: DesignMetrics.spacingL) {
             if recording.isPaused {
                 CircleIconButton(systemImage: "play.fill", tint: .accentColor,
@@ -118,6 +163,5 @@ private struct RecordControls: View {
             .buttonStyle(PressableButtonStyle())
             .accessibilityIdentifier("record.stop")
         }
-        .padding(DesignMetrics.spacingL)
     }
 }

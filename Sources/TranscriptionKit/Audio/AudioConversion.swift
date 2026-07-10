@@ -1,6 +1,6 @@
-// Audio conversion + archival helpers shared by the capture sources: everything normalizes to
-// the AudioChunk currency (16 kHz mono Float32) at the capture boundary, and every session is
-// archived to a WAV so it can be re-run offline through either diarizer (the replay/verify loop).
+// Audio conversion helpers shared by the capture sources: everything normalizes to the
+// AudioChunk currency (16 kHz mono Float32) at the capture boundary. Session archival is owned
+// by the recording controller (it writes one WAV from the mixed archive buffer via AudioFileIO).
 
 import AVFoundation
 import Foundation
@@ -64,43 +64,5 @@ public final class AudioResampler {
     private static func floats(from buffer: AVAudioPCMBuffer) -> [Float] {
         guard let ch = buffer.floatChannelData else { return [] }
         return Array(UnsafeBufferPointer(start: ch[0], count: Int(buffer.frameLength)))
-    }
-}
-
-/// Appends 16 kHz mono samples to a session WAV under Application Support/TranscriptionStudio/Audio.
-final class AudioSessionArchive {
-    private let file: AVAudioFile?
-    let url: URL
-
-    init?(sessionID: UUID) {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let dir = base.appendingPathComponent("TranscriptionStudio/Audio", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent("\(sessionID.uuidString).wav")
-        self.url = url
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVSampleRateKey: CanonicalAudio.sampleRate,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false,
-        ]
-        self.file = try? AVAudioFile(forWriting: url, settings: settings,
-                                     commonFormat: .pcmFormatFloat32, interleaved: false)
-    }
-
-    /// Append 16 kHz mono samples (created into a transient buffer for the writer).
-    func append(_ samples: [Float]) {
-        guard let file, !samples.isEmpty,
-              let buffer = AVAudioPCMBuffer(pcmFormat: CanonicalAudio.format,
-                                            frameCapacity: AVAudioFrameCount(samples.count)) else { return }
-        buffer.frameLength = AVAudioFrameCount(samples.count)
-        if let ch = buffer.floatChannelData {
-            samples.withUnsafeBufferPointer { src in
-                ch[0].update(from: src.baseAddress!, count: samples.count)
-            }
-        }
-        try? file.write(from: buffer)
     }
 }

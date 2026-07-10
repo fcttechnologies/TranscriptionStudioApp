@@ -2,10 +2,12 @@ import Foundation
 import Observation
 import SwiftData
 
-/// Drives a live recording end to end against the engine contracts: it fans one (or two, in
-/// meeting mode) capture streams into the ASR and diarization engines, fuses their outputs
-/// into an attributed transcript in real time, feeds the diagnostics spine (pipeline events,
-/// raw speaker frames, system load), and on stop archives the audio and persists a session.
+/// Drives a live recording end to end against the engine contracts: it prepares the ASR and
+/// diarization engines (with observable progress) before capture starts, fans one (or two, in
+/// meeting mode) capture streams into them, fuses their outputs into an attributed transcript
+/// in real time, feeds the diagnostics spine (pipeline events, raw speaker frames, system
+/// load), and on stop drains the engines' final passes before archiving the audio and
+/// persisting a session.
 ///
 /// It knows only the protocols and the mocks, so the real WhisperKit + Sortformer engines
 /// replace the injected instances with no change here or in any view.
@@ -30,8 +32,30 @@ public final class RecordingController {
         }
     }
 
+    /// The recording lifecycle. `preparing` carries the live model-provisioning progress so the
+    /// Record UI can show "Downloading speech model… 40%"; `finishing` covers the post-stop drain
+    /// (the ASR final decode and, for a non-streaming diarizer, the full-buffer pass).
+    public enum Phase: Equatable, Sendable {
+        case idle
+        case preparing(EnginePreparationProgress)
+        case recording
+        case finishing
+    }
+
+    /// A run-ending failure surfaced to the UI as a human sentence (capture failed, ASR model
+    /// couldn't be prepared). Identifiable so a view can drive `.alert(item:)` off it.
+    public struct RecordingError: Identifiable, Sendable, Equatable {
+        public let id = UUID()
+        public let message: String
+        public init(_ message: String) { self.message = message }
+    }
+
     // Live, observed state.
-    public private(set) var isRecording = false
+    public private(set) var phase: Phase = .idle
+    /// True only while capture is actively running (not during preparing/finishing).
+    public var isRecording: Bool { phase == .recording }
+    /// True whenever a run is underway in any phase — the Record surface shows the live layout.
+    public var isActive: Bool { phase != .idle }
     public private(set) var isPaused = false
     public private(set) var mode: Mode = .room
     public private(set) var elapsed: TimeInterval = 0
@@ -45,6 +69,11 @@ public final class RecordingController {
     public private(set) var sessionID = UUID()
     /// The primary diarizer's latest turns — the top track of the inspector's A/B compare.
     public private(set) var liveTurns: [SpeakerTurn] = []
+    /// Set when the diarizer couldn't be prepared: the run continues ASR-only and the live UI
+    /// shows a "transcribing without speakers" notice.
+    public private(set) var diarizationUnavailable = false
+    /// The last run-ending error, for the Record surface's banner/alert. Cleared on the next start.
+    public private(set) var lastError: RecordingError?
 
     // Injected contracts.
     private let asr: any AsrEngine
@@ -56,13 +85,27 @@ public final class RecordingController {
     private let settings: AppSettings
     private let captureFactory: CaptureFactory
 
+    /// How long the finishing phase waits for the engines' final passes to drain before it
+    /// force-cancels them. The full-buffer confirm decode of large-v3-turbo can take seconds.
+    private let drainTimeout: Duration
+
     // Run bookkeeping.
-    @ObservationIgnored private var tasks: [Task<Void, Never>] = []
+    @ObservationIgnored private var startTask: Task<Void, Never>?
+    @ObservationIgnored private var captureTasks: [Task<Void, Never>] = []
+    @ObservationIgnored private var consumerTasks: [Task<Void, Never>] = []
+    @ObservationIgnored private var clockTask: Task<Void, Never>?
     @ObservationIgnored private var sources: [CaptureSource] = []
+    @ObservationIgnored private var diarTrack: AudioTrack = .mixed
+    /// When the diarizer is a full-clip backend, its track's samples are buffered here and run
+    /// through one `diarize(samples:)` during the finishing phase.
+    @ObservationIgnored private var useFullBufferDiar = false
+    @ObservationIgnored private var diarBuffer: [Float] = []
     @ObservationIgnored private var latestAsrByTrack: [AudioTrack: AsrUpdate] = [:]
     @ObservationIgnored private var latestTurns: [SpeakerTurn] = []
     @ObservationIgnored private var latestFrames = SpeakerFrameMatrix(activities: [], committedFrameCount: 0)
     @ObservationIgnored private var archive: [Float] = []
+    /// Guards the teardown path so simultaneous capture failures tear the run down only once.
+    @ObservationIgnored private var isTearingDown = false
     @ObservationIgnored private var startInstant = ContinuousClock.now
     @ObservationIgnored private var accumulatedElapsed: TimeInterval = 0
     @ObservationIgnored private var lastAsrInstant = ContinuousClock.now
@@ -75,7 +118,8 @@ public final class RecordingController {
                 loadSampler: SystemLoadSampler,
                 modelContext: ModelContext,
                 settings: AppSettings,
-                captureFactory: @escaping CaptureFactory = RecordingController.mockCaptureFactory) {
+                captureFactory: @escaping CaptureFactory = RecordingController.mockCaptureFactory,
+                drainTimeout: Duration = .seconds(60)) {
         self.asr = asr
         self.diarizer = diarizer
         self.recorder = recorder
@@ -84,7 +128,12 @@ public final class RecordingController {
         self.modelContext = modelContext
         self.settings = settings
         self.captureFactory = captureFactory
+        self.drainTimeout = drainTimeout
     }
+
+    /// Read-only view of the mixed archive buffer captured so far — the inspector's diarizer A/B
+    /// runs its cross-check pass on these real samples rather than on synthesized audio.
+    public var archivedSamples: [Float] { archive }
 
     /// A capture input: a source and the tracks it will emit. A room mic emits one track;
     /// a meeting source emits two (`.microphone` + `.system`) on one shared clock — chunks
@@ -115,14 +164,57 @@ public final class RecordingController {
 
     // MARK: Lifecycle
 
+    /// Begin a run: reset, enter the preparing phase, and kick off engine preparation + capture.
+    /// Synchronous entry (a Button/menu action); the async work runs on `startTask`.
     public func start(mode: Mode) {
-        guard !isRecording else { return }
+        guard phase == .idle else { return }
         reset(mode: mode)
-        isRecording = true
+        phase = .preparing(EnginePreparationProgress(phase: "Preparing engines…", fraction: nil))
+        startTask = Task { [weak self] in await self?.runStart(mode: mode) }
+    }
+
+    /// Prepare the engines (with progress), then, if ASR is ready, wire capture and go live.
+    private func runStart(mode: Mode) async {
+        recorder.record(PipelineEvent(sessionID: sessionID, stage: .system,
+                                      message: "Preparing engines (\(mode.title))",
+                                      metadata: ["mode": mode.rawValue]))
+
+        // ASR is mandatory — a failure to prepare it fails the whole start with a visible error.
+        do {
+            try await asr.prepare { [weak self] progress in
+                Task { @MainActor in self?.reportPreparing(progress) }
+            }
+        } catch {
+            failStart(message: "Couldn't start recording — \(error.localizedDescription)")
+            return
+        }
+        guard phase != .idle else { return }   // stopped/failed while preparing
+
+        // The diarizer is best-effort: if it can't be prepared, record ASR-only and tell the user.
+        var diarizerReady = false
+        do {
+            try await diarizer.prepare { [weak self] progress in
+                Task { @MainActor in self?.reportPreparing(progress) }
+            }
+            diarizerReady = true
+        } catch {
+            diarizationUnavailable = true
+            recorder.record(PipelineEvent(sessionID: sessionID, stage: .system, level: .warning,
+                                          message: "Diarizer unavailable — transcribing without speakers",
+                                          metadata: ["error": error.localizedDescription]))
+        }
+        guard phase != .idle else { return }
+
+        beginCapture(mode: mode, diarizerReady: diarizerReady)
+    }
+
+    /// Wire the capture fan-out, the ASR/diarizer consumers, and the clock, then flip to recording.
+    private func beginCapture(mode: Mode, diarizerReady: Bool) {
         isPaused = false
         startInstant = .now
         lastAsrInstant = .now
         lastDiarInstant = .now
+        phase = .recording
         loadSampler.start()
         recorder.record(PipelineEvent(sessionID: sessionID, stage: .capture,
                                       message: "Recording started (\(mode.title))",
@@ -132,30 +224,33 @@ public final class RecordingController {
         sources = inputs.map(\.source)
         let allTracks = inputs.flatMap(\.tracks)
         // The diarizer runs on the first non-mic track (mixed in room, system in meeting).
-        let diarTrack = allTracks.first { $0 != .microphone } ?? allTracks[0]
+        diarTrack = allTracks.first { $0 != .microphone } ?? allTracks[0]
+
+        let streamingDiar = diarizerReady && diarizer.supportsStreaming
+        useFullBufferDiar = diarizerReady && !diarizer.supportsStreaming
 
         // Per-track derived streams for the ASR engine, plus one for the diarizer.
         var asrStreams: [(AudioTrack, AsyncThrowingStream<AudioChunk, Error>)] = []
-        var diarStream: AsyncThrowingStream<AudioChunk, Error>?
         var asrConts: [AudioTrack: AsyncThrowingStream<AudioChunk, Error>.Continuation] = [:]
-        var diarCont: AsyncThrowingStream<AudioChunk, Error>.Continuation?
-
         for track in allTracks {
             let (stream, cont) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
             asrStreams.append((track, stream))
             asrConts[track] = cont
         }
-        do {
+        var diarStream: AsyncThrowingStream<AudioChunk, Error>?
+        var diarCont: AsyncThrowingStream<AudioChunk, Error>.Continuation?
+        if streamingDiar {
             let (stream, cont) = AsyncThrowingStream<AudioChunk, Error>.makeStream()
             diarStream = stream
             diarCont = cont
         }
 
-        // Fan-out: consume each capture source once, routing every chunk by its own track
-        // tag (a meeting source emits two tracks on one stream) into ASR (+ the diarizer
-        // for its track), the meter/waveform, and the archive buffer.
+        // Fan-out: consume each capture source once, routing every chunk by its own track tag
+        // (a meeting source emits two tracks on one stream) into ASR (+ the diarizer for its
+        // track, streaming or buffered), the meter/waveform, and the archive buffer.
         let asrRouting = asrConts
         let diarSink = diarCont
+        let diarTrack = self.diarTrack
         for input in inputs {
             let source = input.source
             let ownedTracks = input.tracks
@@ -168,17 +263,21 @@ public final class RecordingController {
                         await self.waitWhilePaused()
                         self.ingest(chunk: chunk)
                         asrRouting[chunk.track]?.yield(chunk)
-                        if chunk.track == diarTrack { diarSink?.yield(chunk) }
+                        if chunk.track == diarTrack {
+                            if let diarSink {
+                                diarSink.yield(chunk)
+                            } else {
+                                self.accumulateDiar(chunk)
+                            }
+                        }
                     }
                 } catch {
-                    self?.recorder.record(PipelineEvent(sessionID: self?.sessionID,
-                                                        stage: .capture, level: .error,
-                                                        message: "Capture failed: \(error.localizedDescription)"))
+                    self?.handleCaptureFailure(error)
                 }
                 for track in ownedTracks { asrRouting[track]?.finish() }
                 if feedsDiarSource { diarSink?.finish() }
             }
-            tasks.append(task)
+            captureTasks.append(task)
         }
 
         // Consume each ASR update stream.
@@ -192,10 +291,10 @@ public final class RecordingController {
                     }
                 } catch { /* stream ended */ }
             }
-            tasks.append(task)
+            consumerTasks.append(task)
         }
 
-        // Consume the diarizer update stream.
+        // Consume the diarizer update stream (streaming backends only).
         if let diarStream {
             let updates = diarizer.stream(chunks: diarStream)
             let task = Task { [weak self] in
@@ -206,19 +305,37 @@ public final class RecordingController {
                     }
                 } catch { /* stream ended */ }
             }
-            tasks.append(task)
+            consumerTasks.append(task)
         }
 
         // Elapsed clock.
-        tasks.append(Task { [weak self] in
+        clockTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
                 guard let self, self.isRecording else { return }
                 if !self.isPaused { self.tickElapsed() }
                 self.decayLevelIfIdle()
             }
-        })
+        }
     }
+
+    /// Update the preparing progress the UI shows — ignored once we've left the preparing phase.
+    private func reportPreparing(_ progress: EnginePreparationProgress) {
+        guard case .preparing = phase else { return }
+        phase = .preparing(progress)
+    }
+
+    /// ASR preparation failed: surface the error and return to idle without starting capture.
+    private func failStart(message: String) {
+        loadSampler.stop()
+        phase = .idle
+        lastError = RecordingError(message)
+        recorder.record(PipelineEvent(sessionID: sessionID, stage: .system, level: .error,
+                                      message: "Recording start failed", metadata: ["error": message]))
+    }
+
+    /// Dismiss the surfaced run-ending error (from the Record surface's alert).
+    public func clearError() { lastError = nil }
 
     public func pause() {
         guard isRecording, !isPaused else { return }
@@ -234,23 +351,114 @@ public final class RecordingController {
         recorder.record(PipelineEvent(sessionID: sessionID, stage: .capture, message: "Resumed"))
     }
 
-    /// Stop, archive the audio, persist the session, and return its id (nil if nothing captured).
+    /// Stop, drain the engines' final passes, archive the audio, persist the session, and return
+    /// its id (nil if nothing captured). Enters the `finishing` phase for the duration of the drain.
     @discardableResult
     public func stop() async -> UUID? {
-        guard isRecording else { return nil }
-        isRecording = false
+        guard phase == .recording else { return nil }
+        isTearingDown = true
+        phase = .finishing
         isPaused = false
+        clockTask?.cancel(); clockTask = nil
+
+        // Stop sources: their `chunks` streams finish, which finishes the ASR/diar input streams,
+        // which lets the consumer tasks emit their final committed state and complete naturally.
         for source in sources { await source.stop() }
-        for task in tasks { task.cancel() }
-        // Give the engine streams a beat to emit their final committed state.
-        try? await Task.sleep(for: .milliseconds(250))
-        tasks.removeAll()
+
+        let drained = await drainConsumers(timeout: drainTimeout)
+        if !drained {
+            recorder.record(PipelineEvent(sessionID: sessionID, stage: .system, level: .warning,
+                                          message: "Finishing timed out — cancelling engine tasks"))
+            for task in captureTasks { task.cancel() }
+            for task in consumerTasks { task.cancel() }
+        }
+
+        // Non-streaming diarizer: one full-buffer pass over the diar track, then re-fuse.
+        if useFullBufferDiar { await runFullBufferDiarization() }
+
+        captureTasks.removeAll()
+        consumerTasks.removeAll()
         sources.removeAll()
         loadSampler.stop()
 
-        let finalSegments = segments
-        let id = await persist(segments: finalSegments)
+        let id = await persist(segments: segments)
+        phase = .idle
+        isTearingDown = false
         return id
+    }
+
+    /// Await the capture + consumer tasks' natural completion, up to `timeout`. Returns true if
+    /// they drained on their own; false if the timeout fired first (caller then cancels them).
+    private func drainConsumers(timeout: Duration) async -> Bool {
+        let pending = captureTasks + consumerTasks
+        guard !pending.isEmpty else { return true }
+        return await withTaskGroup(of: Bool.self) { group in
+            group.addTask {
+                for task in pending { _ = await task.value }
+                return true
+            }
+            group.addTask {
+                do { try await Task.sleep(for: timeout); return false }
+                catch { return true }
+            }
+            let drained = await group.next() ?? true
+            group.cancelAll()
+            return drained
+        }
+    }
+
+    /// Run the full-buffer diarizer once over the buffered diar track and re-fuse the transcript.
+    private func runFullBufferDiarization() async {
+        guard !diarBuffer.isEmpty else { return }
+        do {
+            let result = try await diarizer.diarize(samples: diarBuffer)
+            latestTurns = result.turns
+            latestFrames = result.frames
+            liveTurns = result.turns
+            inspector.setSpeakerFrames(result.frames, for: sessionID)
+            recorder.record(PipelineEvent(sessionID: sessionID, stage: .diarizeCommit,
+                                          message: "Full-buffer diarization",
+                                          metadata: ["turns": "\(result.turns.count)"]))
+            refuse()
+        } catch {
+            recorder.record(PipelineEvent(sessionID: sessionID, stage: .diarizeCommit, level: .warning,
+                                          message: "Full-buffer diarization failed",
+                                          metadata: ["error": error.localizedDescription]))
+        }
+    }
+
+    /// A capture source failed mid-run (mic permission, SCK stream error): surface it and tear the
+    /// run down cleanly. Records the event regardless of phase; only the first live failure stops it.
+    private func handleCaptureFailure(_ error: Error) {
+        recorder.record(PipelineEvent(sessionID: sessionID, stage: .capture, level: .error,
+                                      message: "Capture failed: \(error.localizedDescription)"))
+        guard phase == .recording, !isTearingDown else { return }
+        isTearingDown = true
+        lastError = RecordingError("Recording stopped — \(error.localizedDescription)")
+        Task { [weak self] in await self?.teardownAfterFailure() }
+    }
+
+    /// Tear down a run that a capture failure ended: stop remaining sources, drain, persist what
+    /// was captured. Mirrors `stop()` but is entered from the failure path (which already set the
+    /// teardown guard and the error).
+    private func teardownAfterFailure() async {
+        phase = .finishing
+        isPaused = false
+        clockTask?.cancel(); clockTask = nil
+        for source in sources { await source.stop() }
+        let drained = await drainConsumers(timeout: drainTimeout)
+        if !drained {
+            for task in captureTasks { task.cancel() }
+            for task in consumerTasks { task.cancel() }
+        }
+        if useFullBufferDiar { await runFullBufferDiarization() }
+        captureTasks.removeAll()
+        consumerTasks.removeAll()
+        sources.removeAll()
+        loadSampler.stop()
+        _ = await persist(segments: segments)
+        phase = .idle
+        isTearingDown = false
     }
 
     // MARK: Ingest + fuse
@@ -275,6 +483,16 @@ public final class RecordingController {
         if archive.count < needed { archive.append(contentsOf: repeatElement(0, count: needed - archive.count)) }
         for (offset, sample) in chunk.samples.enumerated() {
             archive[startSample + offset] += sample
+        }
+    }
+
+    /// Buffer a diar-track chunk (positioned by its session clock) for the full-buffer pass.
+    private func accumulateDiar(_ chunk: AudioChunk) {
+        let startSample = Int(chunk.startTime * AudioChunk.sampleRate)
+        let needed = startSample + chunk.samples.count
+        if diarBuffer.count < needed { diarBuffer.append(contentsOf: repeatElement(0, count: needed - diarBuffer.count)) }
+        for (offset, sample) in chunk.samples.enumerated() {
+            diarBuffer[startSample + offset] = sample
         }
     }
 
@@ -363,10 +581,17 @@ public final class RecordingController {
         level = 0
         waveform = []
         segments = []
+        liveTurns = []
         latestAsrByTrack = [:]
         latestTurns = []
         latestFrames = SpeakerFrameMatrix(activities: [], committedFrameCount: 0)
         archive = []
+        diarBuffer = []
+        diarTrack = .mixed
+        useFullBufferDiar = false
+        diarizationUnavailable = false
+        lastError = nil
+        isTearingDown = false
     }
 
     private func tickElapsed() {
