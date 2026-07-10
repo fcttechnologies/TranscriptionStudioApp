@@ -90,7 +90,11 @@ public struct TranscribeView: View {
                         .scaleEffect(isTargeted && !reduceMotion ? 1.08 : 1)
                     VStack(spacing: 2) {
                         Text("Drop audio or video here").font(.headline)
+                        #if os(macOS)
                         Text("or click to choose a file").font(.subheadline).foregroundStyle(.secondary)
+                        #else
+                        Text("or tap to choose a file").font(.subheadline).foregroundStyle(.secondary)
+                        #endif
                     }
                 }
                 .frame(maxWidth: .infinity)
