@@ -2,16 +2,17 @@ import SwiftUI
 
 /// Diarizer A/B: the primary backend's turn timeline stacked over the cross-check backend's,
 /// on the same span, so disagreement is visible at a glance — the community Sortformer
-/// conversion is presumed guilty until it agrees with an independent read. Driven by the
-/// mocks now; the real SpeakerKit cross-check drops in behind the same protocol.
+/// conversion is presumed guilty until it agrees with an independent read. The cross-check runs
+/// **on demand** (a button), preparing its engine first and diarizing the recording's *real*
+/// archived audio, rather than auto-rerunning on every live update over synthesized silence.
 struct InspectorDiarizerAB: View {
-    let primary: [SpeakerTurn]
+    let recording: RecordingController
     let crossCheck: any DiarizationEngine
 
-    @State private var altTurns: [SpeakerTurn] = []
-    @State private var altName = ""
+    @State private var run = CrossCheckRun()
 
-    private var duration: TimeInterval { primary.map(\.end).max() ?? 0 }
+    private var primary: [SpeakerTurn] { recording.liveTurns }
+    private var duration: TimeInterval { max(primary.map(\.end).max() ?? 0, run.altTurns.map(\.end).max() ?? 0) }
 
     var body: some View {
         InspectorCard(title: "Diarizer A/B") {
@@ -21,10 +22,13 @@ struct InspectorDiarizerAB: View {
             } else {
                 VStack(alignment: .leading, spacing: DesignMetrics.spacingM) {
                     timeline(name: "Sortformer (primary)", turns: primary)
-                    timeline(name: altName.isEmpty ? crossCheck.backendName : altName, turns: altTurns)
-                    agreement
+                    if !run.altTurns.isEmpty {
+                        timeline(name: run.altName.isEmpty ? crossCheck.backendName : run.altName,
+                                 turns: run.altTurns)
+                        agreement
+                    }
+                    runControl
                 }
-                .task(id: duration) { await runCrossCheck() }
             }
         }
     }
@@ -39,25 +43,63 @@ struct InspectorDiarizerAB: View {
     }
 
     @ViewBuilder
-    private var agreement: some View {
-        if !altTurns.isEmpty {
-            let score = Self.frameAgreement(primary, altTurns, duration: duration)
-            HStack(spacing: DesignMetrics.spacingXS) {
-                Image(systemName: score > 0.75 ? "checkmark.seal" : "exclamationmark.triangle")
-                    .foregroundStyle(score > 0.75 ? .green : .orange)
-                Text("\(Int((score * 100).rounded()))% frame agreement")
+    private var runControl: some View {
+        if run.isRunning {
+            HStack(spacing: DesignMetrics.spacingS) {
+                ProgressView().controlSize(.small)
+                Text(run.phase ?? "Running \(crossCheck.backendName)…")
                     .font(.caption2).foregroundStyle(.secondary)
             }
+        } else {
+            Button {
+                Task { await runCrossCheck() }
+            } label: {
+                Label(run.altTurns.isEmpty ? "Run cross-check" : "Re-run cross-check",
+                      systemImage: "rectangle.split.2x1")
+                    .font(.caption.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .accessibilityIdentifier("inspector.ab.run")
+        }
+        if let error = run.error {
+            Text(error).font(.caption2).foregroundStyle(.orange)
         }
     }
 
+    @ViewBuilder
+    private var agreement: some View {
+        let score = Self.frameAgreement(primary, run.altTurns, duration: duration)
+        HStack(spacing: DesignMetrics.spacingXS) {
+            Image(systemName: score > 0.75 ? "checkmark.seal" : "exclamationmark.triangle")
+                .foregroundStyle(score > 0.75 ? .green : .orange)
+            Text("\(Int((score * 100).rounded()))% frame agreement")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
+    /// Prepare the cross-check engine, then diarize the recording's archived samples once.
+    @MainActor
     private func runCrossCheck() async {
-        guard duration > 0 else { return }
-        let sampleCount = Int(duration * AudioChunk.sampleRate)
-        let samples = [Float](repeating: 0, count: max(sampleCount, 1))
-        if let result = try? await crossCheck.diarize(samples: samples) {
-            altTurns = result.turns
-            altName = crossCheck.backendName
+        let samples = recording.archivedSamples
+        guard !samples.isEmpty else {
+            run.error = "No recorded audio to cross-check yet."
+            return
+        }
+        run.isRunning = true
+        run.error = nil
+        run.phase = "Preparing \(crossCheck.backendName)…"
+        defer { run.isRunning = false; run.phase = nil }
+        do {
+            try await crossCheck.prepare { progress in
+                Task { @MainActor in run.phase = progress.phase }
+            }
+            run.phase = "Running \(crossCheck.backendName)…"
+            let result = try await crossCheck.diarize(samples: samples)
+            run.altTurns = result.turns
+            run.altName = crossCheck.backendName
+        } catch {
+            run.error = error.localizedDescription
         }
     }
 
@@ -77,6 +119,19 @@ struct InspectorDiarizerAB: View {
         }
         return Double(agree) / Double(frames)
     }
+}
+
+/// The cross-check run's view-local state: whether it's running, its progress phase, any error,
+/// and the resulting turns. An `@Observable` reference so the model-download progress callback can
+/// hop to the main actor and update it without capturing `@State` in a `@Sendable` closure.
+@MainActor
+@Observable
+private final class CrossCheckRun {
+    var isRunning = false
+    var phase: String?
+    var error: String?
+    var altTurns: [SpeakerTurn] = []
+    var altName = ""
 }
 
 /// A single diarization timeline: colored blocks per turn along the time axis.
