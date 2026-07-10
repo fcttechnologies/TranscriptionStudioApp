@@ -1,8 +1,8 @@
 // MicCaptureSource — microphone capture via AVAudioEngine on both platforms. The simple "room"
 // path (his voice + room / speakerphone). Taps the input node, resamples every buffer to the
-// AudioChunk currency (16 kHz mono Float32), stamps session-relative times, and archives the
-// session to a WAV for offline replay. iOS additionally configures the AVAudioSession and
-// requests record permission.
+// AudioChunk currency (16 kHz mono Float32), and stamps session-relative times. iOS additionally
+// configures the AVAudioSession and requests record permission. Archival is the controller's job
+// (it writes the session WAV from the mixed archive buffer), so this source doesn't write a file.
 
 import AVFoundation
 import Foundation
@@ -29,7 +29,6 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
 
     private let engine = AVAudioEngine()
     private let resampler = AudioResampler()
-    private let archive: AudioSessionArchive?
 
     private let lock = NSLock()
     private var emittedSamples: Int = 0    // for session-relative timestamps
@@ -40,12 +39,8 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
         self.track = track
         self.sessionID = sessionID
         self.recorder = recorder
-        self.archive = AudioSessionArchive(sessionID: sessionID)
         (chunks, continuation) = AsyncThrowingStream.makeStream()
     }
-
-    /// The session WAV this source archives to.
-    public var archiveURL: URL? { archive?.url }
 
     public func start() async throws {
         guard await Self.requestPermission() else { throw MicCaptureError.permissionDenied }
@@ -57,7 +52,6 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
         // Emit into locals so the realtime tap closure captures no `self` methods.
         let continuation = self.continuation
         let resampler = self.resampler
-        let archive = self.archive
         let track = self.track
         let lock = self.lock
         let recorder = self.recorder
@@ -73,7 +67,6 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
             let startSample = counter.value
             counter.value += samples.count
             lock.unlock()
-            archive?.append(samples)
             let startTime = Double(startSample) / AudioChunk.sampleRate
             continuation.yield(AudioChunk(track: track, samples: samples, startTime: startTime))
             recorder?.record(PipelineEvent(
