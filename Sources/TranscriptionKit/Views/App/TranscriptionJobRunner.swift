@@ -120,6 +120,7 @@ struct TranscriptionJobRunner {
         modelContext.insert(session)
         recorder.record(PipelineEvent(sessionID: sessionID, stage: .persistence, message: "Session saved"))
         try? modelContext.save()
+        TranscriptSpotlightIndex.index(session)
         return sessionID
     }
 }

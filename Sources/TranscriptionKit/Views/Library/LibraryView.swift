@@ -11,6 +11,7 @@ public struct LibraryView: View {
     @State private var searchText = ""
     @State private var path: [TranscriptSession] = []
     @State private var pendingDelete: TranscriptSession?
+    @State private var showingSettings = false
 
     public init() {}
 
@@ -47,6 +48,25 @@ public struct LibraryView: View {
             .navigationDestination(for: TranscriptSession.self) { session in
                 SessionDetailView(session: session)
             }
+            #if os(iOS)
+            // iOS has no Settings scene; reach settings from the Library nav bar.
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                        .accessibilityIdentifier("library.settings")
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                NavigationStack {
+                    SettingsView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showingSettings = false }
+                            }
+                        }
+                }
+            }
+            #endif
         }
         .searchable(text: $searchText, prompt: "Search transcripts")
         .confirmationDialog("Delete this session?", isPresented: deleteBinding, titleVisibility: .visible) {
@@ -86,8 +106,10 @@ public struct LibraryView: View {
         if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
             try? FileManager.default.removeItem(at: url)
         }
+        let deletedID = session.id
         modelContext.delete(session)
         try? modelContext.save()
+        TranscriptSpotlightIndex.deindex(id: deletedID)
         pendingDelete = nil
     }
 

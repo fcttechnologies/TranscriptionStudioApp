@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import AppIntents
 
 /// A saved session's transcript with playback. Renders the stored attributed segments as
 /// speaker turns (with the subtle confidence affordance), and — when the session's audio was
@@ -13,6 +14,7 @@ public struct SessionDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var playingLineID: String?
     @State private var hasAudio = false
+    @State private var showingIntelligence = false
 
     public init(session: TranscriptSession) {
         self.session = session
@@ -51,12 +53,22 @@ public struct SessionDetailView: View {
         #endif
         .toolbar {
             ToolbarItem {
+                Button("Intelligence", systemImage: "sparkles") { showingIntelligence = true }
+                    .accessibilityIdentifier("session.intelligence")
+            }
+            ToolbarItem {
                 Button("Copy transcript", systemImage: "doc.on.doc") { copyTranscript() }
                     .accessibilityIdentifier("session.copy")
             }
         }
+        .sheet(isPresented: $showingIntelligence) {
+            SessionIntelligenceSheet(session: session)
+        }
         .modifier(PlayheadTracker(playback: app.playback, lineStarts: lineStarts,
                                   playingLineID: $playingLineID))
+        // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing.
+        .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
+                                              identifier: session.id.uuidString))
         .onAppear { hasAudio = app.playback.load(fileName: session.audioFileName) }
         .onDisappear { app.playback.stop() }
     }
