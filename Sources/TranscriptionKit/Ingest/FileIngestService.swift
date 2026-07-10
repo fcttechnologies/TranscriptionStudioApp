@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 import WhisperKit
 
 /// Extensions accepted from a dropped/picked media file — ported from the web app's
@@ -11,6 +12,15 @@ public enum SupportedMediaExtensions {
 
     public static func isSupported(_ url: URL) -> Bool {
         allowed.contains(url.pathExtension.lowercased())
+    }
+
+    /// The whitelist as `UTType`s for a `fileImporter`'s `allowedContentTypes`. The `.audio`
+    /// / `.movie` supertypes cover the common cases; the per-extension types then let the
+    /// less-standard containers (mkv/webm/ogg/opus/flac) through, which the supertypes miss.
+    public static var contentTypes: [UTType] {
+        var types: [UTType] = [.audio, .movie]
+        types += allowed.compactMap { UTType(filenameExtension: $0) }
+        return types
     }
 }
 
