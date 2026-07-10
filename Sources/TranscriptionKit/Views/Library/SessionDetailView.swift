@@ -13,6 +13,7 @@ public struct SessionDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var playingLineID: String?
     @State private var hasAudio = false
+    @State private var exportFormat: TranscriptExport.Format?
 
     public init(session: TranscriptSession) {
         self.session = session
@@ -54,11 +55,45 @@ public struct SessionDetailView: View {
                 Button("Copy transcript", systemImage: "doc.on.doc") { copyTranscript() }
                     .accessibilityIdentifier("session.copy")
             }
+            ToolbarItem {
+                Menu {
+                    ForEach(TranscriptExport.Format.allCases) { format in
+                        Button(format.displayName) { exportFormat = format }
+                    }
+                } label: {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .accessibilityIdentifier("session.export")
+            }
+        }
+        .fileExporter(isPresented: exportBinding,
+                      document: exportDocument,
+                      contentType: exportFormat.map(TranscriptExportDocument.contentType(for:)) ?? .plainText,
+                      defaultFilename: exportFileName) { _ in
+            exportFormat = nil
         }
         .modifier(PlayheadTracker(playback: app.playback, lineStarts: lineStarts,
                                   playingLineID: $playingLineID))
         .onAppear { hasAudio = app.playback.load(fileName: session.audioFileName) }
         .onDisappear { app.playback.stop() }
+    }
+
+    // MARK: Export
+
+    private var exportBinding: Binding<Bool> {
+        Binding(get: { exportFormat != nil }, set: { if !$0 { exportFormat = nil } })
+    }
+
+    private var exportDocument: TranscriptExportDocument? {
+        guard let exportFormat else { return nil }
+        let text = TranscriptExport.render(TranscriptExport.items(from: session),
+                                           as: exportFormat, title: session.title)
+        return TranscriptExportDocument(text: text, format: exportFormat)
+    }
+
+    private var exportFileName: String {
+        let base = session.title.isEmpty ? "Transcript" : session.title
+        return "\(base).\(exportFormat?.fileExtension ?? "txt")"
     }
 
     private var header: some View {

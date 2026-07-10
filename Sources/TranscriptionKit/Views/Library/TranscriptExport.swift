@@ -1,4 +1,6 @@
 import Foundation
+import SwiftUI
+import UniformTypeIdentifiers
 
 /// Pure transcript export formatting: a saved session's segments → shareable text in the
 /// standard interchange formats. No I/O here — callers hand the string to a share sheet,
@@ -139,5 +141,34 @@ public enum TranscriptExport {
 
     private static func clock(_ seconds: TimeInterval) -> String {
         TimeFormat.clock(seconds)
+    }
+}
+
+/// The write-only document a `fileExporter` saves an export as. Content is rendered before
+/// the exporter presents, so the document is just a string with a content type.
+public struct TranscriptExportDocument: FileDocument {
+    public static let readableContentTypes: [UTType] = []
+    public static let writableContentTypes: [UTType] = [.plainText, .text]
+
+    public let text: String
+    public let format: TranscriptExport.Format
+
+    public init(text: String, format: TranscriptExport.Format) {
+        self.text = text
+        self.format = format
+    }
+
+    /// Best-available UTType for a format (falls back to plain text when the system has no
+    /// registered type for the extension).
+    public static func contentType(for format: TranscriptExport.Format) -> UTType {
+        UTType(filenameExtension: format.fileExtension) ?? .plainText
+    }
+
+    public init(configuration: ReadConfiguration) throws {
+        throw CocoaError(.featureUnsupported)   // export-only
+    }
+
+    public func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: Data(text.utf8))
     }
 }
