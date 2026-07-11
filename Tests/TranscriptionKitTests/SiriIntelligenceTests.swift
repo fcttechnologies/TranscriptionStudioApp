@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 import SwiftData
+import FCTEntities
 @testable import TranscriptionKit
 
 /// The Siri/App-Intents entity query and the on-device intelligence availability gate.
@@ -84,6 +85,14 @@ struct SiriIntelligenceTests {
         #expect(UUID(uuidString: entity.id) != nil)
         #expect(entity.kindLabel == "Room recording")
         #expect(!entity.textPreview.isEmpty)
+    }
+
+    // MARK: App Shortcuts capacity
+
+    @Test func shortcutCountWithinSystemLimit() {
+        let contract = AppShortcutContract(declaredCount: TranscriptionShortcuts.appShortcuts.count)
+        #expect(contract.isWithinLimit)
+        #expect(contract.declaredCount == 7)   // pin the exact count so a regression is loud
     }
 
     // MARK: Intelligence availability gate
