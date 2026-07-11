@@ -1,4 +1,5 @@
 import SwiftUI
+import FCTComponentsUI
 
 /// One speaker turn rendered: a colored accent rail, the speaker chip, and the turn's lines.
 /// Provisional lines shimmer; committed lines carry a subtle confidence underline. In the
@@ -45,9 +46,12 @@ public struct TranscriptTurnView: View {
         let isPlaying = playingLineID == line.id
         Group {
             if line.isProvisional {
-                ShimmerText(line.text, color: accent)
+                // Explicitly module-qualified: TranscriptionKit's own provisional shimmer
+                // (unrelated to FCTComponentsUI.ShimmerText, which this file also imports for
+                // ConfidenceText) stays app-side — see Docs/Migration/TranscriptionStudio.md.
+                TranscriptionKit.ShimmerText(line.text, color: accent)
             } else {
-                ConfidenceLine(line.text, score: line.asrScore, accent: accent)
+                ConfidenceText(line.text, score: Double(line.asrScore), accent: accent)
             }
         }
         .padding(.horizontal, onTapLine == nil ? 0 : DesignMetrics.spacingS)

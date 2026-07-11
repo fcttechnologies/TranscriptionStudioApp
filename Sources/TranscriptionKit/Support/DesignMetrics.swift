@@ -59,7 +59,6 @@ public enum DesignMetrics {
     public static let shimmerMinBandWidth: CGFloat = 40
 
     /// Confidence → visual affordance. Low confidence reads as a lighter, dotted underline.
-    public static let confidenceUnderlineOpacityLow: Double = 0.9
     public static let confidenceUnderlineOpacityHigh: Double = 0.0
     /// Below this attribution confidence, a segment gets a "check this" affordance.
     public static let lowConfidenceThreshold: Float = 0.55

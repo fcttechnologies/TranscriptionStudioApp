@@ -22,14 +22,20 @@ let package = Package(
     dependencies: [
         // WhisperKit (on-device ASR) + SpeakerKit (the diarizer cross-check
         // baseline). MIT. The monorepo formerly known as argmaxinc/WhisperKit.
-        .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.0.0")
+        .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.0.0"),
+        // FCTFoundation (sibling checkout, ../FCTFoundation) — the shared spine. Granular
+        // products only: FCTEntities for the Spotlight donation mechanism, FCTComponentsUI
+        // for the shared confidence text affordance.
+        .package(path: "../FCTFoundation")
     ],
     targets: [
         .target(
             name: "TranscriptionKit",
             dependencies: [
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
-                .product(name: "SpeakerKit", package: "argmax-oss-swift")
+                .product(name: "SpeakerKit", package: "argmax-oss-swift"),
+                .product(name: "FCTEntities", package: "FCTFoundation"),
+                .product(name: "FCTComponentsUI", package: "FCTFoundation")
             ],
             path: "Sources/TranscriptionKit",
             linkerSettings: [
@@ -51,7 +57,10 @@ let package = Package(
         ),
         .testTarget(
             name: "TranscriptionKitTests",
-            dependencies: ["TranscriptionKit"],
+            dependencies: [
+                "TranscriptionKit",
+                .product(name: "FCTEntities", package: "FCTFoundation")
+            ],
             path: "Tests/TranscriptionKitTests",
             resources: [.process("Resources")]
         ),

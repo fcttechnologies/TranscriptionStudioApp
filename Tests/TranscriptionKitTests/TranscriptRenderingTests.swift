@@ -45,11 +45,6 @@ struct TranscriptRenderingTests {
         #expect(Confidence.asrScore(poor) >= 0)
     }
 
-    @Test func lowerConfidenceGivesHeavierUnderline() {
-        #expect(Confidence.underlineOpacity(0.1) > Confidence.underlineOpacity(0.9))
-        #expect(Confidence.underlineOpacity(1) == 0)
-    }
-
     @Test func clockFormatsMinutesAndHours() {
         #expect(TimeFormat.clock(65) == "01:05")
         #expect(TimeFormat.clock(3661) == "1:01:01")
