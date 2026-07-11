@@ -3,6 +3,7 @@ import AppIntents
 import CoreSpotlight
 import OSLog
 import SwiftData
+import FCTEntities
 
 /// A saved transcription session, exposed to Siri, Shortcuts, Spotlight, and Apple
 /// Intelligence. `IndexedEntity` so sessions surface in Spotlight and Apple Intelligence
@@ -161,16 +162,23 @@ public enum TranscriptSessionStore {
 
 /// Keeps the Spotlight/Apple-Intelligence index in step with the library. Best-effort: index
 /// failures never block the app, and indexing is skipped under tests. Never logs transcript
-/// content — only counts.
+/// content — only counts. Donates through a stable, app-owned named index (never the system
+/// default — only a named index carries a data-protection class); every session is eligible
+/// for the index, so no `DonationGating` policy is needed here.
 @MainActor
 public enum TranscriptSpotlightIndex {
+    /// The stable, app-owned named index. Never rename without a migration plan for whatever
+    /// this index already holds on-device (see `Docs/Migration/TranscriptionStudio.md`).
+    public static let indexName = "TranscriptionStudioSessions"
+    private static let donator = EntityDonator(indexName: indexName)
+
     /// Index (or refresh) one session.
     public static func index(_ session: TranscriptSession) {
         guard !AppModelContainer.isRunningTests else { return }
         let entity = TranscriptSessionEntity(session)
         Task {
             do {
-                try await CSSearchableIndex.default().indexAppEntities([entity])
+                try await donator.donate([entity])
             } catch {
                 Logger.persistence.error("Spotlight index failed: \(error, privacy: .public)")
             }
@@ -183,22 +191,26 @@ public enum TranscriptSpotlightIndex {
         let identifier = id.uuidString
         Task {
             do {
-                try await CSSearchableIndex.default().deleteAppEntities(
-                    identifiedBy: [identifier], ofType: TranscriptSessionEntity.self)
+                try await donator.remove([identifier], ofType: TranscriptSessionEntity.self)
             } catch {
                 Logger.persistence.error("Spotlight deindex failed: \(error, privacy: .public)")
             }
         }
     }
 
-    /// Reindex the whole library — called on launch so external/seeded changes are covered.
+    /// Reindex the whole library into the named index — called on launch so external/seeded
+    /// changes are covered. Also sweeps any entries the pre-migration indexer left in the
+    /// system default index (best-effort, one-time — the default index holds nothing once
+    /// every session has been through this path once).
     public static func reindexAll(in container: ModelContainer = AppModelContainer.shared) {
         guard !AppModelContainer.isRunningTests else { return }
         let entities = TranscriptSessionStore.recentEntities(limit: .max, in: container)
         guard !entities.isEmpty else { return }
         Task {
+            try? await CSSearchableIndex.default().deleteAppEntities(
+                identifiedBy: entities.map(\.id), ofType: TranscriptSessionEntity.self)
             do {
-                try await CSSearchableIndex.default().indexAppEntities(entities)
+                try await donator.reindex(entities)
                 Logger.persistence.info("Spotlight reindex: \(entities.count, privacy: .public) sessions")
             } catch {
                 Logger.persistence.error("Spotlight reindex failed: \(error, privacy: .public)")
