@@ -14,14 +14,27 @@ struct TranscribeCLI {
     static let usage = """
     usage: transcribe-cli <url-or-file> [--json] [--model <whisperkit-variant>]
                           [--language <code>]
+           transcribe-cli --serve [--port <n>] [--idle-timeout <s>] [--preload]
+                          [--model <whisperkit-variant>] [--language <code>]
 
+    ONE-SHOT (default): transcribe a single URL or file and exit.
       <url-or-file>    An http(s) URL (any yt-dlp-supported source) or a local
                        media file path (\(SupportedMediaExtensions.allowed.sorted().joined(separator: ", "))).
       --json           Structured output: {source, kind, durationSeconds, text, segments[]}.
-      --model <name>   WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
-                       Downloaded on first use if missing (progress on stderr).
       --language <c>   Force the spoken language (ISO code, e.g. "en"/"es") instead of
                        Whisper's auto-detect.
+
+    SERVE: run a warm on-device transcription service (drop-in for the old FastAPI app on
+           the same :8000 API — POST /api/jobs/start, GET /api/jobs/{id}, POST /api/transcribe/file).
+      --serve          Start the HTTP service (holds the model warm across requests).
+      --port <n>       Listen port (default: 8000).
+      --idle-timeout <s>  Release the model after this many seconds idle, reloading on demand
+                       (default: 600 = ~10 min; 0 = never release / stay warm forever).
+      --preload        Load the model at startup for the lowest first-request latency (eager).
+
+    Shared:
+      --model <name>   WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
+                       Downloaded on first use if missing (progress on stderr).
     """
 
     static func main() async {
@@ -29,6 +42,10 @@ struct TranscribeCLI {
         var modelName = WhisperKitAsrEngine.platformDefaultModelName
         var forcedLanguage: String?
         var input: String?
+        var serve = false
+        var port: UInt16 = 8000
+        var idleTimeout: TimeInterval = 600
+        var preload = false
 
         var arguments = CommandLine.arguments.dropFirst().makeIterator()
         while let argument = arguments.next() {
@@ -41,6 +58,16 @@ struct TranscribeCLI {
             case "--language":
                 guard let code = arguments.next() else { exitUsage("--language needs a value") }
                 forcedLanguage = code
+            case "--serve":
+                serve = true
+            case "--port":
+                guard let value = arguments.next(), let p = UInt16(value) else { exitUsage("--port needs a numeric value") }
+                port = p
+            case "--idle-timeout":
+                guard let value = arguments.next(), let s = TimeInterval(value), s >= 0 else { exitUsage("--idle-timeout needs a non-negative number of seconds") }
+                idleTimeout = s
+            case "--preload":
+                preload = true
             case "--help", "-h":
                 print(usage)
                 exit(0)
@@ -50,6 +77,13 @@ struct TranscribeCLI {
                 input = argument
             }
         }
+
+        if serve {
+            await runServe(port: port, idleTimeout: idleTimeout, preload: preload,
+                           modelName: modelName, forcedLanguage: forcedLanguage)
+            return  // runServe never returns on success (blocks on accept); returns only to exit
+        }
+
         guard let input else { exitUsage("no input given") }
 
         do {
@@ -63,6 +97,44 @@ struct TranscribeCLI {
                 print(result.text)
             }
             exit(0)
+        } catch {
+            fail(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Serve
+
+    /// Run the warm transcription HTTP service until killed. Builds one warm engine (optionally
+    /// preloaded), starts the idle reaper (a no-op at idle-timeout 0), and blocks on the accept
+    /// loop. Never returns on success.
+    static func runServe(port: UInt16, idleTimeout: TimeInterval, preload: Bool,
+                         modelName: String, forcedLanguage: String?) async {
+        let warm = WarmEngine(modelName: modelName, forcedLanguage: forcedLanguage, idleTimeout: idleTimeout)
+
+        if preload {
+            status("Preloading \(modelName)…")
+            do {
+                try await warm.ensureLoaded { progress in status("\(progress.phase)…") }
+                status("Model ready.")
+            } catch {
+                fail("preload failed: \(error.localizedDescription)")
+            }
+        }
+
+        // Idle reaper: release the model once it's been idle past the timeout. No-op at 0 (warm
+        // forever), so only spun up when a positive timeout is set.
+        if idleTimeout > 0 {
+            Task.detached {
+                while true {
+                    try? await Task.sleep(for: .seconds(60))
+                    await warm.reapIfIdle()
+                }
+            }
+        }
+
+        let server = TranscribeServer(port: port, warm: warm)
+        do {
+            try server.run()  // blocks forever on accept()
         } catch {
             fail(error.localizedDescription)
         }
