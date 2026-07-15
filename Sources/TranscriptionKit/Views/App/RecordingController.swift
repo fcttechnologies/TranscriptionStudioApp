@@ -404,6 +404,15 @@ public final class RecordingController {
                 catch { return true }
             }
             let drained = await group.next() ?? true
+            if !drained {
+                // `withTaskGroup` implicitly awaits every child before returning, and the
+                // "wait on `pending`" child's `await task.value` calls don't themselves observe
+                // group cancellation — so without this, a `pending` task that's still running
+                // (e.g. a slow decode) blocks this function well past `timeout` regardless of
+                // the branch below in `stop()`. Cancelling the real tasks here is what actually
+                // lets that child unblock inside `timeout`.
+                for task in pending { task.cancel() }
+            }
             group.cancelAll()
             return drained
         }

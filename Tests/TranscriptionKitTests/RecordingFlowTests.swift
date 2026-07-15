@@ -173,6 +173,92 @@ struct RecordingFlowTests {
         cleanupArchive(context)
     }
 
+    /// pause() halts the elapsed clock and marks isPaused; resume() picks the clock back up.
+    /// A pause/resume with no recording underway (idle) or an already-paused/already-running
+    /// call is a no-op guarded at the top of each method.
+    @Test func pauseHaltsElapsedAndResumeContinuesIt() async throws {
+        let context = try inMemoryContext()
+        let (controller, _) = makeController(context: context)
+
+        controller.start(mode: .room)
+        try await waitUntil(timeout: 4) { controller.isRecording }
+
+        controller.pause()
+        #expect(controller.isPaused)
+        let elapsedAtPause = controller.elapsed
+        try await Task.sleep(for: .milliseconds(300))
+        // Elapsed must not advance while paused.
+        #expect(abs(controller.elapsed - elapsedAtPause) < 0.05)
+
+        controller.resume()
+        #expect(!controller.isPaused)
+        try await waitUntil(timeout: 2) { controller.elapsed > elapsedAtPause + 0.05 }
+        #expect(controller.elapsed > elapsedAtPause)
+
+        _ = await controller.stop()
+        cleanupArchive(context)
+    }
+
+    @Test func pauseAndResumeAreNoOpsOutsideTheirValidState() async throws {
+        let context = try inMemoryContext()
+        let (controller, _) = makeController(context: context)
+
+        // Idle: neither call should crash or flip isPaused.
+        controller.pause()
+        #expect(!controller.isPaused)
+        controller.resume()
+        #expect(!controller.isPaused)
+
+        controller.start(mode: .room)
+        try await waitUntil(timeout: 4) { controller.isRecording }
+
+        // resume() while not paused is a no-op.
+        controller.resume()
+        #expect(!controller.isPaused)
+
+        controller.pause()
+        #expect(controller.isPaused)
+        // A second pause() while already paused is a no-op (doesn't double-accumulate elapsed).
+        let elapsedAfterFirstPause = controller.elapsed
+        controller.pause()
+        #expect(abs(controller.elapsed - elapsedAfterFirstPause) < 0.05)
+
+        controller.resume()
+        _ = await controller.stop()
+        cleanupArchive(context)
+    }
+
+    /// A drain that doesn't finish inside `drainTimeout` hits the timeout branch: the run
+    /// still reaches `.idle` (the engine tasks are force-cancelled rather than awaited forever).
+    @Test func stopForceCancelsAfterDrainTimeoutElapses() async throws {
+        let context = try inMemoryContext()
+        // A final ASR pass far slower than the drain timeout forces the timeout branch.
+        let asr = SlowFinalAsrEngine(finalText: "too slow", finalDelay: .seconds(5))
+        let (controller, inspector) = makeController(context: context, asr: asr,
+                                                     drainTimeout: .milliseconds(200))
+
+        controller.start(mode: .room)
+        try await waitUntil(timeout: 4) { controller.isRecording }
+        try await Task.sleep(for: .milliseconds(300))
+
+        let start = ContinuousClock.now
+        let id = await controller.stop()
+        let elapsed = start.duration(to: .now)
+
+        // The timeout branch returns promptly rather than blocking for the full 5s delay.
+        #expect(elapsed < .seconds(3))
+        #expect(controller.phase == .idle)
+        #expect(!controller.isRecording)
+        // PipelineRecorder mirrors to the inspector via a hop to the main actor, so the append
+        // can trail stop()'s return by a beat.
+        try await waitUntil(timeout: 2) {
+            inspector.events.contains { $0.message.contains("Finishing timed out") }
+        }
+        #expect(inspector.events.contains { $0.message.contains("Finishing timed out") })
+        _ = id
+        cleanupArchive(context)
+    }
+
     @Test func seedSampleSessionIsIdempotent() throws {
         let context = try inMemoryContext()
         DemoContent.seedSampleSession(into: context)
