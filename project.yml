@@ -42,7 +42,16 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Transcription Studio
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor   # thin @main shell; the mixed TranscriptionKit package stays nonisolated-by-default
         ENABLE_DEBUG_DYLIB: YES
+        # Hardening (xcode-security-audit): Hardened Runtime + Enhanced Security v2.
+        # Pointer authentication (arm64e) is OFF: WhisperKit/SpeakerKit ship via the external
+        # argmax-oss-swift package; keep it off until that dep is verified arm64e-universal.
+        ENABLE_HARDENED_RUNTIME: YES
+        ENABLE_ENHANCED_SECURITY: YES
+        ENABLE_POINTER_AUTHENTICATION: NO
+        CODE_SIGN_ENTITLEMENTS: Sources/MacApp/TranscriptionStudio.entitlements
 
   TranscriptionStudioiOS:
     type: application
@@ -74,7 +83,14 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor   # thin @main shell; the mixed TranscriptionKit package stays nonisolated-by-default
         ENABLE_DEBUG_DYLIB: YES
+        # Hardening (xcode-security-audit): Enhanced Security v2. Pointer authentication OFF —
+        # WhisperKit/SpeakerKit ship via the external argmax-oss-swift package (see Mac target note).
+        ENABLE_ENHANCED_SECURITY: YES
+        ENABLE_POINTER_AUTHENTICATION: NO
+        CODE_SIGN_ENTITLEMENTS: Sources/iOSApp/TranscriptionStudioiOS.entitlements
 
 schemes:
   TranscriptionStudio:
