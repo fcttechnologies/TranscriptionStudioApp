@@ -67,6 +67,15 @@ public final class AppSettings {
             case .speakerKit: "Argmax baseline · comparison"
             }
         }
+        /// Sortformer only runs where a re-exported model is staged (a Mac); iOS can never
+        /// provision it, so iOS defaults to SpeakerKit. macOS defaults to Sortformer.
+        public static var platformDefault: DiarizerBackend {
+            #if os(macOS)
+            .sortformer
+            #else
+            .speakerKit
+            #endif
+        }
     }
 
     private enum Keys {
@@ -99,7 +108,7 @@ public final class AppSettings {
         self.whisperModel = defaults.string(forKey: Keys.whisperModel)
             .flatMap(WhisperModel.init(rawValue:)) ?? WhisperModel.platformDefault
         self.diarizerBackend = defaults.string(forKey: Keys.diarizerBackend)
-            .flatMap(DiarizerBackend.init(rawValue:)) ?? .sortformer
+            .flatMap(DiarizerBackend.init(rawValue:)) ?? DiarizerBackend.platformDefault
         self.wordTimestamps = defaults.object(forKey: Keys.wordTimestamps) as? Bool ?? false
         self.autoFollowTranscript = defaults.object(forKey: Keys.autoFollowTranscript) as? Bool ?? true
     }

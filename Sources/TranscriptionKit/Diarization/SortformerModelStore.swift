@@ -98,6 +98,15 @@ public struct SortformerModelStore: Sendable {
         return .hfDefault
     }
 
+    /// True only when a locally re-exported model is staged — its `sortformer_manifest.json` is
+    /// present and decodes. The published HF model has NO local manifest and FATALLY (uncatchably)
+    /// aborts the process on load on the current toolchain, so this is the gate for whether it's
+    /// even safe to attempt Sortformer at all (see the file header + Documentation/SORTFORMER-STATUS.md).
+    public var hasLocalManifest: Bool {
+        guard let data = try? Data(contentsOf: manifestURL) else { return false }
+        return (try? JSONDecoder().decode(SortformerManifest.self, from: data)) != nil
+    }
+
     /// A structurally-complete model is present locally (files exist, non-empty). Provisioning
     /// treats such a directory as first-class and skips any network fetch.
     public var hasLocalArtifacts: Bool {

@@ -26,12 +26,20 @@ public enum DiarizationBackend: String, Sendable, CaseIterable, Codable {
     public var supportsStreaming: Bool { self == .sortformer }
 
     /// Build the engine. One place; callers pick a backend, not a concrete type.
-    public func makeEngine(recorder: PipelineRecorder? = nil, sessionID: UUID? = nil) -> any DiarizationEngine {
+    public func makeEngine(recorder: PipelineRecorder? = nil, sessionID: UUID? = nil,
+                           sortformerStore: SortformerModelStore = SortformerModelStore()) -> any DiarizationEngine {
         switch self {
         case .speakerKit:
             return SpeakerKitEngine(recorder: recorder, sessionID: sessionID)
         case .sortformer:
-            return SortformerEngine(store: SortformerModelStore(), recorder: recorder, sessionID: sessionID)
+            // The published Sortformer model FATALLY (uncatchably) aborts the process on load on
+            // the current toolchain; only a locally re-exported model — which stages a local
+            // manifest — is safe. Without one (iOS, or any un-provisioned machine), fall back to
+            // SpeakerKit instead of crashing. See Documentation/SORTFORMER-STATUS.md.
+            guard sortformerStore.hasLocalManifest else {
+                return SpeakerKitEngine(recorder: recorder, sessionID: sessionID)
+            }
+            return SortformerEngine(store: sortformerStore, recorder: recorder, sessionID: sessionID)
         }
     }
 }
