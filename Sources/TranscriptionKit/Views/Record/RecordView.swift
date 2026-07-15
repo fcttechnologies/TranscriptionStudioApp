@@ -64,7 +64,9 @@ public struct RecordView: View {
                         }
                     }
                 }
-                if selectedMode == .meeting {
+                // The screen-recording card is a permission ladder — show it only when there's a
+                // rung left to climb (grant / open settings / relaunch). Once granted, it's noise.
+                if selectedMode == .meeting && screenStatus != .granted {
                     ScreenRecordingCard(status: screenStatus, action: grantScreenRecording,
                                         openSettings: { openURL(ScreenCapturePermission.settingsURL) })
                         .transition(.motionAware(.top, reduceMotion: reduceMotion))
