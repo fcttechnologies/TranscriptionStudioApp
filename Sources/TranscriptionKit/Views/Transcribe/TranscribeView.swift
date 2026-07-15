@@ -1,5 +1,8 @@
 import SwiftUI
 import UniformTypeIdentifiers
+#if os(iOS)
+import PhotosUI
+#endif
 
 /// The Transcribe surface: paste a URL (Mac only) or drop / pick a media file, then watch
 /// each job walk its step trail. Errors surface as human sentences on the card, never as an
@@ -13,6 +16,10 @@ public struct TranscribeView: View {
     @State private var urlText = ""
     @State private var isTargeted = false
     @State private var isImporting = false
+    #if os(iOS)
+    @State private var photosSelection: PhotosPickerItem?
+    @State private var photoImportError: String?
+    #endif
 
     public init(showsURLField: Bool) {
         self.showsURLField = showsURLField
@@ -45,6 +52,19 @@ public struct TranscribeView: View {
                 for url in urls { startFile(url) }
             }
         }
+        #if os(iOS)
+        .onChange(of: photosSelection) { _, newValue in
+            guard let newValue else { return }
+            Task { await importPhotosVideo(newValue) }
+        }
+        .alert("Couldn't import video",
+               isPresented: Binding(get: { photoImportError != nil },
+                                    set: { if !$0 { photoImportError = nil } })) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(photoImportError ?? "")
+        }
+        #endif
     }
 
     // MARK: Prewarm
@@ -142,8 +162,32 @@ public struct TranscribeView: View {
             } isTargeted: { isTargeted = $0 }
             .accessibilityIdentifier("transcribe.dropZone")
             .accessibilityLabel("Drop audio or video file, or activate to choose one")
+            #if os(iOS)
+            photosPickerButton
+            #endif
         }
     }
+
+    #if os(iOS)
+    private var photosPickerButton: some View {
+        PhotosPicker(selection: $photosSelection, matching: .videos, photoLibrary: .shared()) {
+            HStack(spacing: DesignMetrics.spacingS) {
+                Image(systemName: "photo.on.rectangle")
+                Text("Choose from Photos")
+            }
+            .font(.body.weight(.semibold))
+            .padding(.horizontal, DesignMetrics.spacingL)
+            .padding(.vertical, DesignMetrics.spacingM)
+            .frame(minHeight: DesignMetrics.hitTarget)
+            .frame(maxWidth: .infinity)
+            .background(.quaternary.opacity(0.6), in: Capsule())
+            .foregroundStyle(.primary)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("transcribe.photosPicker")
+    }
+    #endif
 
     // MARK: Jobs
 
@@ -180,6 +224,22 @@ public struct TranscribeView: View {
         let name = url.deletingPathExtension().lastPathComponent
         app.startTranscription(title: name.isEmpty ? "Audio file" : name, source: .file(url))
     }
+
+    #if os(iOS)
+    @MainActor
+    private func importPhotosVideo(_ item: PhotosPickerItem) async {
+        photosSelection = nil
+        do {
+            guard let picked = try await item.loadTransferable(type: PickedPhotosVideo.self) else {
+                photoImportError = "Couldn't load that video."
+                return
+            }
+            app.startTranscription(title: picked.title, source: .file(picked.url))
+        } catch {
+            photoImportError = error.localizedDescription
+        }
+    }
+    #endif
 
     private func open(_ job: TranscriptionJob) {
         guard let id = job.resultSessionID else { return }
