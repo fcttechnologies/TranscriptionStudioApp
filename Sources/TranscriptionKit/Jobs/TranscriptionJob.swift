@@ -96,6 +96,13 @@ public final class JobStore {
         jobs.removeAll { $0.id == job.id }
     }
 
+    /// Remove the finished job that produced a now-deleted session, so its card doesn't
+    /// linger in the jobs list past the session it belongs to. A running/queued job has no
+    /// `resultSessionID` yet, so it's never matched here.
+    public func removeJobs(forSessionID sessionID: UUID) {
+        jobs.removeAll { $0.resultSessionID == sessionID }
+    }
+
     public func sweep(now: Date = Date()) {
         jobs.removeAll { job in
             switch job.state {

@@ -49,6 +49,7 @@ public final class PlaybackController {
     /// Seek to a time and start playing — used by tap-to-play on a segment.
     public func play(from time: TimeInterval) {
         guard let player else { return }
+        activatePlaybackSession()
         player.currentTime = min(max(time, 0), max(player.duration - 0.01, 0))
         player.play()
         isPlaying = true
@@ -63,6 +64,7 @@ public final class PlaybackController {
             isPlaying = false
             ticker?.cancel()
         } else {
+            activatePlaybackSession()
             player.play()
             isPlaying = true
             startTicking()
@@ -75,6 +77,21 @@ public final class PlaybackController {
         player?.stop()
         isPlaying = false
         currentTime = 0
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        #endif
+    }
+
+    /// Saved-session playback should be heard regardless of the ringer switch, so on iOS this
+    /// puts the session in `.playback` (which ignores the silent switch) before each play —
+    /// distinct from recording's own `.playAndRecord` session, which it reconfigures again the
+    /// next time recording starts, so this never stomps it.
+    private func activatePlaybackSession() {
+        #if os(iOS)
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default)
+        try? session.setActive(true)
+        #endif
     }
 
     private func startTicking() {

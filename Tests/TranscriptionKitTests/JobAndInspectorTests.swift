@@ -45,6 +45,28 @@ struct TranscriptionJobTests {
         #expect(store.jobs.count == 1)
         #expect(store.jobs[0].title == "Old running")
     }
+
+    // Deleting a session removes the finished job that produced it, but leaves a running job
+    // (which has no resultSessionID yet) and an unrelated finished job untouched.
+    @Test func removeJobsForSessionIDRemovesOnlyItsFinishedJob() {
+        let store = JobStore()
+        let sessionID = UUID()
+
+        let finished = TranscriptionJob(title: "Finished", steps: ["A"])
+        finished.finish(resultSessionID: sessionID)
+        let otherFinished = TranscriptionJob(title: "Other finished", steps: ["A"])
+        otherFinished.finish(resultSessionID: UUID())
+        let running = TranscriptionJob(title: "Running", steps: ["A"])
+        running.advance(to: 0, stageText: "Working…", progress: 0.5)
+
+        store.add(finished)
+        store.add(otherFinished)
+        store.add(running)
+
+        store.removeJobs(forSessionID: sessionID)
+
+        #expect(store.jobs.map(\.title).sorted() == ["Other finished", "Running"])
+    }
 }
 
 @Suite("InspectorStore")

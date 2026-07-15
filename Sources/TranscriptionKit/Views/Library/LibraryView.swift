@@ -12,7 +12,6 @@ public struct LibraryView: View {
     @State private var debouncedSearchText = ""
     @State private var path: [TranscriptSession] = []
     @State private var pendingDelete: TranscriptSession?
-    @State private var showingSettings = false
 
     public init() {}
 
@@ -23,30 +22,6 @@ public struct LibraryView: View {
                 .navigationDestination(for: TranscriptSession.self) { session in
                     SessionDetailView(session: session)
                 }
-                #if os(iOS)
-                // iOS has no Settings scene; reach settings from the Library nav bar.
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Settings", systemImage: "gearshape") { showingSettings = true }
-                            .accessibilityIdentifier("library.settings")
-                    }
-                }
-                .sheet(isPresented: $showingSettings) {
-                    NavigationStack {
-                        SettingsView()
-                            .toolbar {
-                                ToolbarItem(placement: .confirmationAction) {
-                                    Button("Done") { showingSettings = false }
-                                }
-                            }
-                    }
-                }
-                .onChange(of: app.pendingSettingsRequest) { _, requested in
-                    guard requested else { return }
-                    showingSettings = true
-                    app.pendingSettingsRequest = false
-                }
-                #endif
         }
         .searchable(text: $searchText, prompt: "Search transcripts")
         .task(id: searchText) {
@@ -58,18 +33,17 @@ public struct LibraryView: View {
                 await TranscriptionIntentDonations.donateSearchTranscripts(query: searchText)
             } catch {}
         }
-        .confirmationDialog("Delete this session?", isPresented: deleteBinding, titleVisibility: .visible) {
-            Button("Delete", role: .destructive) { if let pendingDelete { delete(pendingDelete) } }
+        // Item-bound dialog (SDK 27): presents while `pendingDelete` holds a value and hands
+        // the session straight to `actions`/`message`, so both a row swipe and the context
+        // menu confirm against the exact session that's pending, never a stale shared Bool.
+        .confirmationDialog("Delete this session?", item: $pendingDelete, titleVisibility: .visible) { session in
+            Button("Delete", role: .destructive) { delete(session) }
             Button("Cancel", role: .cancel) { pendingDelete = nil }
-        } message: {
-            Text(pendingDelete.map { "“\($0.title)” and its transcript will be removed." } ?? "")
+        } message: { session in
+            Text("“\(session.title)” and its transcript will be removed.")
         }
         .onChange(of: app.selectedSessionID) { _, id in openSelected(id) }
         .onAppear { openSelected(app.selectedSessionID) }
-    }
-
-    private var deleteBinding: Binding<Bool> {
-        Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })
     }
 
     private func delete(_ session: TranscriptSession) {
@@ -79,6 +53,9 @@ public struct LibraryView: View {
         modelContext.delete(session)
         try? modelContext.save()
         TranscriptSpotlightIndex.deindex(id: deletedID)
+        // A finished job's card would otherwise linger in the jobs list/UI after its session
+        // is gone; a still-running job has no resultSessionID yet, so it's untouched.
+        app.jobs.removeJobs(forSessionID: deletedID)
         pendingDelete = nil
         Task { await TranscriptionIntentDonations.donateDeleteTranscript(entity) }
     }
@@ -117,6 +94,11 @@ private struct LibraryList: View {
                                 SessionRow(session: session)
                             }
                             .contextMenu {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    pendingDelete = session
+                                }
+                            }
+                            .swipeActions(edge: .trailing) {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
                                     pendingDelete = session
                                 }
