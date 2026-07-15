@@ -28,10 +28,9 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
     private let recorder: PipelineRecorder?
 
     private let engine = AVAudioEngine()
-    private let resampler = AudioResampler()
-
-    private let lock = NSLock()
-    private var emittedSamples: Int = 0    // for session-relative timestamps
+    /// Resampler + lock-guarded sample counter, held together so the `@Sendable` audio tap block
+    /// (`installAudioTap`, iOS/macOS 27) captures one Sendable value, not non-Sendable state.
+    private let tapState = TapState()
 
     /// - Parameter track: how emitted chunks are tagged (mic path is `.mixed` by default; in a
     ///   meeting the mic is the local user, tagged `.microphone`).
@@ -49,24 +48,19 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
         let input = engine.inputNode
         let inputFormat = input.inputFormat(forBus: 0)
 
-        // Emit into locals so the realtime tap closure captures no `self` methods.
+        // Emit into locals so the @Sendable tap block captures no `self`.
         let continuation = self.continuation
-        let resampler = self.resampler
+        let tapState = self.tapState
         let track = self.track
-        let lock = self.lock
         let recorder = self.recorder
         let sessionID = self.sessionID
-        // A box for the mutable running-sample counter, guarded by `lock`.
-        let counter = Counter()
-        self.counterRef = counter
 
-        input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { buffer, _ in
-            let samples = resampler.resample(buffer)
+        // iOS/macOS 27: installAudioTap's block is @Sendable and hands read-only, Sendable buffers.
+        try input.installAudioTap(onBus: 0, bufferSize: 4096, format: inputFormat) { readOnly, _ in
+            guard let buffer = Self.mutableCopy(of: readOnly) else { return }
+            let samples = tapState.resampler.resample(buffer)
             guard !samples.isEmpty else { return }
-            lock.lock()
-            let startSample = counter.value
-            counter.value += samples.count
-            lock.unlock()
+            let startSample = tapState.reserve(samples.count)
             let startTime = Double(startSample) / AudioChunk.sampleRate
             continuation.yield(AudioChunk(track: track, samples: samples, startTime: startTime))
             recorder?.record(PipelineEvent(
@@ -97,10 +91,42 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
         #endif
     }
 
-    // Retains the counter box for the tap's lifetime.
-    private var counterRef: Counter?
+    // MARK: tap state + buffer bridging
 
-    private final class Counter { var value: Int = 0 }
+    /// Per-tap mutable state. `@unchecked Sendable`: `installAudioTap`'s block is `@Sendable`, but
+    /// it fires serially on the audio render thread and the running-sample counter is lock-guarded,
+    /// so this is never touched concurrently.
+    private final class TapState: @unchecked Sendable {
+        let resampler = AudioResampler()
+        private let lock = NSLock()
+        private var emitted = 0
+        /// Reserve `count` sample slots; returns the session-relative start sample index.
+        func reserve(_ count: Int) -> Int {
+            lock.lock(); defer { lock.unlock() }
+            let start = emitted
+            emitted += count
+            return start
+        }
+    }
+
+    /// Copy a read-only tap buffer (`installAudioTap`'s Sendable buffer) into a mutable
+    /// `AVAudioPCMBuffer` the resampler + its `AVAudioConverter` can consume — a byte-for-byte
+    /// `AudioBufferList` copy, so any channel layout / sample type carries over unchanged.
+    private static func mutableCopy(of readOnly: AVReadOnlyAudioPCMBuffer) -> AVAudioPCMBuffer? {
+        let frames = AVAudioFrameCount(readOnly.frameLength)
+        guard let out = AVAudioPCMBuffer(pcmFormat: readOnly.format,
+                                         frameCapacity: frames) else { return nil }
+        out.frameLength = frames
+        readOnly.withUnsafeAudioBufferList { srcList in
+            let src = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: srcList))
+            let dst = UnsafeMutableAudioBufferListPointer(out.mutableAudioBufferList)
+            for i in 0..<Swift.min(src.count, dst.count) {
+                guard let s = src[i].mData, let d = dst[i].mData else { continue }
+                memcpy(d, s, Int(Swift.min(src[i].mDataByteSize, dst[i].mDataByteSize)))
+            }
+        }
+        return out
+    }
 
     // MARK: platform specifics
 
