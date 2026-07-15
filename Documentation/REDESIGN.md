@@ -19,9 +19,13 @@ The sessions list is home. Everything returns to it.
 Transcribe and Record are no longer tabs — they become "+" menu actions.
 
 ## Where the work happens
-- **Record** → a focused live-recording view presented over the list.
-- **Upload / link** → a job that appears **inline in the list** with live progress; tap to open
-  the result. (Open question for Fernando: recording inline too, or presented — currently presented.)
+Active work lives in a **section above the list** while it's running — no modals, everything
+stays on the one view.
+- **Upload / link** → the job shows in that active section with live progress; on completion it
+  drops into the list as a session.
+- **Record** → in place: the bottom-right **"+" button becomes a Stop button** while recording,
+  and the live recording (waveform / elapsed) shows in the active section. Stop → it becomes a
+  session in the list.
 
 ## Loading / preparing / download → toasts
 All model load / download / prepare / progress states surface as **toasts** (a global toast host,
