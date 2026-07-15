@@ -86,7 +86,7 @@ public struct SessionDetailView: View {
         .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
                                               identifier: session.id.uuidString))
         .onAppear {
-            hasAudio = app.playback.load(fileName: session.audioFileName)
+            hasAudio = app.playback.load(data: session.audioData)
             let entity = TranscriptSessionEntity(session)
             Task { await TranscriptionIntentDonations.donateOpenTranscript(entity) }
         }

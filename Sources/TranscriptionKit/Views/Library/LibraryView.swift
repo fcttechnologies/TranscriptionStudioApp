@@ -74,9 +74,7 @@ public struct LibraryView: View {
 
     private func delete(_ session: TranscriptSession) {
         let entity = TranscriptSessionEntity(session)
-        if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
-            try? FileManager.default.removeItem(at: url)
-        }
+        // Deleting the record drops its archived `audioData` with it — no file to clean up.
         let deletedID = session.id
         modelContext.delete(session)
         try? modelContext.save()

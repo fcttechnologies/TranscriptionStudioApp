@@ -29,9 +29,10 @@ public final class TranscriptSession {
     public var statusRaw: String = SessionStatus.inProgress.rawValue
     /// Source URL string for URL transcriptions; nil otherwise.
     public var sourceURLString: String?
-    /// File name of the archived session audio inside the app's audio directory
-    /// (re-runnable through any engine — the offline verification loop). Nil until archived.
-    public var audioFileName: String?
+    /// The archived session audio as compressed AAC/m4a data (re-playable and re-runnable
+    /// through any engine — the offline verification loop). Stored externally (CKAsset under
+    /// CloudKit sync) so the row stays light. Nil until archived.
+    @Attribute(.externalStorage) public var audioData: Data?
     public var duration: TimeInterval = 0
     /// The full plain-text transcript, denormalized for fast search/copy.
     public var fullText: String = ""

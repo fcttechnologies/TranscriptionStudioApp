@@ -66,15 +66,12 @@ final class RecordingArchiver {
         session.duration = elapsed
         session.fullText = segments.map(\.asr.text).joined(separator: " ")
 
-        // Archive the mixed audio so the session is re-playable / re-runnable.
-        let fileName = "\(sessionID.uuidString).wav"
+        // Archive the mixed audio (compressed AAC) so the session is re-playable / re-runnable.
         let samples = archive.isEmpty
             ? AudioFileIO.synthesize(turns: latestTurns.map { ($0.start, $0.end, $0.speakerIndex) },
                                      totalDuration: elapsed)
             : archive
-        if let saved = try? AudioFileIO.writeWAV(samples: samples, fileName: fileName) {
-            session.audioFileName = saved
-        }
+        session.audioData = try? AudioFileIO.encodeAAC(samples: samples)
 
         for attributed in segments {
             let stored = StoredSegment(from: attributed)

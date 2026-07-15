@@ -64,14 +64,11 @@ struct RecordingFlowTests {
         let session = try #require(sessions.first)
         #expect(!(session.segments ?? []).isEmpty)
         #expect(session.kind == .roomRecording)
-        #expect(session.audioFileName != nil)
         #expect(!session.fullText.isEmpty)
 
-        // The archived audio file was actually written.
-        let name = try #require(session.audioFileName)
-        let url = try #require(AudioFileIO.url(forFileName: name))
-        #expect(FileManager.default.fileExists(atPath: url.path))
-        try? FileManager.default.removeItem(at: url)
+        // The archived audio was stored as compressed data on the session row.
+        let audioData = try #require(session.audioData)
+        #expect(!audioData.isEmpty)
     }
 
     @Test func meetingModeAttributesLocalUserAsMe() async throws {
@@ -85,10 +82,6 @@ struct RecordingFlowTests {
         #expect(controller.segments.contains { $0.speaker == .me })
         let id = await controller.stop()
         #expect(id != nil)
-        if let name = (try? context.fetch(FetchDescriptor<TranscriptSession>()))?.first?.audioFileName,
-           let url = AudioFileIO.url(forFileName: name) {
-            try? FileManager.default.removeItem(at: url)
-        }
     }
 
     /// The preparing phase is real: a run enters `.preparing` synchronously on start, reports
@@ -109,7 +102,6 @@ struct RecordingFlowTests {
         #expect(controller.phase == .recording)
 
         _ = await controller.stop()
-        cleanupArchive(context)
     }
 
     /// The graceful stop awaits the ASR engine's final pass: an engine whose last decode is slow
@@ -131,7 +123,6 @@ struct RecordingFlowTests {
 
         let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
         #expect(session.fullText.contains(marker))
-        cleanupArchive(context)
     }
 
     /// A non-streaming diarizer (its `stream` throws; only `diarize(samples:)` works) is handled by
@@ -154,7 +145,6 @@ struct RecordingFlowTests {
         // The full-buffer pass ran and fused: turns exist and segments carry a resolved speaker.
         #expect(!controller.liveTurns.isEmpty)
         #expect(controller.segments.contains { $0.speaker != .unknown })
-        cleanupArchive(context)
     }
 
     /// A capture source that fails to start surfaces a human error and ends the run cleanly
@@ -170,7 +160,6 @@ struct RecordingFlowTests {
         #expect(controller.lastError != nil)
         #expect(controller.phase == .idle)
         #expect(!controller.isRecording)
-        cleanupArchive(context)
     }
 
     /// pause() halts the elapsed clock and marks isPaused; resume() picks the clock back up.
@@ -196,7 +185,6 @@ struct RecordingFlowTests {
         #expect(controller.elapsed > elapsedAtPause)
 
         _ = await controller.stop()
-        cleanupArchive(context)
     }
 
     @Test func pauseAndResumeAreNoOpsOutsideTheirValidState() async throws {
@@ -225,7 +213,6 @@ struct RecordingFlowTests {
 
         controller.resume()
         _ = await controller.stop()
-        cleanupArchive(context)
     }
 
     /// A drain that doesn't finish inside `drainTimeout` hits the timeout branch: the run
@@ -256,20 +243,6 @@ struct RecordingFlowTests {
         }
         #expect(inspector.events.contains { $0.message.contains("Finishing timed out") })
         _ = id
-        cleanupArchive(context)
-    }
-
-    @Test func seedSampleSessionIsIdempotent() throws {
-        let context = try inMemoryContext()
-        DemoContent.seedSampleSession(into: context)
-        let after = try context.fetch(FetchDescriptor<TranscriptSession>())
-        #expect(after.count == 1)
-        let session = try #require(after.first)
-        #expect((session.segments ?? []).count == 6)
-        #expect(session.audioFileName != nil)
-        if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
-            try? FileManager.default.removeItem(at: url)
-        }
     }
 
     // MARK: Helpers
@@ -280,16 +253,6 @@ struct RecordingFlowTests {
         while ContinuousClock.now < deadline {
             if condition() { return }
             try await Task.sleep(for: .milliseconds(100))
-        }
-    }
-
-    /// Remove any archived WAV a persisted session left behind.
-    private func cleanupArchive(_ context: ModelContext) {
-        guard let sessions = try? context.fetch(FetchDescriptor<TranscriptSession>()) else { return }
-        for session in sessions {
-            if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
-                try? FileManager.default.removeItem(at: url)
-            }
         }
     }
 }

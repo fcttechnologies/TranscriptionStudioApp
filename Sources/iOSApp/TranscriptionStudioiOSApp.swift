@@ -24,7 +24,6 @@ struct TranscriptionStudioiOSApp: App {
             IOSRootView()
                 .environment(app)
                 .task {
-                    app.seedSampleSessionIfNeeded()
                     TranscriptSpotlightIndex.reindexAll()
                     // Warm the speech model up front so the first job isn't blocked by the
                     // one-time model compile (see AppModel.prewarmDefaultEngine).

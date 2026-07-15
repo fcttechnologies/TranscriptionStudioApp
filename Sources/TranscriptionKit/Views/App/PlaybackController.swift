@@ -11,36 +11,37 @@ public final class PlaybackController {
     public private(set) var isPlaying = false
     public private(set) var currentTime: TimeInterval = 0
     public private(set) var duration: TimeInterval = 0
-    /// The file currently loaded, so a surface knows whether its audio is available.
-    public private(set) var loadedFileName: String?
+    /// Whether a session's archived audio is currently loaded, so a surface knows whether
+    /// playback is available.
+    public private(set) var hasLoadedAudio = false
 
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var ticker: Task<Void, Never>?
 
     public init() {}
 
-    /// Load a session's archived audio by file name. Returns whether the file was found.
+    /// Load a session's archived audio from its compressed `Data`. Returns whether it loaded.
     @discardableResult
-    public func load(fileName: String?) -> Bool {
+    public func load(data: Data?) -> Bool {
         stop()
-        guard let fileName, let url = AudioFileIO.url(forFileName: fileName),
-              FileManager.default.fileExists(atPath: url.path) else {
+        guard let data else {
             player = nil
-            loadedFileName = nil
+            hasLoadedAudio = false
             duration = 0
             return false
         }
         do {
-            let player = try AVAudioPlayer(contentsOf: url)
+            let player = try AVAudioPlayer(data: data)
             player.prepareToPlay()
             self.player = player
-            self.loadedFileName = fileName
+            self.hasLoadedAudio = true
             self.duration = player.duration
             self.currentTime = 0
             return true
         } catch {
             player = nil
-            loadedFileName = nil
+            hasLoadedAudio = false
+            duration = 0
             return false
         }
     }

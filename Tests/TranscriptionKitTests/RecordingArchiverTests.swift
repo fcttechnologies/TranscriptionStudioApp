@@ -144,10 +144,11 @@ struct RecordingArchiverTests {
         #expect(session.status == .complete)
         #expect(session.fullText == "hello")
         #expect((session.segments ?? []).count == 1)
-        let name = try #require(session.audioFileName)
-        let url = try #require(AudioFileIO.url(forFileName: name))
-        #expect(FileManager.default.fileExists(atPath: url.path))
-        try? FileManager.default.removeItem(at: url)
+        // The mixed audio was archived as compressed AAC data in the session row, and it
+        // decodes back to real samples.
+        let audioData = try #require(session.audioData)
+        #expect(!audioData.isEmpty)
+        #expect(try !AudioFileIO.decodeAAC(audioData).isEmpty)
     }
 
     @Test func persistSynthesizesAudioFromTurnsWhenNothingWasCaptured() throws {
@@ -164,14 +165,9 @@ struct RecordingArchiverTests {
 
         let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
         #expect(session.kind == .meetingRecording)
-        let name = try #require(session.audioFileName)
-        let url = try #require(AudioFileIO.url(forFileName: name))
-        #expect(FileManager.default.fileExists(atPath: url.path))
-        // The synthesized file is non-trivial in size (not an empty/near-empty WAV).
-        let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
-        let size = try #require(attrs[.size] as? Int)
-        #expect(size > 44)   // more than just the WAV header
-        try? FileManager.default.removeItem(at: url)
+        // The synthesized audio was encoded and archived — non-trivial compressed data.
+        let audioData = try #require(session.audioData)
+        #expect(audioData.count > 100)
     }
 
     @Test func persistJoinsMultipleSegmentsFullTextWithSpaces() throws {
@@ -185,8 +181,5 @@ struct RecordingArchiverTests {
         #expect(id != nil)
         let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
         #expect(session.fullText == "one two")
-        if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
-            try? FileManager.default.removeItem(at: url)
-        }
     }
 }

@@ -234,13 +234,12 @@ public final class TranscriptionService {
         }
     }
 
-    /// Archive the ingested 16k mono samples to a WAV keyed by session ID so the session is
-    /// re-playable (click-to-play) and re-runnable offline. Best-effort — a write failure
+    /// Archive the ingested 16k mono samples as compressed AAC in the session row so it's
+    /// re-playable (click-to-play) and re-runnable offline. Best-effort — an encode failure
     /// leaves the session without archived audio but doesn't fail the transcription.
     private func archiveAudio(samples: [Float], session: TranscriptSession, sessionID: UUID) {
         do {
-            session.audioFileName = try AudioFileIO.writeWAV(samples: samples,
-                                                             fileName: "\(sessionID.uuidString).wav")
+            session.audioData = try AudioFileIO.encodeAAC(samples: samples)
         } catch {
             recorder.record(PipelineEvent(sessionID: sessionID, stage: .persistence, level: .warning,
                                           message: "Audio archive failed — click-to-play unavailable",

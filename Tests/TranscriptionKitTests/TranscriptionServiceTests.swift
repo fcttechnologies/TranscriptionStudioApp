@@ -226,7 +226,6 @@ struct TranscriptionServiceTests {
         let job = TranscriptionJob(title: "Real path", steps: TranscriptionService.fileJobSteps)
 
         let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
-        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
 
         #expect(job.state == .done)
         // Prepare ran and reported progress; the job's chosen wordTimestamps flowed through.
@@ -241,7 +240,7 @@ struct TranscriptionServiceTests {
         #expect(stages.contains(.fusion))
 
         let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
-        #expect(session.audioFileName != nil)
+        #expect(session.audioData != nil)
         #expect((session.segments ?? []).contains { $0.speakerSlot >= 0 })
     }
 
@@ -255,8 +254,7 @@ struct TranscriptionServiceTests {
         let (service, _, store) = makeService(context: context, diarizer: FailingDiarizationEngine(failOnPrepare: true))
         let job = TranscriptionJob(title: "No diarizer", steps: TranscriptionService.fileJobSteps)
 
-        let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
-        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
+        _ = try #require(await service.runFileJob(fileURL: wav, job: job))
 
         #expect(job.state == .done)
         await Task.yield(); await Task.yield()
@@ -277,8 +275,7 @@ struct TranscriptionServiceTests {
         let (service, _, store) = makeService(context: context, diarizer: FailingDiarizationEngine(failOnPrepare: false))
         let job = TranscriptionJob(title: "Diarize throws", steps: TranscriptionService.fileJobSteps)
 
-        let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
-        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
+        _ = try #require(await service.runFileJob(fileURL: wav, job: job))
 
         #expect(job.state == .done)
         await Task.yield(); await Task.yield()

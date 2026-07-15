@@ -1,10 +1,10 @@
 import AppIntents
 import SwiftData
 
-/// Delete a saved transcript — mirrors `LibraryView.delete(_:)`: removes the archived audio
-/// file, deletes the SwiftData session, and de-indexes it from Spotlight. Confirms with a
-/// destructive choice first since this can run from Siri/Shortcuts with no confirmation UI
-/// already on screen.
+/// Delete a saved transcript — mirrors `LibraryView.delete(_:)`: deletes the SwiftData
+/// session (its archived `audioData` goes with it) and de-indexes it from Spotlight. Confirms
+/// with a destructive choice first since this can run from Siri/Shortcuts with no confirmation
+/// UI already on screen.
 public struct DeleteTranscriptIntent: AppIntent {
     public static let title: LocalizedStringResource = "Delete Transcript"
     public static let description = IntentDescription("Delete a saved transcript from Transcription Studio.")
@@ -37,9 +37,6 @@ public struct DeleteTranscriptIntent: AppIntent {
             dialog: IntentDialog("Delete \"\(session.title)\"? This action cannot be undone."))
         guard choice.style == .destructive else { throw DeleteTranscriptIntentError.cancelled }
 
-        if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
-            try? FileManager.default.removeItem(at: url)
-        }
         let deletedID = session.id
         context.delete(session)
         try? context.save()

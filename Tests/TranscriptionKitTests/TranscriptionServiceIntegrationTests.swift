@@ -41,14 +41,13 @@ struct TranscriptionServiceIntegrationTests {
             modelName: WhisperKitAsrEngine.platformDefaultModelName)
         let job = TranscriptionJob(title: "Real file", steps: TranscriptionService.fileJobSteps)
 
-        let sessionID = try #require(await service.runFileJob(fileURL: wav, job: job))
-        defer { AudioFileIO.url(forFileName: "\(sessionID.uuidString).wav").map { try? FileManager.default.removeItem(at: $0) } }
+        _ = try #require(await service.runFileJob(fileURL: wav, job: job))
 
         #expect(job.state == .done)
         let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
         #expect(!session.fullText.isEmpty)
         #expect((session.segments?.count ?? 0) > 0)
-        #expect(session.audioFileName != nil)
+        #expect(session.audioData != nil)
         #expect(session.duration > 0)
     }
 }

@@ -149,7 +149,7 @@ private struct RecordControls: View {
                     let id = await recording.stop()
                     if let id {
                         app.selectedSessionID = id
-                        app.playback.load(fileName: nil)
+                        app.playback.load(data: nil)
                     }
                 }
             } label: {

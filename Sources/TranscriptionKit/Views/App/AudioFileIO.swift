@@ -1,9 +1,10 @@
 import AVFoundation
 import Foundation
 
-/// Reads and writes the app's one audio currency (16 kHz mono Float32) as WAV files under
-/// the app's audio directory, so any session's audio is archived and re-playable — the
-/// offline verification loop. Also synthesizes demo audio when no capture hardware ran.
+/// Encodes and decodes the app's one audio currency (16 kHz mono Float32) as compressed
+/// AAC/m4a `Data`, so any session's audio is archived in the SwiftData row (and syncs via
+/// CloudKit) and stays re-playable — the offline verification loop. Also synthesizes demo
+/// audio when no capture hardware ran.
 public enum AudioFileIO {
     /// 16 kHz mono Float32 — the same contract `AudioChunk` speaks.
     public static var format: AVAudioFormat {
@@ -13,38 +14,61 @@ public enum AudioFileIO {
                       interleaved: false)!
     }
 
-    /// The directory archived session audio lives in (created on first use).
-    public static func audioDirectory() throws -> URL {
-        let base = try FileManager.default.url(for: .applicationSupportDirectory,
-                                               in: .userDomainMask,
-                                               appropriateFor: nil,
-                                               create: true)
-        let dir = base.appendingPathComponent("TranscriptionStudio/Audio", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
+    /// AAC-in-m4a encoder settings — ~32 kbps mono at 16 kHz. Plenty for speech, and ~20×
+    /// smaller than the equivalent Float32 WAV.
+    private static var aacSettings: [String: Any] {
+        [AVFormatIDKey: kAudioFormatMPEG4AAC,
+         AVSampleRateKey: AudioChunk.sampleRate,
+         AVNumberOfChannelsKey: 1,
+         AVEncoderBitRateKey: 32_000]
     }
 
-    public static func url(forFileName name: String) -> URL? {
-        (try? audioDirectory())?.appendingPathComponent(name)
-    }
-
-    /// Write mono float samples to a WAV file in the audio directory. Returns the file name.
-    @discardableResult
-    public static func writeWAV(samples: [Float], fileName: String) throws -> String {
-        let url = try audioDirectory().appendingPathComponent(fileName)
-        let file = try AVAudioFile(forWriting: url, settings: format.settings)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format,
-                                            frameCapacity: AVAudioFrameCount(max(samples.count, 1))) else {
-            throw CocoaError(.fileWriteUnknown)
-        }
-        buffer.frameLength = AVAudioFrameCount(samples.count)
-        if let channel = buffer.floatChannelData?[0], !samples.isEmpty {
-            samples.withUnsafeBufferPointer { src in
-                channel.update(from: src.baseAddress!, count: samples.count)
+    /// Encode mono float samples (16 kHz) to AAC/m4a `Data`. `AVAudioFile` only writes to a
+    /// URL, so we encode to a temp `.m4a`, close the file to finalize the container, then read
+    /// it back into memory.
+    public static func encodeAAC(samples: [Float]) throws -> Data {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("m4a")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        do {
+            // Scope the AVAudioFile so it deallocates — and finalizes the m4a container —
+            // before we read the bytes back. Writing float buffers; the file encodes to AAC.
+            let file = try AVAudioFile(forWriting: tempURL, settings: aacSettings,
+                                       commonFormat: .pcmFormatFloat32, interleaved: false)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
+                                                frameCapacity: AVAudioFrameCount(max(samples.count, 1))) else {
+                throw CocoaError(.fileWriteUnknown)
             }
+            buffer.frameLength = AVAudioFrameCount(samples.count)
+            if let channel = buffer.floatChannelData?[0], !samples.isEmpty {
+                samples.withUnsafeBufferPointer { src in
+                    channel.update(from: src.baseAddress!, count: samples.count)
+                }
+            }
+            try file.write(from: buffer)
         }
-        try file.write(from: buffer)
-        return fileName
+        return try Data(contentsOf: tempURL)
+    }
+
+    /// Decode AAC/m4a `Data` back to 16 kHz mono float samples (for re-processing an archived
+    /// session offline). Playback reads the `Data` directly via `AVAudioPlayer(data:)`.
+    public static func decodeAAC(_ data: Data) throws -> [Float] {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("m4a")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        try data.write(to: tempURL)
+        let file = try AVAudioFile(forReading: tempURL,
+                                   commonFormat: .pcmFormatFloat32, interleaved: false)
+        let frameCount = AVAudioFrameCount(file.length)
+        guard frameCount > 0,
+              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frameCount) else {
+            return []
+        }
+        try file.read(into: buffer)
+        guard let channel = buffer.floatChannelData?[0] else { return [] }
+        return Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
     }
 
     /// Synthesize a distinct tone per speaker turn so seeking to a segment is *audible* — a

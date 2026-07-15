@@ -1,5 +1,4 @@
 import Foundation
-import SwiftData
 
 /// A second diarizer for the inspector's A/B comparison — a UI-demo stand-in for the real
 /// SpeakerKit cross-check backend. It segments on a slightly different rhythm than the
@@ -63,51 +62,5 @@ public final class PreviewAltDiarizer: DiarizationEngine, Sendable {
             for frame in startFrame..<endFrame { activities[frame][turn.speakerIndex] = 0.88 }
         }
         return SpeakerFrameMatrix(activities: activities, committedFrameCount: count)
-    }
-}
-
-/// Seeds a demoable sample session so Library, session detail, and playback are never empty
-/// on first launch — a short two-speaker conversation with archived (synthesized) audio, so
-/// tap-to-play seeks to real, audible per-speaker tones.
-public enum DemoContent {
-    @MainActor
-    public static func seedSampleSession(into context: ModelContext) {
-        let lines: [(text: String, slot: Int, avgLogprob: Float, noSpeech: Float)] = [
-            ("Good morning — thanks for hopping on the call today.", 0, -0.18, 0.01),
-            ("Happy to. I read through the proposal last night and had a few thoughts.", 1, -0.24, 0.02),
-            ("Great. Let's start with the timeline — we're aiming to ship the first milestone in March.", 0, -0.31, 0.03),
-            ("March feels tight given the integration work. I'd add two weeks of buffer.", 1, -0.52, 0.06),
-            ("That's fair. Let's lock April fifteenth and communicate it this week.", 0, -0.22, 0.02),
-            ("Agreed. I'll draft the update and send it around tomorrow morning.", 1, -0.19, 0.01),
-        ]
-        let turnLength: TimeInterval = 4
-        let session = TranscriptSession(title: "Sample meeting · product sync", kind: .meetingRecording)
-        session.status = .complete
-        session.duration = Double(lines.count) * turnLength
-        session.fullText = lines.map(\.text).joined(separator: " ")
-
-        var turns: [SpeakerTurn] = []
-        for (index, line) in lines.enumerated() {
-            let start = Double(index) * turnLength
-            let end = start + turnLength
-            turns.append(SpeakerTurn(speakerIndex: line.slot, start: start, end: end, confidence: 0.9))
-            let stored = StoredSegment(start: start, end: end, text: line.text)
-            stored.speaker = index == 0 ? .me : .speaker(line.slot)
-            stored.speakerConfidence = 0.9
-            stored.avgLogprob = line.avgLogprob
-            stored.noSpeechProb = line.noSpeech
-            stored.compressionRatio = 1.4
-            stored.session = session
-            session.segments?.append(stored)
-        }
-
-        let fileName = "\(session.id.uuidString).wav"
-        let samples = AudioFileIO.synthesize(turns: turns.map { ($0.start, $0.end, $0.speakerIndex) },
-                                             totalDuration: session.duration)
-        if let saved = try? AudioFileIO.writeWAV(samples: samples, fileName: fileName) {
-            session.audioFileName = saved
-        }
-        context.insert(session)
-        try? context.save()
     }
 }

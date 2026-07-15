@@ -51,6 +51,10 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_ENHANCED_SECURITY: YES
         ENABLE_POINTER_AUTHENTICATION: NO
+        # iCloud/CloudKit capability is declared via the entitlements file below (shared
+        # container iCloud.com.fcttechnologies.TranscriptionStudio for both targets → Mac↔iOS
+        # sync). The CloudKit container itself is provisioned in Xcode — selecting the team on
+        # this target auto-creates it. Code + entitlements are all that's in scope here.
         CODE_SIGN_ENTITLEMENTS: Sources/MacApp/TranscriptionStudio.entitlements
 
   TranscriptionStudioiOS:
@@ -70,6 +74,7 @@ targets:
           identify speakers — entirely on this device. Nothing leaves your phone.
         UIBackgroundModes:
           - audio
+          - remote-notification   # CloudKit push-triggered SwiftData sync
     settings:
       base:
         DEVELOPMENT_TEAM: ""
@@ -90,6 +95,9 @@ targets:
         # WhisperKit/SpeakerKit ship via the external argmax-oss-swift package (see Mac target note).
         ENABLE_ENHANCED_SECURITY: YES
         ENABLE_POINTER_AUTHENTICATION: NO
+        # iCloud/CloudKit capability is declared via the entitlements file below (same shared
+        # container as the Mac target). The CloudKit container is provisioned in Xcode — team
+        # selection auto-creates it. Code + entitlements are all that's in scope here.
         CODE_SIGN_ENTITLEMENTS: Sources/iOSApp/TranscriptionStudioiOS.entitlements
 
 schemes:
