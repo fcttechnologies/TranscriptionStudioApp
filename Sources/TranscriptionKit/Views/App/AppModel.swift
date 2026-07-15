@@ -50,6 +50,13 @@ public final class AppModel {
     public var selectedSurface: AppSurface = .transcribe
     /// The session the Library should focus (set when opening a finished job's result).
     public var selectedSessionID: UUID?
+    /// Set by `OpenSettingsIntent` and cleared by whichever shell handles it. iOS's Library
+    /// gear-button sheet observes this directly (there's no Settings scene there). macOS has a
+    /// native `Settings {}` scene reachable only via a View's `@Environment(\.openSettings)`
+    /// action — wiring the Mac shell (`MacRootView`, in TranscriptionMacKit) to observe this
+    /// flag and call it is a separate lane's follow-up; until then the intent's request is a
+    /// no-op on macOS rather than a workaround that reaches outside this pass's scope.
+    public var pendingSettingsRequest = false
 
     /// Launch-time model-warmup state, so a surface can show unobtrusive "preparing the
     /// speech model" feedback the first time (see `prewarmDefaultEngine`).

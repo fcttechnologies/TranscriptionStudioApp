@@ -41,6 +41,11 @@ public struct LibraryView: View {
                             }
                     }
                 }
+                .onChange(of: app.pendingSettingsRequest) { _, requested in
+                    guard requested else { return }
+                    showingSettings = true
+                    app.pendingSettingsRequest = false
+                }
                 #endif
         }
         .searchable(text: $searchText, prompt: "Search transcripts")
@@ -50,6 +55,7 @@ public struct LibraryView: View {
             do {
                 try await Task.sleep(for: .milliseconds(200))
                 debouncedSearchText = searchText
+                await TranscriptionIntentDonations.donateSearchTranscripts(query: searchText)
             } catch {}
         }
         .confirmationDialog("Delete this session?", isPresented: deleteBinding, titleVisibility: .visible) {
@@ -67,6 +73,7 @@ public struct LibraryView: View {
     }
 
     private func delete(_ session: TranscriptSession) {
+        let entity = TranscriptSessionEntity(session)
         if let name = session.audioFileName, let url = AudioFileIO.url(forFileName: name) {
             try? FileManager.default.removeItem(at: url)
         }
@@ -75,6 +82,7 @@ public struct LibraryView: View {
         try? modelContext.save()
         TranscriptSpotlightIndex.deindex(id: deletedID)
         pendingDelete = nil
+        Task { await TranscriptionIntentDonations.donateDeleteTranscript(entity) }
     }
 
     private func openSelected(_ id: UUID?) {

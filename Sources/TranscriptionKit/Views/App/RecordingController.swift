@@ -99,11 +99,11 @@ public final class RecordingController {
     /// When the diarizer is a full-clip backend, its track's samples are buffered here and run
     /// through one `diarize(samples:)` during the finishing phase.
     @ObservationIgnored private var useFullBufferDiar = false
-    @ObservationIgnored private var diarBuffer: [Float] = []
     @ObservationIgnored private var latestAsrByTrack: [AudioTrack: AsrUpdate] = [:]
     @ObservationIgnored private var latestTurns: [SpeakerTurn] = []
     @ObservationIgnored private var latestFrames = SpeakerFrameMatrix(activities: [], committedFrameCount: 0)
-    @ObservationIgnored private var archive: [Float] = []
+    /// Owns the mixed archive buffer, the diar-track buffer, and the finished-run persistence.
+    @ObservationIgnored private let archiver: RecordingArchiver
     /// Guards the teardown path so simultaneous capture failures tear the run down only once.
     @ObservationIgnored private var isTearingDown = false
     @ObservationIgnored private var startInstant = ContinuousClock.now
@@ -129,11 +129,12 @@ public final class RecordingController {
         self.settings = settings
         self.captureFactory = captureFactory
         self.drainTimeout = drainTimeout
+        self.archiver = RecordingArchiver(modelContext: modelContext, recorder: recorder)
     }
 
     /// Read-only view of the mixed archive buffer captured so far — the inspector's diarizer A/B
     /// runs its cross-check pass on these real samples rather than on synthesized audio.
-    public var archivedSamples: [Float] { archive }
+    public var archivedSamples: [Float] { archiver.archive }
 
     /// A capture input: a source and the tracks it will emit. A room mic emits one track;
     /// a meeting source emits two (`.microphone` + `.system`) on one shared clock — chunks
@@ -267,7 +268,7 @@ public final class RecordingController {
                             if let diarSink {
                                 diarSink.yield(chunk)
                             } else {
-                                self.accumulateDiar(chunk)
+                                self.archiver.accumulateDiar(chunk)
                             }
                         }
                     }
@@ -381,7 +382,8 @@ public final class RecordingController {
         sources.removeAll()
         loadSampler.stop()
 
-        let id = await persist(segments: segments)
+        let id = archiver.persist(sessionID: sessionID, mode: mode, elapsed: elapsed,
+                                  segments: segments, latestTurns: latestTurns)
         phase = .idle
         isTearingDown = false
         return id
@@ -409,9 +411,9 @@ public final class RecordingController {
 
     /// Run the full-buffer diarizer once over the buffered diar track and re-fuse the transcript.
     private func runFullBufferDiarization() async {
-        guard !diarBuffer.isEmpty else { return }
+        guard !archiver.diarBuffer.isEmpty else { return }
         do {
-            let result = try await diarizer.diarize(samples: diarBuffer)
+            let result = try await diarizer.diarize(samples: archiver.diarBuffer)
             latestTurns = result.turns
             latestFrames = result.frames
             liveTurns = result.turns
@@ -456,7 +458,8 @@ public final class RecordingController {
         consumerTasks.removeAll()
         sources.removeAll()
         loadSampler.stop()
-        _ = await persist(segments: segments)
+        _ = archiver.persist(sessionID: sessionID, mode: mode, elapsed: elapsed,
+                             segments: segments, latestTurns: latestTurns)
         phase = .idle
         isTearingDown = false
     }
@@ -474,26 +477,7 @@ public final class RecordingController {
         }
         // Mix every track into the archive at the chunk's time offset — mic and system
         // share one session clock, so summing yields the full mixed meeting audio.
-        mixIntoArchive(chunk)
-    }
-
-    private func mixIntoArchive(_ chunk: AudioChunk) {
-        let startSample = Int(chunk.startTime * AudioChunk.sampleRate)
-        let needed = startSample + chunk.samples.count
-        if archive.count < needed { archive.append(contentsOf: repeatElement(0, count: needed - archive.count)) }
-        for (offset, sample) in chunk.samples.enumerated() {
-            archive[startSample + offset] += sample
-        }
-    }
-
-    /// Buffer a diar-track chunk (positioned by its session clock) for the full-buffer pass.
-    private func accumulateDiar(_ chunk: AudioChunk) {
-        let startSample = Int(chunk.startTime * AudioChunk.sampleRate)
-        let needed = startSample + chunk.samples.count
-        if diarBuffer.count < needed { diarBuffer.append(contentsOf: repeatElement(0, count: needed - diarBuffer.count)) }
-        for (offset, sample) in chunk.samples.enumerated() {
-            diarBuffer[startSample + offset] = sample
-        }
+        archiver.mixIntoArchive(chunk)
     }
 
     private func apply(asr update: AsrUpdate, track: AudioTrack) {
@@ -537,41 +521,6 @@ public final class RecordingController {
                                       metadata: ["segments": "\(fused.count)"]))
     }
 
-    // MARK: Persistence
-
-    private func persist(segments: [AttributedSegment]) async -> UUID? {
-        guard !segments.isEmpty else { return nil }
-        let kind: SessionKind = mode == .meeting ? .meetingRecording : .roomRecording
-        let session = TranscriptSession(title: Self.defaultTitle(for: mode), kind: kind)
-        session.id = sessionID
-        session.status = .complete
-        session.duration = elapsed
-        session.fullText = segments.map(\.asr.text).joined(separator: " ")
-
-        // Archive the mixed audio so the session is re-playable / re-runnable.
-        let fileName = "\(sessionID.uuidString).wav"
-        let samples = archive.isEmpty
-            ? AudioFileIO.synthesize(turns: latestTurns.map { ($0.start, $0.end, $0.speakerIndex) },
-                                     totalDuration: elapsed)
-            : archive
-        if let saved = try? AudioFileIO.writeWAV(samples: samples, fileName: fileName) {
-            session.audioFileName = saved
-        }
-
-        for attributed in segments {
-            let stored = StoredSegment(from: attributed)
-            stored.session = session
-            session.segments?.append(stored)
-        }
-        modelContext.insert(session)
-        recorder.record(PipelineEvent(sessionID: sessionID, stage: .persistence,
-                                      message: "Session saved",
-                                      metadata: ["segments": "\(segments.count)"]))
-        try? modelContext.save()
-        TranscriptSpotlightIndex.index(session)
-        return sessionID
-    }
-
     // MARK: Helpers
 
     private func reset(mode: Mode) {
@@ -586,8 +535,7 @@ public final class RecordingController {
         latestAsrByTrack = [:]
         latestTurns = []
         latestFrames = SpeakerFrameMatrix(activities: [], committedFrameCount: 0)
-        archive = []
-        diarBuffer = []
+        archiver.reset()
         diarTrack = .mixed
         useFullBufferDiar = false
         diarizationUnavailable = false
@@ -615,10 +563,6 @@ public final class RecordingController {
         return (sumSquares / Float(samples.count)).squareRoot()
     }
 
-    private static func defaultTitle(for mode: Mode) -> String {
-        let stamp = Date().formatted(date: .abbreviated, time: .shortened)
-        return "\(mode.title) recording · \(stamp)"
-    }
 }
 
 /// `Duration → seconds` for the pipeline's `TimeInterval` fields.

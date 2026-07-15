@@ -24,3 +24,8 @@ extension TranscribeFileIntent {
 extension DeleteTranscriptIntent {
     public static var allowedExecutionTargets: IntentExecutionTargets { .main }
 }
+
+@available(iOS 27.0, *)
+extension OpenSettingsIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}

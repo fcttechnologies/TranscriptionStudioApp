@@ -32,6 +32,14 @@ public struct RecordView: View {
         .navigationTitle("Record")
         .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: app.recording.isActive)
         .onAppear(perform: refreshPermissions)
+        .onChange(of: app.recording.phase) { old, new in
+            // Donate only on a real preparing → recording transition (a successful start),
+            // never on resume-from-pause (phase stays .recording) or a failed prepare.
+            if case .recording = new, case .preparing = old {
+                let mode = app.recording.mode
+                Task { await TranscriptionIntentDonations.donateStartRecording(mode: mode) }
+            }
+        }
         .alert("Couldn't record",
                isPresented: Binding(get: { app.recording.lastError != nil },
                                     set: { if !$0 { app.recording.clearError() } }),

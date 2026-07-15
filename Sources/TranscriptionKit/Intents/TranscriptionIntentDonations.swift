@@ -1,11 +1,10 @@
 import AppIntents
 import Foundation
 
-/// Donation wrappers for the key Transcription Studio intents. Call these from the UI flow
+/// Donation wrappers for the key Transcription Studio intents. Called from the UI flow
 /// (Views/) at the moment the user performs the matching action there, so Siri learns real
 /// usage — never from inside an intent's own `perform()`, since Siri/Shortcuts already saw
-/// that invocation. Defined here only; wiring the call sites into Views/ is a follow-up
-/// (out of scope for this pass — see the intents-lane return notes).
+/// that invocation.
 enum TranscriptionIntentDonations {
     #if DEBUG
     private static let donationsEnabled = false
@@ -47,6 +46,13 @@ enum TranscriptionIntentDonations {
         guard donationsEnabled else { return }
         let intent = DeleteTranscriptIntent()
         intent.target = session
+        _ = try? await intent.donate()
+    }
+
+    static func donateSearchTranscripts(query: String) async {
+        guard donationsEnabled, !query.isEmpty else { return }
+        let intent = SearchTranscriptsIntent()
+        intent.query = query
         _ = try? await intent.donate()
     }
 

@@ -85,7 +85,11 @@ public struct SessionDetailView: View {
         // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing.
         .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
                                               identifier: session.id.uuidString))
-        .onAppear { hasAudio = app.playback.load(fileName: session.audioFileName) }
+        .onAppear {
+            hasAudio = app.playback.load(fileName: session.audioFileName)
+            let entity = TranscriptSessionEntity(session)
+            Task { await TranscriptionIntentDonations.donateOpenTranscript(entity) }
+        }
         .onDisappear { app.playback.stop() }
     }
 
