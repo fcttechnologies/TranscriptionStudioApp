@@ -41,7 +41,7 @@ struct InsertLinkSheet: View {
             .background(.background)
             .navigationTitle("Insert Link")
             .toolbar {
-                Button(role: .close) { dismiss() }
+                SheetCloseToolbar { dismiss() }
             }
         }
         #if os(macOS)

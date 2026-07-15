@@ -78,9 +78,7 @@ public struct SessionDetailView: View {
                     }
                     .accessibilityIdentifier("session.more")
                 }
-                ToolbarItem {
-                    Button(role: .close) { dismiss() }
-                }
+                SheetCloseToolbar { dismiss() }
             }
         }
         #if os(macOS)

@@ -284,7 +284,7 @@ private struct SettingsSheet: View {
         NavigationStack {
             SettingsView()
                 .toolbar {
-                    Button(role: .close) { dismiss() }
+                    SheetCloseToolbar { dismiss() }
                 }
         }
         #if os(macOS)
@@ -306,7 +306,7 @@ private struct InspectorSheet: View {
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
                 .toolbar {
-                    Button(role: .close) { dismiss() }
+                    SheetCloseToolbar { dismiss() }
                 }
         }
         #if os(macOS)

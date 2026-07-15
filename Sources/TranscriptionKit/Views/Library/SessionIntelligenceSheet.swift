@@ -35,7 +35,7 @@ struct SessionIntelligenceSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                Button(role: .close) { dismiss() }
+                SheetCloseToolbar { dismiss() }
             }
         }
         #if os(macOS)

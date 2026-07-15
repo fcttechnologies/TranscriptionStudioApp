@@ -57,3 +57,16 @@ shell). Regenerate the project with `xcodegen generate` — the `.xcodeproj` is 
 
 `Documentation/VERIFICATION.md` — the diarizer-verification plan (the community
 conversion is presumed guilty until our gates pass) and Fernando's daily testing loop.
+
+## Building from a fresh clone / worktree
+
+- **Test fixtures:** the real-engine integration tests read `TestResources/*.wav`
+  (gitignored). Run `scripts/make-verification-audio.sh` once before the full suite.
+- **Mac app signing:** the target's iCloud entitlements need a development team, and
+  `project.yml` deliberately leaves it empty — pass it on the CLI:
+  `xcodebuild … DEVELOPMENT_TEAM=<team> build`.
+- **Simulator limits:** mic capture fails on the simulator (CoreAudio -10868 — the input
+  node has no valid format), so live recording can't be exercised there; drive the full
+  pipeline via Photos import instead (`ffmpeg`-wrap a TestResources wav into an mp4,
+  `simctl addmedia`, then Upload from Photos). Also, `simctl privacy grant` kills the app
+  if it's running (TCC) — grant before launch.
