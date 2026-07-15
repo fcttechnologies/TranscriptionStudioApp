@@ -108,7 +108,7 @@ public final class MicCaptureSource: CaptureSource, @unchecked Sendable {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.playAndRecord, mode: .measurement,
-                                options: [.allowBluetooth, .defaultToSpeaker])
+                                options: [.allowBluetoothHFP, .defaultToSpeaker])
         try session.setActive(true, options: .notifyOthersOnDeactivation)
         #endif
     }
