@@ -23,12 +23,13 @@ public struct TranscribeView: View {
     }
 
     public var body: some View {
-        ScrollView {
+        let jobs = activeJobs
+        return ScrollView {
             VStack(alignment: .leading, spacing: DesignMetrics.spacingXL) {
                 if app.enginePrewarmState.isPreparing { prewarmBanner }
                 if showsURLField { urlSection }
                 dropSection
-                if !activeJobs.isEmpty { jobsSection }
+                if !jobs.isEmpty { jobsSection(jobs: jobs) }
             }
             .padding(DesignMetrics.spacingXL)
             .frame(maxWidth: 720, alignment: .leading)
@@ -146,10 +147,10 @@ public struct TranscribeView: View {
 
     // MARK: Jobs
 
-    private var jobsSection: some View {
+    private func jobsSection(jobs: [TranscriptionJob]) -> some View {
         VStack(alignment: .leading, spacing: DesignMetrics.spacingM) {
             SectionLabel("Jobs")
-            ForEach(activeJobs) { job in
+            ForEach(jobs) { job in
                 JobProgressCard(job: job,
                                 onCancel: { job.cancel() },
                                 onOpen: { open(job) },
@@ -157,7 +158,7 @@ public struct TranscribeView: View {
                 .transition(.motionAware(.top, reduceMotion: reduceMotion))
             }
         }
-        .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: activeJobs.map(\.id))
+        .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: jobs.map(\.id))
     }
 
     // MARK: Actions

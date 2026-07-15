@@ -9,66 +9,49 @@ public struct LibraryView: View {
     @Query(sort: \TranscriptSession.createdAt, order: .reverse) private var sessions: [TranscriptSession]
 
     @State private var searchText = ""
+    @State private var debouncedSearchText = ""
     @State private var path: [TranscriptSession] = []
     @State private var pendingDelete: TranscriptSession?
     @State private var showingSettings = false
 
     public init() {}
 
-    private var filtered: [TranscriptSession] {
-        guard !searchText.isEmpty else { return sessions }
-        let needle = searchText.lowercased()
-        return sessions.filter {
-            $0.title.lowercased().contains(needle) || $0.fullText.lowercased().contains(needle)
-        }
-    }
-
-    /// Sessions bucketed by calendar day, newest day first.
-    private var sections: [(day: Date, sessions: [TranscriptSession])] {
-        let groups = Dictionary(grouping: filtered) { Calendar.current.startOfDay(for: $0.createdAt) }
-        return groups.sorted { $0.key > $1.key }.map { (day: $0.key, sessions: $0.value) }
-    }
-
     public var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if sessions.isEmpty {
-                    ContentUnavailableView {
-                        Label("No sessions yet", systemImage: "books.vertical")
-                    } description: {
-                        Text("Transcribe a file or record a session and it lands here.")
+            LibraryList(sessions: sessions, searchText: debouncedSearchText, pendingDelete: $pendingDelete)
+                .navigationTitle("Library")
+                .navigationDestination(for: TranscriptSession.self) { session in
+                    SessionDetailView(session: session)
+                }
+                #if os(iOS)
+                // iOS has no Settings scene; reach settings from the Library nav bar.
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Settings", systemImage: "gearshape") { showingSettings = true }
+                            .accessibilityIdentifier("library.settings")
                     }
-                } else if filtered.isEmpty {
-                    ContentUnavailableView.search(text: searchText)
-                } else {
-                    list
                 }
-            }
-            .navigationTitle("Library")
-            .navigationDestination(for: TranscriptSession.self) { session in
-                SessionDetailView(session: session)
-            }
-            #if os(iOS)
-            // iOS has no Settings scene; reach settings from the Library nav bar.
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Settings", systemImage: "gearshape") { showingSettings = true }
-                        .accessibilityIdentifier("library.settings")
-                }
-            }
-            .sheet(isPresented: $showingSettings) {
-                NavigationStack {
-                    SettingsView()
-                        .toolbar {
-                            ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { showingSettings = false }
+                .sheet(isPresented: $showingSettings) {
+                    NavigationStack {
+                        SettingsView()
+                            .toolbar {
+                                ToolbarItem(placement: .confirmationAction) {
+                                    Button("Done") { showingSettings = false }
+                                }
                             }
-                        }
+                    }
                 }
-            }
-            #endif
+                #endif
         }
         .searchable(text: $searchText, prompt: "Search transcripts")
+        .task(id: searchText) {
+            // Debounce the full-text scan: only re-filter once typing pauses, instead of
+            // re-scanning every session's fullText on each keystroke.
+            do {
+                try await Task.sleep(for: .milliseconds(200))
+                debouncedSearchText = searchText
+            } catch {}
+        }
         .confirmationDialog("Delete this session?", isPresented: deleteBinding, titleVisibility: .visible) {
             Button("Delete", role: .destructive) { if let pendingDelete { delete(pendingDelete) } }
             Button("Cancel", role: .cancel) { pendingDelete = nil }
@@ -77,25 +60,6 @@ public struct LibraryView: View {
         }
         .onChange(of: app.selectedSessionID) { _, id in openSelected(id) }
         .onAppear { openSelected(app.selectedSessionID) }
-    }
-
-    private var list: some View {
-        List {
-            ForEach(sections, id: \.day) { section in
-                Section(DayFormat.header(section.day)) {
-                    ForEach(section.sessions) { session in
-                        NavigationLink(value: session) {
-                            SessionRow(session: session)
-                        }
-                        .contextMenu {
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                pendingDelete = session
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     private var deleteBinding: Binding<Bool> {
@@ -120,6 +84,59 @@ public struct LibraryView: View {
     }
 }
 
+/// The session list content, as its own invalidation boundary: its only inputs are `sessions`
+/// and the (debounced) `searchText`, so a sheet toggle or a pending-delete change elsewhere in
+/// `LibraryView` doesn't re-walk or re-filter the library.
+private struct LibraryList: View {
+    let sessions: [TranscriptSession]
+    let searchText: String
+    @Binding var pendingDelete: TranscriptSession?
+
+    var body: some View {
+        let filtered = filtered
+        if sessions.isEmpty {
+            ContentUnavailableView {
+                Label("No sessions yet", systemImage: "books.vertical")
+            } description: {
+                Text("Transcribe a file or record a session and it lands here.")
+            }
+        } else if filtered.isEmpty {
+            ContentUnavailableView.search(text: searchText)
+        } else {
+            List {
+                ForEach(sections(for: filtered), id: \.day) { section in
+                    Section(DayFormat.header(section.day)) {
+                        ForEach(section.sessions) { session in
+                            NavigationLink(value: session) {
+                                SessionRow(session: session)
+                            }
+                            .contextMenu {
+                                Button("Delete", systemImage: "trash", role: .destructive) {
+                                    pendingDelete = session
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var filtered: [TranscriptSession] {
+        guard !searchText.isEmpty else { return sessions }
+        let needle = searchText.lowercased()
+        return sessions.filter {
+            $0.title.lowercased().contains(needle) || $0.fullText.lowercased().contains(needle)
+        }
+    }
+
+    /// Sessions bucketed by calendar day, newest day first.
+    private func sections(for filtered: [TranscriptSession]) -> [(day: Date, sessions: [TranscriptSession])] {
+        let groups = Dictionary(grouping: filtered) { Calendar.current.startOfDay(for: $0.createdAt) }
+        return groups.sorted { $0.key > $1.key }.map { (day: $0.key, sessions: $0.value) }
+    }
+}
+
 /// One session row: kind badge, title, and a metadata line (time · duration · speaker count).
 struct SessionRow: View {
     let session: TranscriptSession
@@ -129,6 +146,7 @@ struct SessionRow: View {
     }
 
     var body: some View {
+        let metadata = metadata
         HStack(spacing: DesignMetrics.spacingM) {
             Image(systemName: SessionKindStyle.icon(session.kind))
                 .font(.title3)

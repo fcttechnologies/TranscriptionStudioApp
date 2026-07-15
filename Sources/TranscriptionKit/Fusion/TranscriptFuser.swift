@@ -21,7 +21,7 @@ public enum SpeakerID: Sendable, Codable, Hashable {
 
 /// An ASR segment with its speaker attribution — the unit the transcript UI renders
 /// and SwiftData persists.
-public struct AttributedSegment: Sendable, Identifiable {
+public struct AttributedSegment: Sendable, Identifiable, Equatable {
     public var id: String { asr.id }
 
     public let asr: AsrSegment

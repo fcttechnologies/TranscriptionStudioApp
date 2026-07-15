@@ -21,10 +21,12 @@ struct InspectorEventFeed: View {
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(.vertical, DesignMetrics.spacingM)
             } else {
+                let visible = Array(events.prefix(200))
+                let lastID = visible.last?.id
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(events.prefix(200)) { event in
+                    ForEach(visible) { event in
                         EventRow(event: event)
-                        if event.id != events.prefix(200).last?.id { Divider().opacity(0.4) }
+                        if event.id != lastID { Divider().opacity(0.4) }
                     }
                 }
             }

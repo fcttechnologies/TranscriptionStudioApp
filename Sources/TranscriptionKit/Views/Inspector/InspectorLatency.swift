@@ -19,6 +19,7 @@ struct InspectorLatency: View {
     }
 
     var body: some View {
+        let series = series
         InspectorCard(title: "Stage latency") {
             if series.isEmpty {
                 Text("No timed stages yet.").font(.caption).foregroundStyle(.secondary)

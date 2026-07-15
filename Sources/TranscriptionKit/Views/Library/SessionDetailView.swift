@@ -24,16 +24,15 @@ public struct SessionDetailView: View {
     private var turns: [TranscriptTurn] {
         TranscriptTurn.group(stored: session.segments ?? [])
     }
-    private var lineStarts: [(id: String, start: TimeInterval)] {
-        turns.flatMap { $0.lines }.map { (id: $0.id, start: $0.start) }
-    }
 
     public var body: some View {
+        let currentTurns = turns
+        let currentLineStarts = currentTurns.flatMap { $0.lines }.map { (id: $0.id, start: $0.start) }
         VStack(spacing: 0) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: DesignMetrics.turnSpacing) {
                     header
-                    ForEach(turns) { turn in
+                    ForEach(currentTurns) { turn in
                         TranscriptTurnView(turn: turn,
                                            playingLineID: playingLineID,
                                            onTapLine: hasAudio ? { app.playback.play(from: $0.start) } : nil)
@@ -81,7 +80,7 @@ public struct SessionDetailView: View {
         .sheet(isPresented: $showingIntelligence) {
             SessionIntelligenceSheet(session: session)
         }
-        .modifier(PlayheadTracker(playback: app.playback, lineStarts: lineStarts,
+        .modifier(PlayheadTracker(playback: app.playback, lineStarts: currentLineStarts,
                                   playingLineID: $playingLineID))
         // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing.
         .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
