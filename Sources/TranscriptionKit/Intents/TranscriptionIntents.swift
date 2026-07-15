@@ -4,41 +4,94 @@ import UniformTypeIdentifiers
 
 // App Intents exposing Transcription Studio to Siri, Shortcuts, and Apple Intelligence.
 // Each intent is a thin adapter over the app's existing model/use-cases — no business logic
-// lives here. Intents that drive live capture or navigation open the app; read-only intents
-// (search, latest, ask) run in the background against the shared store.
+// lives here. Intents that drive live capture or navigation set the router state, then hand
+// control back to the app via `.result(opensIntent: OpenAppIntent())` (see `OpenAppIntent.swift`);
+// read-only intents (search, latest, ask, summarize, export, status) run in the background
+// against the shared store.
 
 /// Errors surfaced to Siri/Shortcuts as spoken/displayed dialog.
 enum TranscriptionIntentError: Error, CustomLocalizedStringResourceConvertible {
     case notRecording
     case noTranscripts
+    case alreadyRecording
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .notRecording: "Nothing is recording right now."
         case .noTranscripts: "You don't have any transcripts yet."
+        case .alreadyRecording: "A recording is already in progress."
         }
     }
 }
 
 // MARK: - Recording
 
-/// Start a room recording. Opens the app — live capture needs the foreground process.
+/// Siri-facing recording mode. A dedicated `AppEnum` (not `RecordingController.Mode` itself)
+/// so the domain type carries no App Intents conformance. Meeting capture needs macOS
+/// (ScreenCaptureKit system audio); the `meeting` case only exists in the macOS build, so
+/// Siri/Shortcuts on iPhone/iPad never offers it as a choice — enforced at compile time
+/// rather than a runtime guard.
+#if os(macOS)
+public enum RecordingModeAppEnum: String, AppEnum {
+    case room
+    case meeting
+
+    public static var typeDisplayRepresentation: TypeDisplayRepresentation {
+        TypeDisplayRepresentation(name: "Recording Mode")
+    }
+
+    public static var caseDisplayRepresentations: [RecordingModeAppEnum: DisplayRepresentation] {
+        [.room: "Room", .meeting: "Meeting"]
+    }
+
+    var controllerMode: RecordingController.Mode {
+        switch self {
+        case .room: .room
+        case .meeting: .meeting
+        }
+    }
+}
+#else
+public enum RecordingModeAppEnum: String, AppEnum {
+    case room
+
+    public static var typeDisplayRepresentation: TypeDisplayRepresentation {
+        TypeDisplayRepresentation(name: "Recording Mode")
+    }
+
+    public static var caseDisplayRepresentations: [RecordingModeAppEnum: DisplayRepresentation] {
+        [.room: "Room"]
+    }
+
+    var controllerMode: RecordingController.Mode { .room }
+}
+#endif
+
+/// Start a recording. Opens the app — live capture needs the foreground process. Guards
+/// against a redundant start *before* touching the recorder, so a second "start recording"
+/// while one is already running throws rather than silently no-opping behind a false
+/// "Recording started." dialog.
 public struct StartRecordingIntent: AppIntent {
     public static let title: LocalizedStringResource = "Start Recording"
     public static let description = IntentDescription(
-        "Start a new room recording and live transcription in Transcription Studio.")
-    public static let openAppWhenRun = true
+        "Start a new room or meeting recording and live transcription in Transcription Studio.")
+    public static let supportedModes: IntentModes = .foreground(.dynamic)
+
+    @Parameter(title: "Mode", description: "Room (your mic) or Meeting (system audio + mic, Mac only).",
+               default: .room)
+    public var mode: RecordingModeAppEnum
 
     @Dependency private var appModel: AppModel
 
     public init() {}
 
-    public func perform() async throws -> some IntentResult & ProvidesDialog {
-        await MainActor.run {
+    public func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+        try await MainActor.run {
+            guard !appModel.recording.isRecording else { throw TranscriptionIntentError.alreadyRecording }
             appModel.selectedSurface = .record
-            if !appModel.recording.isRecording { appModel.recording.start(mode: .room) }
+            appModel.recording.start(mode: mode.controllerMode)
         }
-        return .result(dialog: "Recording started.")
+        return .result(opensIntent: OpenAppIntent(), dialog: "Recording started.")
     }
 }
 
@@ -68,15 +121,42 @@ public struct StopRecordingIntent: AppIntent {
     }
 }
 
+/// Check whether Transcription Studio is currently recording — "am I recording?".
+public struct GetRecordingStatusIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Get Recording Status"
+    public static let description = IntentDescription(
+        "Check whether Transcription Studio is currently recording.")
+
+    @Dependency private var appModel: AppModel
+
+    public init() {}
+
+    public func perform() async throws
+        -> some IntentResult & ReturnsValue<Bool> & ProvidesDialog {
+        let recording = await MainActor.run { appModel.recording }
+        let isRecording = await recording.isRecording
+        let dialog: IntentDialog
+        if isRecording {
+            let elapsed = await recording.elapsed
+            dialog = "Recording — \(TimeFormat.clock(elapsed)) elapsed."
+        } else {
+            dialog = "Not recording."
+        }
+        return .result(value: isRecording, dialog: dialog)
+    }
+}
+
 // MARK: - Transcribe a file
 
 /// Kick a file transcription. Opens the app so the job runs in the live process and its
-/// progress is visible on the Transcribe surface.
+/// progress is visible on the Transcribe surface. Always foreground — the pipeline runs in
+/// the app process, so (unlike `StartRecordingIntent`/`OpenTranscriptIntent`) there's no
+/// dynamic "may not need it" case.
 public struct TranscribeFileIntent: AppIntent {
     public static let title: LocalizedStringResource = "Transcribe a File"
     public static let description = IntentDescription(
         "Transcribe an audio or video file with Transcription Studio.")
-    public static let openAppWhenRun = true
+    public static let supportedModes: IntentModes = .foreground
 
     @Parameter(title: "File", description: "The audio or video file to transcribe.",
                supportedContentTypes: [.audio, .movie])
@@ -86,7 +166,7 @@ public struct TranscribeFileIntent: AppIntent {
 
     public init() {}
 
-    public func perform() async throws -> some IntentResult & ProvidesDialog {
+    public func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
         let name = file.filename
         let title = (name as NSString).deletingPathExtension
         let displayTitle = title.isEmpty ? "Audio file" : title
@@ -107,7 +187,7 @@ public struct TranscribeFileIntent: AppIntent {
             appModel.selectedSurface = .transcribe
             appModel.startTranscription(title: displayTitle, source: .file(url))
         }
-        return .result(dialog: "Transcribing \(displayTitle).")
+        return .result(opensIntent: OpenAppIntent(), dialog: "Transcribing \(displayTitle).")
     }
 }
 
@@ -209,13 +289,96 @@ public struct AskTranscriptIntent: AppIntent {
     }
 }
 
+// MARK: - Summarize (Foundation Models)
+
+/// Summarize a transcript, answered on-device by Apple Intelligence. Defaults to the latest
+/// recording, mirroring `AskTranscriptIntent`'s degrade-gracefully behavior.
+public struct SummarizeTranscriptIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Summarize Transcript"
+    public static let description = IntentDescription(
+        "Summarize a transcript. Apple Intelligence summarizes on-device from the transcript.")
+
+    @Parameter(title: "Transcript", description: "Which transcript to summarize. Defaults to your latest.")
+    public var session: TranscriptSessionEntity?
+
+    public init() {}
+
+    public func perform() async throws
+        -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        let target: (entity: TranscriptSessionEntity, fullText: String)?
+        if let session, let id = UUID(uuidString: session.id) {
+            target = await TranscriptSessionStore.entityAndText(forID: id)
+        } else {
+            target = await TranscriptSessionStore.latestEntityAndText()
+        }
+        guard let target else { throw TranscriptionIntentError.noTranscripts }
+
+        let intelligence = SessionIntelligence()
+        guard intelligence.status.isAvailable else {
+            return .result(value: "", dialog: "\(intelligence.status.message)")
+        }
+        do {
+            let summary = try await intelligence.summarize(transcript: target.fullText)
+            return .result(value: summary, dialog: "\(summary)")
+        } catch {
+            return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
+        }
+    }
+}
+
+// MARK: - Export
+
+/// Export a transcript as a downloadable file — plain text, Markdown, SRT, or WebVTT.
+/// Defaults to the latest recording. Returns an `IntentFile` (not a giant inline string) so
+/// Shortcuts can save/share/AirDrop it like any other file result.
+public struct ExportTranscriptIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Export Transcript"
+    public static let description = IntentDescription(
+        "Export a transcript as a file. Defaults to your latest transcript.")
+
+    @Parameter(title: "Transcript", description: "Which transcript to export. Defaults to your latest.")
+    public var session: TranscriptSessionEntity?
+
+    @Parameter(title: "Format", description: "The export file format.", default: .plainText)
+    public var format: TranscriptExport.Format
+
+    public init() {}
+
+    public func perform() async throws
+        -> some IntentResult & ReturnsValue<IntentFile> & ProvidesDialog {
+        let resolved: (title: String, text: String)?
+        if let session, let id = UUID(uuidString: session.id) {
+            resolved = await TranscriptSessionStore.exportedText(forID: id, as: format)
+        } else {
+            resolved = await TranscriptSessionStore.latestExportedText(as: format)
+        }
+        guard let resolved, !resolved.text.isEmpty else { throw TranscriptionIntentError.noTranscripts }
+
+        let safeName = resolved.title.isEmpty ? "Transcript" : resolved.title
+        let file = IntentFile(data: Data(resolved.text.utf8),
+                              filename: "\(safeName).\(format.fileExtension)",
+                              type: TranscriptExportDocument.contentType(for: format))
+        return .result(value: file, dialog: "Exported \(safeName).")
+    }
+}
+
+extension TranscriptExport.Format: AppEnum {
+    public static var typeDisplayRepresentation: TypeDisplayRepresentation {
+        TypeDisplayRepresentation(name: "Transcript Export Format")
+    }
+
+    public static var caseDisplayRepresentations: [TranscriptExport.Format: DisplayRepresentation] {
+        [.plainText: "Plain Text", .markdown: "Markdown", .srt: "SubRip (.srt)", .vtt: "WebVTT (.vtt)"]
+    }
+}
+
 // MARK: - Open
 
 /// Open a transcript in the app — also powers tapping a Spotlight result.
 public struct OpenTranscriptIntent: AppIntent, OpenIntent {
     public static let title: LocalizedStringResource = "Open Transcript"
     public static let description = IntentDescription("Open a transcript in Transcription Studio.")
-    public static let openAppWhenRun = true
+    public static let supportedModes: IntentModes = .foreground(.dynamic)
 
     @Parameter(title: "Transcript")
     public var target: TranscriptSessionEntity
@@ -224,19 +387,40 @@ public struct OpenTranscriptIntent: AppIntent, OpenIntent {
 
     public init() {}
 
-    public func perform() async throws -> some IntentResult {
+    public func perform() async throws -> some IntentResult & OpensIntent {
         let id = UUID(uuidString: target.id)
         await MainActor.run {
             if let id { appModel.selectedSessionID = id }
             appModel.selectedSurface = .library
         }
-        return .result()
+        return .result(opensIntent: OpenAppIntent())
+    }
+}
+
+/// Open the Library — the first-class form of `SearchTranscriptsIntent`'s `openLibrary` flag,
+/// for "just open my library" with no search involved.
+public struct OpenLibraryIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Open Library"
+    public static let description = IntentDescription("Open the Library in Transcription Studio.")
+    public static let supportedModes: IntentModes = .foreground(.dynamic)
+
+    @Dependency private var appModel: AppModel
+
+    public init() {}
+
+    public func perform() async throws -> some IntentResult & OpensIntent {
+        await MainActor.run { appModel.selectedSurface = .library }
+        return .result(opensIntent: OpenAppIntent())
     }
 }
 
 // MARK: - App Shortcuts
 
-/// Zero-setup Siri phrases. `\(.applicationName)` binds each phrase to the app.
+/// Zero-setup Siri phrases. `\(.applicationName)` binds each phrase to the app. Apple caps a
+/// provider at 10 promoted shortcuts (`AppShortcutContract.systemLimit`); `DeleteTranscriptIntent`
+/// and `ExportTranscriptIntent` stay reachable via the Shortcuts app / Spotlight without a
+/// canned phrase so the promoted set stays at exactly 10 — see `AppIntentExecutionPolicyTests`-
+/// adjacent `shortcutCountWithinSystemLimit` for the pinned count.
 public struct TranscriptionShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -301,6 +485,33 @@ public struct TranscriptionShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Open Transcript",
             systemImageName: "doc.text")
+
+        AppShortcut(
+            intent: SummarizeTranscriptIntent(),
+            phrases: [
+                "Summarize my last recording in \(.applicationName)",
+                "Summarize my \(.applicationName) transcript"
+            ],
+            shortTitle: "Summarize Transcript",
+            systemImageName: "text.redaction")
+
+        AppShortcut(
+            intent: OpenLibraryIntent(),
+            phrases: [
+                "Open my \(.applicationName) library",
+                "Open the library in \(.applicationName)"
+            ],
+            shortTitle: "Open Library",
+            systemImageName: "books.vertical")
+
+        AppShortcut(
+            intent: GetRecordingStatusIntent(),
+            phrases: [
+                "Am I recording in \(.applicationName)",
+                "Check my \(.applicationName) recording status"
+            ],
+            shortTitle: "Recording Status",
+            systemImageName: "dot.radiowaves.left.and.right")
     }
 }
 

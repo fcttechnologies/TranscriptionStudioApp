@@ -140,7 +140,35 @@ public enum TranscriptSessionStore {
         return (TranscriptSessionEntity(session), session.fullText)
     }
 
+    /// A specific session rendered in an export format, paired with its title (for the
+    /// filename). Computed here on the main actor from the stored segments — the raw
+    /// SwiftData model never crosses back out, only the rendered (Sendable) string.
+    public static func exportedText(forID id: UUID, as format: TranscriptExport.Format,
+                                    in container: ModelContainer = AppModelContainer.shared)
+        -> (title: String, text: String)? {
+        guard let session = allSessions(in: container).first(where: { $0.id == id }) else { return nil }
+        return renderedExport(session, as: format)
+    }
+
+    /// The newest session rendered in an export format, paired with its title.
+    public static func latestExportedText(as format: TranscriptExport.Format,
+                                          in container: ModelContainer = AppModelContainer.shared)
+        -> (title: String, text: String)? {
+        guard let session = allSessions(in: container).first else { return nil }
+        return renderedExport(session, as: format)
+    }
+
+    private static func renderedExport(_ session: TranscriptSession,
+                                       as format: TranscriptExport.Format) -> (title: String, text: String) {
+        let items = TranscriptExport.items(from: session)
+        return (session.title, TranscriptExport.render(items, as: format, title: session.title))
+    }
+
     // MARK: Fetch
+
+    /// Cap on a single Siri/Spotlight read-path fetch — a defensive limit so a large library
+    /// never loads unbounded rows onto the main actor in one query.
+    private static let maxFetchedSessions = 500
 
     static func matchingSessions(_ query: String, in container: ModelContainer) -> [TranscriptSession] {
         let all = allSessions(in: container)
@@ -154,8 +182,9 @@ public enum TranscriptSessionStore {
 
     private static func allSessions(in container: ModelContainer) -> [TranscriptSession] {
         let context = ModelContext(container)
-        let descriptor = FetchDescriptor<TranscriptSession>(
+        var descriptor = FetchDescriptor<TranscriptSession>(
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        descriptor.fetchLimit = maxFetchedSessions
         return (try? context.fetch(descriptor)) ?? []
     }
 }

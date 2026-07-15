@@ -87,12 +87,52 @@ struct SiriIntelligenceTests {
         #expect(!entity.textPreview.isEmpty)
     }
 
+    // MARK: Export (ExportTranscriptIntent's backing store methods)
+
+    /// A store whose one session carries real `StoredSegment`s — `TranscriptExport` renders
+    /// from segments, not the denormalized `fullText`, so exercising it needs the relationship.
+    private func makeSegmentedStore() throws -> (container: ModelContainer, sessionID: UUID) {
+        let container = try ModelContainer(
+            for: AppModelContainer.schema,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+
+        let session = TranscriptSession(title: "Standup notes", kind: .roomRecording)
+        session.fullText = "We reviewed the quarterly roadmap."
+        let segment = StoredSegment(start: 0, end: 3, text: "We reviewed the quarterly roadmap.")
+        segment.session = session
+        session.segments = [segment]
+        context.insert(session)
+        try context.save()
+        return (container, session.id)
+    }
+
+    @Test func exportedTextRendersPlainTextByID() throws {
+        let (container, id) = try makeSegmentedStore()
+        let exported = try #require(TranscriptSessionStore.exportedText(forID: id, as: .plainText, in: container))
+        #expect(exported.title == "Standup notes")
+        #expect(exported.text.contains("quarterly roadmap"))
+    }
+
+    @Test func latestExportedTextRendersAsMarkdown() throws {
+        let (container, _) = try makeSegmentedStore()
+        let exported = try #require(TranscriptSessionStore.latestExportedText(as: .markdown, in: container))
+        #expect(exported.title == "Standup notes")
+        #expect(exported.text.contains("# Standup notes"))
+        #expect(exported.text.contains("quarterly roadmap"))
+    }
+
+    @Test func exportedTextReturnsNilForUnknownID() throws {
+        let (container, _) = try makeSegmentedStore()
+        #expect(TranscriptSessionStore.exportedText(forID: UUID(), as: .srt, in: container) == nil)
+    }
+
     // MARK: App Shortcuts capacity
 
     @Test func shortcutCountWithinSystemLimit() {
         let contract = AppShortcutContract(declaredCount: TranscriptionShortcuts.appShortcuts.count)
         #expect(contract.isWithinLimit)
-        #expect(contract.declaredCount == 7)   // pin the exact count so a regression is loud
+        #expect(contract.declaredCount == 10)   // pin the exact count so a regression is loud
     }
 
     // MARK: Intelligence availability gate
