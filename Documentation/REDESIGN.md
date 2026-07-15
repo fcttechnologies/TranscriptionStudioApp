@@ -8,8 +8,8 @@ controls — adapted as ours, not a clone. Taste bar: no AI-slop, distinctive, c
 The sessions list is home. Everything returns to it.
 
 ## Floating controls (over the list)
-- **Top-left** — Inspector
-- **Top-right** — Settings
+- **Top-left** — Inspector (opens a **sheet**, see below)
+- **Top-right** — Settings (opens a **sheet**)
 - **Bottom-left** — Search (over sessions)
 - **Bottom-right** — a "+" menu:
   - Upload media / video from Photos
@@ -17,6 +17,14 @@ The sessions list is home. Everything returns to it.
   - Insert link (**macOS only** — URL ingest is Mac-only)
 
 Transcribe and Record are no longer tabs — they become "+" menu actions.
+
+## Sheets & dismissal
+- The **Inspector is a sheet on BOTH platforms** (not a Mac inspector column) — one consistent
+  presentation. **Large detent only** (omit `.medium` — it defaults to large).
+- **No "Done" toolbar buttons.** Sheets dismiss via an elegant close affordance learned from
+  Apple's own apps — a **circular `xmark` button** (gray translucent circle, top corner), the
+  App Store / Music pattern. This is the standard for every sheet (Inspector, Settings, the
+  live-recording sheet, session detail).
 
 ## Where the work happens — the mini-player
 Active audio uses an **Apple Music-style mini-player**: a floating pill/bar near the bottom that
