@@ -1,10 +1,8 @@
 import AppIntents
 
-/// Open Settings. A `perform()` isn't a View, so it can't reach macOS's
-/// `@Environment(\.openSettings)` directly — instead this sets the same router-flag pattern the
-/// other navigating intents use (`appModel.selectedSurface`, `selectedSessionID`):
-/// `AppModel.pendingSettingsRequest`, which iOS's Library gear-button sheet and macOS's
-/// `MacRootView` each observe to open Settings on their platform.
+/// Open Settings. A `perform()` isn't a View, so it routes through the same shell state the
+/// floating controls use: `AppModel.activeSheet` — both platforms present Settings as a sheet
+/// over the single-view home.
 public struct OpenSettingsIntent: AppIntent {
     public static let title: LocalizedStringResource = "Open Settings"
     public static let description = IntentDescription("Open Transcription Studio's settings.")
@@ -15,7 +13,7 @@ public struct OpenSettingsIntent: AppIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult & OpensIntent {
-        await MainActor.run { appModel.pendingSettingsRequest = true }
+        await MainActor.run { appModel.activeSheet = .settings }
         return .result(opensIntent: OpenAppIntent())
     }
 }

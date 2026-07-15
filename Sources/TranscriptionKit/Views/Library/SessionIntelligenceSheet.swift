@@ -35,12 +35,13 @@ struct SessionIntelligenceSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
+                Button(role: .close) { dismiss() }
             }
         }
-        .presentationDetents([.large])
+        #if os(macOS)
+        .frame(width: DesignMetrics.macSheetSize.width,
+               height: DesignMetrics.macSheetSize.height)
+        #endif
         .onAppear {
             status = intelligence.status
             if status.isAvailable, case .idle = summary { generateSummary() }

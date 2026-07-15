@@ -1,28 +1,82 @@
 import SwiftUI
 
-/// The active-recording layout. Split into subviews that each read only the controller
-/// properties they render, so a level tick doesn't re-run the transcript and a new segment
-/// doesn't re-run the meter (per-property observation isolation).
-struct RecordLiveView: View {
+/// The mini-player's expanded form — the full live-recording view as a sheet. Closing it
+/// never touches the run (the recording keeps going in the mini-player); Stop is the only
+/// way to end it. Split into subviews that each read only the controller properties they
+/// render, so a level tick doesn't re-run the transcript (per-property observation isolation).
+struct LiveRecordingSheet: View {
     @Environment(AppModel.self) private var app
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        NavigationStack {
+            Group {
+                switch app.recording.phase {
+                case .preparing(let progress):
+                    PreparingView(progress: progress)
+                case .recording, .finishing:
+                    live
+                case .idle:
+                    // The run ended elsewhere (stop from the toolbar, a capture failure) —
+                    // there's nothing live to show.
+                    Color.clear.onAppear { dismiss() }
+                }
+            }
+            .navigationTitle("Recording")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                Button(role: .close) { dismiss() }
+            }
+        }
+        #if os(macOS)
+        .frame(width: DesignMetrics.macDetailSheetSize.width,
+               height: DesignMetrics.macDetailSheetSize.height)
+        #endif
+    }
+
+    private var live: some View {
         VStack(spacing: 0) {
-            RecordHeader(recording: app.recording)
-            RecordNoticeBar(recording: app.recording)
+            LiveHeader(recording: app.recording)
+            NoticeBar(recording: app.recording)
             Divider()
-            RecordTranscript(recording: app.recording)
+            LiveTranscriptRegion(recording: app.recording)
             Divider()
-            RecordControls(recording: app.recording, app: app)
+            LiveControls(recording: app.recording, app: app)
         }
         .background(.background)
     }
 }
 
+/// The preparing phase — model download/load progress, shown before capture begins.
+private struct PreparingView: View {
+    let progress: EnginePreparationProgress
+
+    var body: some View {
+        VStack(spacing: DesignMetrics.spacingL) {
+            if let fraction = progress.fraction {
+                ProgressView(value: fraction) {
+                    Text(progress.phase)
+                } currentValueLabel: {
+                    Text(fraction, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                }
+                .frame(maxWidth: 320)
+            } else {
+                ProgressView { Text(progress.phase) }
+            }
+        }
+        .padding(DesignMetrics.spacingXL)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.background)
+        .accessibilityIdentifier("record.preparing")
+    }
+}
+
 /// Elapsed clock, live REC indicator, level meter, and the scrolling waveform.
-private struct RecordHeader: View {
+private struct LiveHeader: View {
     let recording: RecordingController
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: DesignMetrics.spacingM) {
@@ -39,16 +93,16 @@ private struct RecordHeader: View {
                     .foregroundStyle(.secondary)
                 LevelMeter(level: recording.level)
             }
-            LiveWaveform(levels: recording.waveform, accent: .accentColor)
+            LiveWaveform(levels: recording.waveform, accent: .red)
                 .subSurface()
         }
         .padding(DesignMetrics.spacingL)
     }
 }
 
-/// A small in-line notice: currently "diarization unavailable — transcribing without speakers",
-/// shown when the diarizer couldn't be prepared so the run degrades to ASR-only.
-private struct RecordNoticeBar: View {
+/// A small in-line notice: "diarization unavailable — transcribing without speakers", shown
+/// when the diarizer couldn't be prepared so the run degrades to ASR-only.
+private struct NoticeBar: View {
     let recording: RecordingController
 
     var body: some View {
@@ -65,26 +119,8 @@ private struct RecordNoticeBar: View {
     }
 }
 
-/// A pulsing red dot while live, steady amber while paused.
-private struct RecordingDot: View {
-    let isPaused: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var pulsing = false
-
-    var body: some View {
-        Circle()
-            .fill(isPaused ? Color.orange : Color.red)
-            .frame(width: 12, height: 12)
-            .opacity(isPaused ? 1 : (pulsing ? 0.35 : 1))
-            .animation(reduceMotion || isPaused ? nil
-                       : .easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulsing)
-            .onAppear { pulsing = true }
-            .accessibilityHidden(true)
-    }
-}
-
 /// The live transcript region (isolated so it re-renders on segment changes only).
-private struct RecordTranscript: View {
+private struct LiveTranscriptRegion: View {
     let recording: RecordingController
 
     var body: some View {
@@ -103,7 +139,7 @@ private struct RecordTranscript: View {
 
 /// Pause / resume and stop while recording; a "Finishing transcript…" indicator while the
 /// engines drain their final passes after stop.
-private struct RecordControls: View {
+private struct LiveControls: View {
     let recording: RecordingController
     let app: AppModel
 
@@ -145,13 +181,8 @@ private struct RecordControls: View {
                 .font(.caption).foregroundStyle(.secondary).monospacedDigit()
             Spacer()
             Button {
-                Task {
-                    let id = await recording.stop()
-                    if let id {
-                        app.selectedSessionID = id
-                        app.playback.load(data: nil)
-                    }
-                }
+                // The stop flow swaps this sheet for the saved session's transcript.
+                app.stopRecordingAndOpen()
             } label: {
                 Label("Stop", systemImage: "stop.fill")
                     .font(.body.weight(.semibold))

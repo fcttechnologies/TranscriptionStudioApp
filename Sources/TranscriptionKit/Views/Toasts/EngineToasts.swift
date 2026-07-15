@@ -51,13 +51,20 @@ public extension Toast {
     }
 
     /// Screen Recording isn't granted — meeting capture can't start (macOS).
-    static func screenRecordingNeeded(message: String,
-                                      openSettings: @MainActor @escaping () -> Void) -> Toast {
+    static func screenRecordingNeeded(openSettings: @MainActor @escaping () -> Void) -> Toast {
         Toast(title: "Screen Recording is off",
-              message: message,
+              message: "Meeting capture needs the Screen Recording permission.",
               systemImage: "rectangle.dashed.badge.record", style: .warning,
               actionLabel: "Settings", action: openSettings,
               duration: .seconds(6), dedupKey: "screen-recording")
+    }
+
+    /// Screen Recording was just granted — macOS requires a relaunch before capture works.
+    static func screenRecordingNeedsRestart() -> Toast {
+        Toast(title: "Relaunch to finish enabling",
+              message: "Screen Recording is granted — quit and reopen, then start the meeting.",
+              systemImage: "arrow.clockwise.circle", style: .warning,
+              duration: .seconds(6), dedupKey: "screen-recording-restart")
     }
 
     /// A run-ending recording failure, surfaced as a sentence (replaces the old alert).

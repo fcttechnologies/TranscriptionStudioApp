@@ -2,10 +2,12 @@ import SwiftUI
 import SwiftData
 import AppIntents
 
-/// A saved session's transcript with playback. Renders the stored attributed segments as
-/// speaker turns (with the subtle confidence affordance), and — when the session's audio was
-/// archived — plays it back, seeking to a tapped segment's start so the ear-vs-label check is
-/// one click. Exact per-segment confidence numbers live in the Inspector's ASR table.
+/// A saved session's transcript, presented as a sheet from the feed (and expanded from the
+/// mini-player during playback). Renders the stored attributed segments as speaker turns
+/// (with the subtle confidence affordance), and — when the session's audio was archived —
+/// plays it back, seeking to a tapped segment's start so the ear-vs-label check is one
+/// click. Closing the sheet mid-play hands the audio to the mini-player; exact per-segment
+/// confidence numbers live in the Inspector's ASR table.
 public struct SessionDetailView: View {
     let session: TranscriptSession
 
@@ -30,53 +32,61 @@ public struct SessionDetailView: View {
     public var body: some View {
         let currentTurns = turns
         let currentLineStarts = currentTurns.flatMap { $0.lines }.map { (id: $0.id, start: $0.start) }
-        VStack(spacing: 0) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: DesignMetrics.turnSpacing) {
-                    header
-                    ForEach(currentTurns) { turn in
-                        TranscriptTurnView(turn: turn,
-                                           playingLineID: playingLineID,
-                                           onTapLine: hasAudio ? { app.playback.play(from: $0.start) } : nil)
+        NavigationStack {
+            VStack(spacing: 0) {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: DesignMetrics.turnSpacing) {
+                        header
+                        ForEach(currentTurns) { turn in
+                            TranscriptTurnView(turn: turn,
+                                               playingLineID: playingLineID,
+                                               onTapLine: hasAudio ? { app.playback.play(from: $0.start) } : nil)
+                        }
                     }
+                    .padding(DesignMetrics.spacingL)
+                    .frame(maxWidth: 760, alignment: .leading)
+                    .frame(maxWidth: .infinity)
                 }
-                .padding(DesignMetrics.spacingL)
-                .frame(maxWidth: 760, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                if hasAudio {
+                    Divider()
+                    PlaybackBar(playback: app.playback)
+                }
             }
-            if hasAudio {
-                Divider()
-                PlaybackBar(playback: app.playback)
+            .background(.background)
+            .navigationTitle(session.title)
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem {
+                    Button("Intelligence", systemImage: "sparkles") { showingIntelligence = true }
+                        .accessibilityIdentifier("session.intelligence")
+                }
+                ToolbarItem {
+                    Menu {
+                        Button("Rename", systemImage: "pencil") { beginRenaming() }
+                        Button("Copy Transcript", systemImage: "doc.on.doc") { copyTranscript() }
+                        Menu {
+                            ForEach(TranscriptExport.Format.allCases) { format in
+                                Button(format.displayName) { exportFormat = format }
+                            }
+                        } label: {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                    } label: {
+                        Label("More", systemImage: "ellipsis")
+                    }
+                    .accessibilityIdentifier("session.more")
+                }
+                ToolbarItem {
+                    Button(role: .close) { dismiss() }
+                }
             }
         }
-        .navigationTitle(session.title)
-        #if os(iOS)
-        .navigationBarTitleDisplayMode(.inline)
+        #if os(macOS)
+        .frame(width: DesignMetrics.macDetailSheetSize.width,
+               height: DesignMetrics.macDetailSheetSize.height)
         #endif
-        .toolbar {
-            ToolbarItem {
-                Button("Rename", systemImage: "pencil") { beginRenaming() }
-                    .accessibilityIdentifier("session.rename")
-            }
-            ToolbarItem {
-                Button("Intelligence", systemImage: "sparkles") { showingIntelligence = true }
-                    .accessibilityIdentifier("session.intelligence")
-            }
-            ToolbarItem {
-                Button("Copy transcript", systemImage: "doc.on.doc") { copyTranscript() }
-                    .accessibilityIdentifier("session.copy")
-            }
-            ToolbarItem {
-                Menu {
-                    ForEach(TranscriptExport.Format.allCases) { format in
-                        Button(format.displayName) { exportFormat = format }
-                    }
-                } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
-                }
-                .accessibilityIdentifier("session.export")
-            }
-        }
         .fileExporter(isPresented: exportBinding,
                       document: exportDocument,
                       contentType: exportFormat.map(TranscriptExportDocument.contentType(for:)) ?? .plainText,
@@ -98,11 +108,13 @@ public struct SessionDetailView: View {
         .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
                                               identifier: session.id.uuidString))
         .onAppear {
-            hasAudio = app.playback.load(data: session.audioData)
+            hasAudio = app.playback.prepare(session: session)
             let entity = TranscriptSessionEntity(session)
             Task { await TranscriptionIntentDonations.donateOpenTranscript(entity) }
         }
-        .onDisappear { app.playback.stop() }
+        // Engaged playback survives the sheet (the mini-player picks it up); audio that was
+        // never played is put away.
+        .onDisappear { app.playback.releaseIfIdle() }
     }
 
     // MARK: Export

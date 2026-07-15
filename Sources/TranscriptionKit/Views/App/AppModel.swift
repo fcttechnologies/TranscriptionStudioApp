@@ -45,16 +45,79 @@ public final class AppModel {
     public let recording: RecordingController
     public let playback: PlaybackController
 
-    // Shell state.
-    public var isInspectorPresented: Bool = false
-    public var selectedSurface: AppSurface = .transcribe
-    /// The session the Library should focus (set when opening a finished job's result).
-    public var selectedSessionID: UUID?
-    /// Set by `OpenSettingsIntent` and cleared by whichever shell handles it. iOS's Library
-    /// gear-button sheet observes this directly (there's no Settings scene there); macOS's
-    /// `MacRootView` observes it and calls `@Environment(\.openSettings)` (the only way to open
-    /// the native `Settings {}` scene, which an `AppIntent.perform()` can't reach).
-    public var pendingSettingsRequest = false
+    // Shell state — the single-view home presents at most one sheet at a time.
+    /// The sheet the shell is presenting (nil → the bare feed). Set by the toolbar
+    /// controls, row taps, the mini-player, and the navigating App Intents.
+    public var activeSheet: StudioSheet?
+
+    /// Close every presentation and return to the bare feed (Siri "open my library").
+    public func returnHome() {
+        activeSheet = nil
+    }
+
+    /// Present a saved session's transcript (a row tap, a finished recording, Spotlight,
+    /// `OpenTranscriptIntent`).
+    public func openSession(id: UUID) {
+        activeSheet = .session(id)
+    }
+
+    /// Start a recording from anywhere in the shell (the "+" menu, ⌘N, the intent path
+    /// funnels through `recording.start` directly). Preflights the permissions the mode
+    /// needs — a missing grant surfaces as a toast (with a path to Settings), never a dead
+    /// recording — then clears any loaded playback, starts capture, and expands the live
+    /// recording sheet.
+    public func requestRecording(mode: RecordingController.Mode) {
+        guard !recording.isActive else {
+            activeSheet = .liveRecording
+            return
+        }
+        switch mode {
+        case .room:
+            // .notDetermined proceeds — the capture source itself prompts on first use.
+            if MicrophonePermission.preflight() == .denied {
+                ToastCenter.shared.show(.microphoneDenied { [weak self] in
+                    self?.activeSheet = .settings
+                })
+                return
+            }
+        case .meeting:
+            switch ScreenCapturePermission.preflight() {
+            case .granted, .needsRestart:
+                break
+            case .notDetermined, .denied:
+                // Request right here (prompts on first use); macOS then needs a relaunch
+                // before capture works, and a denial routes through Settings.
+                switch ScreenCapturePermission.request() {
+                case .granted:
+                    break
+                case .needsRestart:
+                    ToastCenter.shared.show(.screenRecordingNeedsRestart())
+                    return
+                case .notDetermined, .denied:
+                    ToastCenter.shared.show(.screenRecordingNeeded { [weak self] in
+                        self?.activeSheet = .settings
+                    })
+                    return
+                }
+            }
+        }
+        playback.unload()
+        recording.start(mode: mode)
+        activeSheet = .liveRecording
+    }
+
+    /// Stop the live recording and open the saved session's transcript once the engines
+    /// finish draining. The mini-player and the live sheet both route their Stop here.
+    public func stopRecordingAndOpen() {
+        Task { [weak self] in
+            guard let self else { return }
+            if let id = await self.recording.stop() {
+                self.openSession(id: id)
+            } else if self.activeSheet == .liveRecording {
+                self.activeSheet = nil
+            }
+        }
+    }
 
     /// Launch-time model-warmup state, so a surface can show unobtrusive "preparing the
     /// speech model" feedback the first time (see `prewarmDefaultEngine`).
@@ -251,24 +314,25 @@ public enum TranscriptionSource: Sendable {
     case file(URL)
 }
 
-/// The app's three primary surfaces — the sidebar/tab items both shells share.
-public enum AppSurface: String, CaseIterable, Identifiable, Sendable {
-    case transcribe, record, library
-    public var id: String { rawValue }
+/// The sheets the single-view shell can present — one at a time, all dismissed by the
+/// circular close. `Identifiable` so one `.sheet(item:)` routes every presentation.
+public enum StudioSheet: Equatable, Identifiable, Sendable {
+    case settings
+    case inspector
+    /// The full live-recording view (the mini-player's expanded form while recording).
+    case liveRecording
+    /// The macOS "Insert link" prompt (URL ingest is Mac-only).
+    case insertLink
+    /// A saved session's transcript.
+    case session(UUID)
 
-    public var title: String {
+    public var id: String {
         switch self {
-        case .transcribe: "Transcribe"
-        case .record: "Record"
-        case .library: "Library"
-        }
-    }
-
-    public var systemImage: String {
-        switch self {
-        case .transcribe: "text.quote"
-        case .record: "waveform.badge.microphone"
-        case .library: "books.vertical"
+        case .settings: "settings"
+        case .inspector: "inspector"
+        case .liveRecording: "liveRecording"
+        case .insertLink: "insertLink"
+        case .session(let id): "session-\(id.uuidString)"
         }
     }
 }

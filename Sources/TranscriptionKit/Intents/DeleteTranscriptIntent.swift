@@ -1,7 +1,7 @@
 import AppIntents
 import SwiftData
 
-/// Delete a saved transcript — mirrors `LibraryView.delete(_:)`: deletes the SwiftData
+/// Delete a saved transcript — mirrors the home feed's delete: deletes the SwiftData
 /// session (its archived `audioData` goes with it) and de-indexes it from Spotlight. Confirms
 /// with a destructive choice first since this can run from Siri/Shortcuts with no confirmation
 /// UI already on screen.
@@ -41,6 +41,8 @@ public struct DeleteTranscriptIntent: AppIntent {
         context.delete(session)
         try? context.save()
         TranscriptSpotlightIndex.deindex(id: deletedID)
+        // Same cleanup as the feed's delete: don't leave the finished job's card behind.
+        appModel.jobs.removeJobs(forSessionID: deletedID)
 
         return .result(dialog: "Transcript deleted.")
     }

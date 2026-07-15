@@ -40,10 +40,5 @@ struct TranscriptionStudioApp: App {
         .modelContainer(AppModelContainer.shared)
         .defaultSize(width: 1140, height: 740)
         .commands { AppCommands(app: app) }
-
-        Settings {
-            SettingsView()
-                .environment(app)
-        }
     }
 }

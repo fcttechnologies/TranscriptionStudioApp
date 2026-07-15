@@ -88,8 +88,9 @@ public struct StartRecordingIntent: AppIntent {
     public func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
         try await MainActor.run {
             guard !appModel.recording.isRecording else { throw TranscriptionIntentError.alreadyRecording }
-            appModel.selectedSurface = .record
+            appModel.playback.unload()
             appModel.recording.start(mode: mode.controllerMode)
+            appModel.activeSheet = .liveRecording
         }
         return .result(opensIntent: OpenAppIntent(), dialog: "Recording started.")
     }
@@ -184,7 +185,7 @@ public struct TranscribeFileIntent: AppIntent {
             url = dest
         }
         await MainActor.run {
-            appModel.selectedSurface = .transcribe
+            appModel.returnHome()   // the job's progress lives in the feed's In Progress section
             appModel.startTranscription(title: displayTitle, source: .file(url))
         }
         return .result(opensIntent: OpenAppIntent(), dialog: "Transcribing \(displayTitle).")
@@ -218,7 +219,7 @@ public struct SearchTranscriptsIntent: AppIntent {
         let results = await TranscriptSessionStore.entities(matching: query)
         if openLibrary {
             try await continueInForeground(alwaysConfirm: false)
-            await MainActor.run { appModel.selectedSurface = .library }
+            await MainActor.run { appModel.returnHome() }
         }
         let dialog: IntentDialog = results.isEmpty
             ? "No transcripts match “\(query)”."
@@ -390,8 +391,7 @@ public struct OpenTranscriptIntent: AppIntent, OpenIntent {
     public func perform() async throws -> some IntentResult & OpensIntent {
         let id = UUID(uuidString: target.id)
         await MainActor.run {
-            if let id { appModel.selectedSessionID = id }
-            appModel.selectedSurface = .library
+            if let id { appModel.openSession(id: id) } else { appModel.returnHome() }
         }
         return .result(opensIntent: OpenAppIntent())
     }
@@ -409,7 +409,7 @@ public struct OpenLibraryIntent: AppIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult & OpensIntent {
-        await MainActor.run { appModel.selectedSurface = .library }
+        await MainActor.run { appModel.returnHome() }
         return .result(opensIntent: OpenAppIntent())
     }
 }

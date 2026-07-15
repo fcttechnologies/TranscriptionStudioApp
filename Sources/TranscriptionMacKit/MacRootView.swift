@@ -1,85 +1,18 @@
 import SwiftUI
 import TranscriptionKit
 
-/// The Mac shell: a sidebar of the three surfaces (with live running-job / recording
-/// indicators), the selected surface as the detail, and the Inspector as a trailing column.
-/// Keyboard shortcuts live in `AppCommands` on the scene.
+/// The Mac shell: the shared single-view home with the Mac-only capabilities switched on
+/// (URL ingest, ScreenCaptureKit meeting capture). Keyboard shortcuts live in `AppCommands`
+/// on the scene.
 public struct MacRootView: View {
-    @Environment(AppModel.self) private var app
-    // Completes OpenSettingsIntent on macOS: the native `Settings {}` scene is reachable
-    // only via this environment action (an AppIntent.perform() can't call it), so the Mac
-    // shell observes AppModel.pendingSettingsRequest and opens Settings on its behalf.
-    @Environment(\.openSettings) private var openSettings
-
     public init() {}
 
     public var body: some View {
-        @Bindable var app = app
-        NavigationSplitView {
-            List(AppSurface.allCases, selection: $app.selectedSurface) { surface in
-                SurfaceRow(surface: surface,
-                           runningJobs: app.jobs.jobs.filter { $0.state == .running || $0.state == .queued }.count,
-                           isRecording: surface == .record && app.recording.isActive)
-                    .tag(surface)
-            }
-            .navigationTitle("Transcription Studio")
-            .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 300)
-        } detail: {
-            detail(for: app.selectedSurface)
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            app.isInspectorPresented.toggle()
-                        } label: {
-                            Label("Inspector", systemImage: "sidebar.trailing")
-                        }
-                        .keyboardShortcut("i", modifiers: .command)
-                        .accessibilityIdentifier("toolbar.inspectorToggle")
-                    }
-                }
-                .inspector(isPresented: $app.isInspectorPresented) {
-                    InspectorView()
-                        .inspectorColumnWidth(min: DesignMetrics.inspectorMinWidth,
-                                              ideal: DesignMetrics.inspectorWidth,
-                                              max: DesignMetrics.inspectorMaxWidth)
-                }
-        }
-        .onChange(of: app.pendingSettingsRequest) { _, requested in
-            guard requested else { return }
-            openSettings()
-            app.pendingSettingsRequest = false
-        }
-    }
-
-    @ViewBuilder
-    private func detail(for surface: AppSurface) -> some View {
-        switch surface {
-        case .transcribe: TranscribeView(showsURLField: true)
-        case .record: RecordView(availableModes: RecordingController.Mode.allCases)
-        case .library: LibraryView()
-        }
+        StudioHomeView(capabilities: .init(urlIngest: true, meetingCapture: true))
     }
 }
 
-/// A sidebar row with the surface label and a live indicator (running-job count / recording).
-private struct SurfaceRow: View {
-    let surface: AppSurface
-    let runningJobs: Int
-    let isRecording: Bool
-
-    var body: some View {
-        Label(surface.title, systemImage: surface.systemImage)
-            .badge(surface == .transcribe && runningJobs > 0 ? runningJobs : 0)
-            .overlay(alignment: .trailing) {
-                if isRecording {
-                    Circle().fill(.red).frame(width: 8, height: 8)
-                        .accessibilityLabel("Recording")
-                }
-            }
-    }
-}
-
-/// Scene commands: ⌘N new recording, ⌘L library, ⌘I inspector toggle.
+/// Scene commands: ⌘N new recording, ⌘L back to the feed, ⌘I inspector, ⌘, settings.
 public struct AppCommands: Commands {
     let app: AppModel
 
@@ -89,16 +22,20 @@ public struct AppCommands: Commands {
         // Replace the default "New Window" (⌘N) so ⌘N starts a recording, per the app's shell.
         CommandGroup(replacing: .newItem) {
             Button("New Recording") {
-                app.selectedSurface = .record
-                if !app.recording.isActive { app.recording.start(mode: .room) }
+                app.requestRecording(mode: .room)
             }
             .keyboardShortcut("n", modifiers: .command)
         }
+        // Settings is a sheet over the home view (not a Settings scene), so ⌘, is wired here.
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") { app.activeSheet = .settings }
+                .keyboardShortcut(",", modifiers: .command)
+        }
         CommandGroup(after: .sidebar) {
-            Button("Show Library") { app.selectedSurface = .library }
+            Button("Show Sessions") { app.returnHome() }
                 .keyboardShortcut("l", modifiers: .command)
-            Button(app.isInspectorPresented ? "Hide Inspector" : "Show Inspector") {
-                app.isInspectorPresented.toggle()
+            Button(app.activeSheet == .inspector ? "Hide Inspector" : "Show Inspector") {
+                app.activeSheet = app.activeSheet == .inspector ? nil : .inspector
             }
             .keyboardShortcut("i", modifiers: [.command, .option])
             Divider()

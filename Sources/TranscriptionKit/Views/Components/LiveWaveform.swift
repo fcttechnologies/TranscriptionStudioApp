@@ -6,10 +6,13 @@ import SwiftUI
 public struct LiveWaveform: View {
     let levels: [Float]
     var accent: Color
+    var height: CGFloat
 
-    public init(levels: [Float], accent: Color = .accentColor) {
+    public init(levels: [Float], accent: Color = .accentColor,
+                height: CGFloat = DesignMetrics.waveformHeight) {
         self.levels = levels
         self.accent = accent
+        self.height = height
     }
 
     public var body: some View {
@@ -33,7 +36,7 @@ public struct LiveWaveform: View {
                 context.fill(path, with: .color(accent.opacity(0.35 + 0.65 * freshness)))
             }
         }
-        .frame(height: DesignMetrics.waveformHeight)
+        .frame(height: height)
         .accessibilityHidden(true)
     }
 }

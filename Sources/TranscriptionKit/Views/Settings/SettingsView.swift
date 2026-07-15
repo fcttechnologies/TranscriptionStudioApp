@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// App settings — model choices and transcript behavior. The engines self-configure for now,
-/// so the model pickers are real UI over a real settings object (the chosen model rides into
-/// the pipeline events) rather than a dead stub. Hosted by the Mac Settings scene and shown
-/// as a sheet on iOS.
+/// App settings — model choices, transcript behavior, and the capture permissions. The
+/// engines self-configure for now, so the model pickers are real UI over a real settings
+/// object (the chosen model rides into the pipeline events) rather than a dead stub.
+/// Presented as a sheet on both platforms (the shell's top-right control).
 public struct SettingsView: View {
     @Environment(AppModel.self) private var app
 
@@ -39,6 +39,7 @@ public struct SettingsView: View {
             Section("Transcript") {
                 Toggle("Auto-follow the live transcript", isOn: $settings.autoFollowTranscript)
             }
+            PermissionsSection()
             Section {
                 LabeledContent("On-device", value: "All processing stays local")
                 LabeledContent("Version", value: "0.1.0")
@@ -48,6 +49,5 @@ public struct SettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Settings")
-        .frame(minWidth: 420, minHeight: 420)
     }
 }
