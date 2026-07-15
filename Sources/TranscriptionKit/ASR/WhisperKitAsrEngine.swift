@@ -102,7 +102,12 @@ public actor WhisperKitAsrEngine: AsrEngine {
         // (`<|startoftranscript|>`, `<|4.20|>` …) into transcripts; timings are unaffected
         // (they come from the timestamp tokens, which stay decoded either way).
         var options = DecodingOptions(skipSpecialTokens: true, wordTimestamps: wordTimestamps)
-        options.chunkingStrategy = .vad
+        // NB: no `.vad` chunking here. VAD chunking splits on silence and decodes chunks
+        // concurrently, but returns overlapping / out-of-order segments on real audio — the
+        // flattened, start-sorted result comes out scrambled AND duplicated (whole passages
+        // repeated). WhisperKit's default sequential windowing offsets timestamps correctly,
+        // producing a clean in-order transcript at ~the same wall-clock time here, so batch
+        // jobs use it. (Live streaming uses its own `clipTimestamps` re-decode loop below.)
         applyBiasing(&options, tokenizer: whisperKit.tokenizer)
         let results = try await whisperKit.transcribe(audioArray: samples, decodeOptions: options)
         return results
