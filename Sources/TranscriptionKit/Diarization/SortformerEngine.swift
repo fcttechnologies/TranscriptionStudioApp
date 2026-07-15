@@ -12,6 +12,7 @@
 // forward pass lights up once a re-exported model loads. SpeakerKit is the shipping default.
 
 import Foundation
+import Synchronization
 
 /// Fixed streaming parameters (metadata.json / NeMo model_config.yaml).
 public enum SortformerConfig {
@@ -471,6 +472,11 @@ actor SortformerCore {
 }
 
 /// The `DiarizationEngine` conformance: builds/loads the graph (opt-in), forwards to the core.
+///
+/// `@unchecked Sendable` (not plain `Sendable`) because `previewInterval` is a public mutable
+/// `var`. The one piece of internal shared mutable state — `core`, reassigned in `prepare()` and
+/// read from `diarize()`/`stream()` on possibly-concurrent tasks (one engine is reused across
+/// startTranscription calls) — is guarded by a `Mutex`, so those accesses are race-free.
 public final class SortformerEngine: DiarizationEngine, @unchecked Sendable {
     public let backendName = "Sortformer (Core AI)"
 
@@ -478,7 +484,7 @@ public final class SortformerEngine: DiarizationEngine, @unchecked Sendable {
     private let recorder: PipelineRecorder?
     private let sessionID: UUID?
     private let makeGraph: @Sendable (URL) async throws -> GraphRunner
-    private var core: SortformerCore?
+    private let core = Mutex<SortformerCore?>(nil)
 
     /// - Parameters:
     ///   - store: artifact locator/verifier.
@@ -514,18 +520,21 @@ public final class SortformerEngine: DiarizationEngine, @unchecked Sendable {
         onProgress(EnginePreparationProgress(phase: "Loading Sortformer graph", fraction: nil))
         let graph = try await makeGraph(store.modelURL)   // ⚠️ aborts on the current published model
         let mel = SortformerMel(melFilters: try store.loadMelFilters())
-        core = SortformerCore(graph: graph, mel: mel, recorder: recorder, sessionID: sessionID)
+        core.withLock { $0 = SortformerCore(graph: graph, mel: mel, recorder: recorder, sessionID: sessionID) }
         onProgress(EnginePreparationProgress(phase: "Sortformer ready", fraction: 1))
     }
 
     public func diarize(samples: [Float]) async throws -> DiarizationResult {
-        guard let core else { throw GraphRunnerError.unavailable("prepare() not called") }
+        guard let core = core.withLock({ $0 }) else { throw GraphRunnerError.unavailable("prepare() not called") }
         return try await core.diarizeFull(samples: samples)
     }
 
     public func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<DiarizationUpdate, Error> {
-        AsyncThrowingStream { continuation in
-            let task = Task { [core, previewInterval] in
+        // Snapshot the guarded state before the Task: `Mutex` is non-copyable and can't be captured.
+        let core = core.withLock { $0 }
+        let previewInterval = previewInterval
+        return AsyncThrowingStream { continuation in
+            let task = Task {
                 guard let core else {
                     continuation.finish(throwing: GraphRunnerError.unavailable("prepare() not called"))
                     return

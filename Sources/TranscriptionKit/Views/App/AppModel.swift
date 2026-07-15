@@ -198,7 +198,7 @@ public final class AppModel {
         guard case .idle = enginePrewarmState else { return }
         enginePrewarmState = .preparing(phase: "Preparing speech model…", fraction: nil)
         let engine = transcriptionAsrEngine(for: settings.whisperModel)
-        Task { @MainActor in
+        Task {
             do {
                 try await engine.prepare { progress in
                     Task { @MainActor in

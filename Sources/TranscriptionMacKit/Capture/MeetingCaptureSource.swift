@@ -61,8 +61,16 @@ public final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput
 
     private let lock = NSLock()
     private var firstPTS: CMTime?     // shared session clock origin across both tracks
+    private var _state: MeetingCaptureState = .idle   // guarded by `lock`
 
-    public private(set) var state: MeetingCaptureState = .idle
+    /// Capture state. Written from the MainActor-driven start()/stop() AND from SCStream's own
+    /// delegate thread (stream(_:didStopWithError:)); every access is serialized by `lock`, so a
+    /// torn read of the enum's associated `settingsURL` value can't occur.
+    public var state: MeetingCaptureState { lock.withLock { _state } }
+
+    private func setState(_ newValue: MeetingCaptureState) {
+        lock.withLock { _state = newValue }
+    }
 
     public init(sessionID: UUID = UUID(), recorder: PipelineRecorder? = nil) {
         self.sessionID = sessionID
@@ -80,13 +88,13 @@ public final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput
     public func start() async throws {
         // TCC: preflight, then request. A fresh grant needs an app restart to take effect.
         if !CGPreflightScreenCaptureAccess() {
-            state = .needsScreenRecordingPermission
+            setState(.needsScreenRecordingPermission)
             let granted = CGRequestScreenCaptureAccess()
             if granted {
-                state = .restartRequiredAfterGrant
+                setState(.restartRequiredAfterGrant)
                 throw MeetingCaptureError.permission(state)
             } else {
-                state = .screenRecordingDenied(settingsURL: MeetingCaptureState.screenRecordingSettingsURL)
+                setState(.screenRecordingDenied(settingsURL: MeetingCaptureState.screenRecordingSettingsURL))
                 throw MeetingCaptureError.permission(state)
             }
         }
@@ -95,7 +103,7 @@ public final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput
         do {
             content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         } catch {
-            state = .screenRecordingDenied(settingsURL: MeetingCaptureState.screenRecordingSettingsURL)
+            setState(.screenRecordingDenied(settingsURL: MeetingCaptureState.screenRecordingSettingsURL))
             throw MeetingCaptureError.permission(state)
         }
         guard let display = content.displays.first else { throw MeetingCaptureError.noDisplay }
@@ -134,7 +142,7 @@ public final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput
             continuation.finish(throwing: MeetingCaptureError.streamStartFailed(error.localizedDescription))
             throw MeetingCaptureError.streamStartFailed(error.localizedDescription)
         }
-        state = .capturing
+        setState(.capturing)
         recorder?.record(PipelineEvent(sessionID: sessionID, stage: .capture,
                                        message: "meeting capture started (system + mic)"))
     }
@@ -146,7 +154,7 @@ public final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput
         stream = nil
         recordingOutput = nil
         continuation.finish()
-        state = .stopped
+        setState(.stopped)
         recorder?.record(PipelineEvent(sessionID: sessionID, stage: .capture, message: "meeting capture stopped"))
     }
 
@@ -184,7 +192,7 @@ public final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput
 
     public func stream(_ stream: SCStream, didStopWithError error: Error) {
         continuation.finish(throwing: error)
-        state = .stopped
+        setState(.stopped)
         recorder?.record(PipelineEvent(sessionID: sessionID, stage: .capture, level: .error,
                                        message: "meeting stream stopped with error",
                                        metadata: ["error": error.localizedDescription]))

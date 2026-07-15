@@ -47,7 +47,7 @@ private actor SpeakerKitBox {
     }
 }
 
-public final class SpeakerKitEngine: DiarizationEngine, @unchecked Sendable {
+public final class SpeakerKitEngine: DiarizationEngine, Sendable {
     public let backendName = "SpeakerKit (Pyannote)"
     /// Pyannote is a full-clip clustering diarizer — no live streaming path.
     public let supportsStreaming = false

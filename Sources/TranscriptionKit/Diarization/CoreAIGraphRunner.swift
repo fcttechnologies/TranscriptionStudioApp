@@ -62,6 +62,12 @@ public enum GraphRunnerError: Error, LocalizedError {
 import CoreAI
 
 /// Loads and runs a single-`main`, stateless Core AI graph on the GPU.
+///
+/// `@unchecked Sendable`: all stored state is `let` and set once in `init`, but the system
+/// `CoreAI` types (`InferenceFunction`, `InferenceFunctionDescriptor`) aren't `Sendable`, so the
+/// compiler can't verify it. Safe because the wrapped function/descriptor are immutable after
+/// load and `run(_:)` is only ever driven by a single owning `SortformerCore` actor (serialized),
+/// so no two threads touch this runner at once.
 public final class CoreAIGraphRunner: GraphRunner, @unchecked Sendable {
     private let function: InferenceFunction
     private let descriptor: InferenceFunctionDescriptor
