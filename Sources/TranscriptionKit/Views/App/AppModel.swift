@@ -217,6 +217,13 @@ public final class AppModel {
     /// Ensure a demoable sample session exists so the Library and playback surfaces are never
     /// empty on first launch. Idempotent — seeds only when the store has no sessions.
     public func seedSampleSessionIfNeeded() {
+        // Seed the demo session at most ONCE ever — gated on a persisted flag, not just an empty
+        // store, so deleting it makes it stay gone (an empty store on a later launch is the user
+        // having cleared it, not a fresh install).
+        let seededKey = "TranscriptionStudio.didSeedSampleSession"
+        guard !UserDefaults.standard.bool(forKey: seededKey) else { return }
+        UserDefaults.standard.set(true, forKey: seededKey)
+
         let descriptor = FetchDescriptor<TranscriptSession>()
         let count = (try? modelContext.fetchCount(descriptor)) ?? 0
         guard count == 0 else { return }
