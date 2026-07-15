@@ -25,6 +25,7 @@ public struct TranscribeView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DesignMetrics.spacingXL) {
+                if app.enginePrewarmState.isPreparing { prewarmBanner }
                 if showsURLField { urlSection }
                 dropSection
                 if !activeJobs.isEmpty { jobsSection }
@@ -32,6 +33,7 @@ public struct TranscribeView: View {
             .padding(DesignMetrics.spacingXL)
             .frame(maxWidth: 720, alignment: .leading)
             .frame(maxWidth: .infinity)
+            .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: app.enginePrewarmState.isPreparing)
         }
         .navigationTitle("Transcribe")
         .background(.background)
@@ -42,6 +44,27 @@ public struct TranscribeView: View {
                 for url in urls { startFile(url) }
             }
         }
+    }
+
+    // MARK: Prewarm
+
+    /// Unobtrusive launch feedback while the speech model compiles/loads for the first time,
+    /// so a cold first launch reads as "preparing" rather than a mysterious stall. Hidden
+    /// once the model is ready (see `AppModel.prewarmDefaultEngine`).
+    private var prewarmBanner: some View {
+        HStack(spacing: DesignMetrics.spacingS) {
+            ProgressView().controlSize(.small)
+            if case let .preparing(phase, fraction) = app.enginePrewarmState {
+                Text(fraction.map { "\(phase) \(Int($0 * 100))%" } ?? phase)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, DesignMetrics.spacingM)
+        .padding(.vertical, DesignMetrics.spacingS)
+        .cardStyle(cornerRadius: DesignMetrics.cornerM)
+        .transition(.opacity)
+        .accessibilityIdentifier("transcribe.prewarmBanner")
     }
 
     // MARK: URL (Mac)

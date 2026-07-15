@@ -33,6 +33,9 @@ struct TranscriptionStudioApp: App {
                     URLIngestService.sweepStartupTemp()
                     app.seedSampleSessionIfNeeded()
                     TranscriptSpotlightIndex.reindexAll()
+                    // Warm the speech model up front so the first job isn't blocked by the
+                    // one-time model compile (see AppModel.prewarmDefaultEngine).
+                    app.prewarmDefaultEngine()
                 }
         }
         .modelContainer(AppModelContainer.shared)

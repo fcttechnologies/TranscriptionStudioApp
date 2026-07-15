@@ -13,17 +13,21 @@ import TranscriptionMacKit
 struct TranscribeCLI {
     static let usage = """
     usage: transcribe-cli <url-or-file> [--json] [--model <whisperkit-variant>]
+                          [--language <code>]
 
-      <url-or-file>   An http(s) URL (any yt-dlp-supported source) or a local
-                      media file path (\(SupportedMediaExtensions.allowed.sorted().joined(separator: ", "))).
-      --json          Structured output: {source, kind, durationSeconds, text, segments[]}.
-      --model <name>  WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
-                      Downloaded on first use if missing (progress on stderr).
+      <url-or-file>    An http(s) URL (any yt-dlp-supported source) or a local
+                       media file path (\(SupportedMediaExtensions.allowed.sorted().joined(separator: ", "))).
+      --json           Structured output: {source, kind, durationSeconds, text, segments[]}.
+      --model <name>   WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
+                       Downloaded on first use if missing (progress on stderr).
+      --language <c>   Force the spoken language (ISO code, e.g. "en"/"es") instead of
+                       Whisper's auto-detect.
     """
 
     static func main() async {
         var jsonOutput = false
         var modelName = WhisperKitAsrEngine.platformDefaultModelName
+        var forcedLanguage: String?
         var input: String?
 
         var arguments = CommandLine.arguments.dropFirst().makeIterator()
@@ -34,6 +38,9 @@ struct TranscribeCLI {
             case "--model":
                 guard let name = arguments.next() else { exitUsage("--model needs a value") }
                 modelName = name
+            case "--language":
+                guard let code = arguments.next() else { exitUsage("--language needs a value") }
+                forcedLanguage = code
             case "--help", "-h":
                 print(usage)
                 exit(0)
@@ -46,7 +53,8 @@ struct TranscribeCLI {
         guard let input else { exitUsage("no input given") }
 
         do {
-            let result = try await transcribe(input: input, modelName: modelName)
+            let result = try await transcribe(input: input, modelName: modelName,
+                                              forcedLanguage: forcedLanguage)
             if jsonOutput {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -62,7 +70,8 @@ struct TranscribeCLI {
 
     // MARK: - Pipeline
 
-    static func transcribe(input: String, modelName: String) async throws -> TranscriptOutput {
+    static func transcribe(input: String, modelName: String,
+                           forcedLanguage: String? = nil) async throws -> TranscriptOutput {
         let isURL = URLComponents(string: input).flatMap(\.scheme).map { ["http", "https"].contains($0.lowercased()) } ?? false
 
         var cleanup: () async -> Void = {}
@@ -98,7 +107,7 @@ struct TranscribeCLI {
             let duration = Double(samples.count) / AudioChunk.sampleRate
 
             // ASR: provision the model if needed (progress → stderr), then transcribe.
-            let engine = WhisperKitAsrEngine(modelName: modelName)
+            let engine = WhisperKitAsrEngine(modelName: modelName, forcedLanguage: forcedLanguage)
             let lastPhase = Mutex("")
             try await engine.prepare { progress in
                 let percent = progress.fraction.map { Int($0 * 100) }

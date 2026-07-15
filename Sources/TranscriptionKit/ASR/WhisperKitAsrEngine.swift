@@ -45,6 +45,8 @@ public actor WhisperKitAsrEngine: AsrEngine {
 
     private let modelName: String
     private let downloadBase: URL
+    /// Force a spoken language (ISO code, e.g. "en"/"es") instead of Whisper's auto-detect.
+    private let forcedLanguage: String?
     private var whisperKit: WhisperKit?
     /// In-flight preparation, shared by any concurrent `prepare()` callers so the model
     /// is downloaded/loaded exactly once. Void-returning by design: `WhisperKit` isn't
@@ -54,10 +56,12 @@ public actor WhisperKitAsrEngine: AsrEngine {
 
     public init(modelName: String = WhisperKitAsrEngine.platformDefaultModelName,
                 downloadBase: URL? = nil,
+                forcedLanguage: String? = nil,
                 minimumNewAudioSeconds: TimeInterval = 1.0,
                 requiredSegmentsForConfirmation: Int = 2) {
         self.modelName = modelName
         self.downloadBase = downloadBase ?? Self.defaultDownloadBase()
+        self.forcedLanguage = forcedLanguage
         self.minimumNewAudioSeconds = minimumNewAudioSeconds
         self.requiredSegmentsForConfirmation = requiredSegmentsForConfirmation
     }
@@ -99,11 +103,25 @@ public actor WhisperKitAsrEngine: AsrEngine {
         // (they come from the timestamp tokens, which stay decoded either way).
         var options = DecodingOptions(skipSpecialTokens: true, wordTimestamps: wordTimestamps)
         options.chunkingStrategy = .vad
+        applyBiasing(&options, tokenizer: whisperKit.tokenizer)
         let results = try await whisperKit.transcribe(audioArray: samples, decodeOptions: options)
         return results
             .flatMap(\.segments)
             .sorted { $0.start < $1.start }
             .map { Self.makeSegment(from: $0, track: track, confirmed: true) }
+    }
+
+    /// Applies decode biasing — currently just a forced language (if set).
+    ///
+    /// NOTE: proper-noun conditioning via `DecodingOptions.promptTokens` was tried and
+    /// deliberately dropped. The default `large-v3-turbo` variant returns an EMPTY transcript
+    /// with *any* prompt (even a single content token) — a turbo/distilled-model
+    /// incompatibility with the `startOfPrevious` prefill; the `base` model handles a prompt
+    /// fine, so it's variant-specific. The accuracy upside was marginal even where it worked,
+    /// so it isn't worth breaking the best model. A future reintroduction must guard on the
+    /// variant (skip turbo) or use a different biasing mechanism.
+    private func applyBiasing(_ options: inout DecodingOptions, tokenizer: WhisperTokenizer?) {
+        if let forcedLanguage { options.language = forcedLanguage }
     }
 
     /// Drives its own accumulate-and-decode loop rather than WhisperKit's built-in

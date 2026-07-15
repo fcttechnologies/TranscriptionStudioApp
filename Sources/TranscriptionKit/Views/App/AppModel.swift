@@ -51,6 +51,10 @@ public final class AppModel {
     /// The session the Library should focus (set when opening a finished job's result).
     public var selectedSessionID: UUID?
 
+    /// Launch-time model-warmup state, so a surface can show unobtrusive "preparing the
+    /// speech model" feedback the first time (see `prewarmDefaultEngine`).
+    public private(set) var enginePrewarmState: EnginePrewarmState = .idle
+
     /// Designated init: the diagnostics spine is built by the caller so engines can be
     /// constructed logging through the same recorder the inspector observes.
     public init(modelContext: ModelContext,
@@ -182,6 +186,34 @@ public final class AppModel {
         return engine
     }
 
+    /// Warm the default transcription model at launch so the first job doesn't eat the
+    /// one-time WhisperKit model compile. On Apple Silicon the first-ever load of
+    /// `large-v3-turbo` compiles the CoreML/ANE program (~85s cold); the compiled artifact
+    /// then caches to disk, so every later load is ~seconds. Warming it up front — visibly,
+    /// during launch — pays that one-time cost once instead of silently stalling the user's
+    /// first transcription. The compile cache is per-model on disk, so warming the
+    /// transcription engine also warms the artifact the live-recording engine reuses.
+    /// Idempotent; a no-op for mock/preview models (their `prepare()` is instant).
+    public func prewarmDefaultEngine() {
+        guard case .idle = enginePrewarmState else { return }
+        enginePrewarmState = .preparing(phase: "Preparing speech model…", fraction: nil)
+        let engine = transcriptionAsrEngine(for: settings.whisperModel)
+        Task { @MainActor in
+            do {
+                try await engine.prepare { progress in
+                    Task { @MainActor in
+                        self.enginePrewarmState = .preparing(phase: progress.phase, fraction: progress.fraction)
+                    }
+                }
+                self.enginePrewarmState = .ready
+            } catch {
+                // A warmup failure isn't fatal — the first real job retries prepare() and
+                // surfaces the error there; here we just stop showing "preparing".
+                self.enginePrewarmState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
     /// Ensure a demoable sample session exists so the Library and playback surfaces are never
     /// empty on first launch. Idempotent — seeds only when the store has no sessions.
     public func seedSampleSessionIfNeeded() {
@@ -189,6 +221,20 @@ public final class AppModel {
         let count = (try? modelContext.fetchCount(descriptor)) ?? 0
         guard count == 0 else { return }
         DemoContent.seedSampleSession(into: modelContext)
+    }
+}
+
+/// Launch-time speech-model warmup state (see `AppModel.prewarmDefaultEngine`).
+public enum EnginePrewarmState: Equatable, Sendable {
+    case idle
+    case preparing(phase: String, fraction: Double?)
+    case ready
+    case failed(String)
+
+    /// True while the model is still warming — the window where a surface shows feedback.
+    public var isPreparing: Bool {
+        if case .preparing = self { return true }
+        return false
     }
 }
 
