@@ -49,6 +49,10 @@ all keep working under the new shell.
 Downloaded-models list + sizes + delete (in Settings), background download. The toasts piece of
 that lane is pulled into this redesign.
 
-## Build order
-After the `iosux` + `titlegen` lanes land (they touch the same nav files). Then build as a
-taste-driven design pass (load the `taste` + apple `design` skills; reference board first).
+## Build order + the bar
+The bar is **elegance** — a premium, refined app, not a functional prototype.
+Build on a **Fable** lane (long-horizon), grounded in **VillainArc** (`~/Projects/VillainArc`)
+and **Personal Context** — FCT's own polished SwiftUI apps: inherit their design language,
+component craft, and motion — plus the `taste` + apple `design` skills (reference board before
+building).
+Sequence: after the `iosux` + `titlegen` lanes land (they touch the same nav files this rebuilds).
