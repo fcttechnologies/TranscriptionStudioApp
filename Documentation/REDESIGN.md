@@ -18,14 +18,18 @@ The sessions list is home. Everything returns to it.
 
 Transcribe and Record are no longer tabs — they become "+" menu actions.
 
-## Where the work happens
-Active work lives in a **section above the list** while it's running — no modals, everything
-stays on the one view.
-- **Upload / link** → the job shows in that active section with live progress; on completion it
-  drops into the list as a session.
-- **Record** → in place: the bottom-right **"+" button becomes a Stop button** while recording,
-  and the live recording (waveform / elapsed) shows in the active section. Stop → it becomes a
-  session in the list.
+## Where the work happens — the mini-player
+Active audio uses an **Apple Music-style mini-player**: a floating pill/bar near the bottom that
+**expands to a full sheet on tap**. No modals interrupt the list.
+- **Recording** → the mini-player shows the live recording with **animated waveforms while
+  talking**; tapping it brings up the full **live recording sheet**. The bottom-right **"+"
+  becomes a Stop button** while recording. Stop → it becomes a session in the list.
+- **Playback** (a saved session's audio) → the same mini-player shows what's playing; tap to
+  expand to the session / now-playing sheet.
+- **Upload / link transcription jobs** (no live audio) → a progress row in a **section above the
+  list** while running; on completion it drops into the list as a session.
+
+Reference: Apple Music's mini-player (floating bar → expandable now-playing sheet).
 
 ## Loading / preparing / download → toasts
 All model load / download / prepare / progress states surface as **toasts** (a global toast host,
