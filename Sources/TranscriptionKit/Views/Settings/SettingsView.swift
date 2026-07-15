@@ -18,6 +18,7 @@ public struct SettingsView: View {
                         Text(model.displayName).tag(model)
                     }
                 }
+                .onChange(of: settings.whisperModel) { _, _ in app.prewarmSelectedModel() }
                 Text(settings.whisperModel.detail)
                     .font(.caption).foregroundStyle(.secondary)
                 Toggle("Capture word-level timestamps", isOn: $settings.wordTimestamps)

@@ -219,6 +219,14 @@ public final class AppModel {
         }
     }
 
+    /// Re-warm the engine for the currently-selected model. Call when the user switches models
+    /// in Settings so the new model downloads/compiles immediately (with visible progress),
+    /// instead of silently on the next job or only after a relaunch (the force-quit workaround).
+    public func prewarmSelectedModel() {
+        enginePrewarmState = .idle
+        prewarmDefaultEngine()
+    }
+
     /// Ensure a demoable sample session exists so the Library and playback surfaces are never
     /// empty on first launch. Idempotent — seeds only when the store has no sessions.
     public func seedSampleSessionIfNeeded() {
