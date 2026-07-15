@@ -1,11 +1,10 @@
 import AppIntents
 
-/// Open Settings. Neither shell exposes a "navigate here" call an intent's `perform()` can
-/// drive directly — it isn't a View, so it can't reach macOS's `@Environment(\.openSettings)`
-/// — so this sets the same router-flag pattern the other navigating intents use
-/// (`appModel.selectedSurface`, `selectedSessionID`): `AppModel.pendingSettingsRequest`, which
-/// iOS's Library gear-button sheet observes to open Settings. See that flag's doc comment for
-/// the macOS follow-up.
+/// Open Settings. A `perform()` isn't a View, so it can't reach macOS's
+/// `@Environment(\.openSettings)` directly — instead this sets the same router-flag pattern the
+/// other navigating intents use (`appModel.selectedSurface`, `selectedSessionID`):
+/// `AppModel.pendingSettingsRequest`, which iOS's Library gear-button sheet and macOS's
+/// `MacRootView` each observe to open Settings on their platform.
 public struct OpenSettingsIntent: AppIntent {
     public static let title: LocalizedStringResource = "Open Settings"
     public static let description = IntentDescription("Open Transcription Studio's settings.")

@@ -6,6 +6,10 @@ import TranscriptionKit
 /// Keyboard shortcuts live in `AppCommands` on the scene.
 public struct MacRootView: View {
     @Environment(AppModel.self) private var app
+    // Completes OpenSettingsIntent on macOS: the native `Settings {}` scene is reachable
+    // only via this environment action (an AppIntent.perform() can't call it), so the Mac
+    // shell observes AppModel.pendingSettingsRequest and opens Settings on its behalf.
+    @Environment(\.openSettings) private var openSettings
 
     public init() {}
 
@@ -39,6 +43,11 @@ public struct MacRootView: View {
                                               ideal: DesignMetrics.inspectorWidth,
                                               max: DesignMetrics.inspectorMaxWidth)
                 }
+        }
+        .onChange(of: app.pendingSettingsRequest) { _, requested in
+            guard requested else { return }
+            openSettings()
+            app.pendingSettingsRequest = false
         }
     }
 
