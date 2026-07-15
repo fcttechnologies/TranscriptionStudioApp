@@ -93,10 +93,15 @@ public struct TitleGenerator: Sendable {
 
     private static let clauseEnders = CharacterSet(charactersIn: ".!?\n")
 
-    /// Strip wrapping quotes, cap to `maxWords`, and trim stray leading/trailing punctuation —
+    /// Strip a "Title:" preamble (the model sometimes ignores the no-preamble instruction)
+    /// and wrapping quotes, cap to `maxWords`, and trim stray leading/trailing punctuation —
     /// shared by the model output and the heuristic clause.
     static func sanitize(_ raw: String) -> String {
-        let dequoted = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let range = trimmed.range(of: "title:", options: [.caseInsensitive, .anchored]) {
+            trimmed = String(trimmed[range.upperBound...])
+        }
+        let dequoted = trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "\"'“”‘’"))
         let words = dequoted.split(separator: " ", omittingEmptySubsequences: true).prefix(maxWords)
         guard !words.isEmpty else { return "" }

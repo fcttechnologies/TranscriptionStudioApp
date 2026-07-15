@@ -235,14 +235,16 @@ public actor WhisperKitAsrEngine: AsrEngine {
                                         onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws -> WhisperKit {
         try FileManager.default.createDirectory(at: downloadBase, withIntermediateDirectories: true)
 
-        onProgress(EnginePreparationProgress(phase: "Downloading \(modelName)", fraction: 0))
+        // Phase strings are user-facing (toasts, the mini-player) — human words, never the
+        // raw repo variant name; the exact model rides in the logs/metadata instead.
+        onProgress(EnginePreparationProgress(phase: "Downloading speech model", fraction: 0))
         let modelFolder: URL
         do {
             modelFolder = try await WhisperKit.download(
                 variant: modelName,
                 downloadBase: downloadBase
             ) { progress in
-                onProgress(EnginePreparationProgress(phase: "Downloading \(modelName)",
+                onProgress(EnginePreparationProgress(phase: "Downloading speech model",
                                                      fraction: progress.fractionCompleted))
             }
         } catch {
@@ -250,7 +252,7 @@ public actor WhisperKitAsrEngine: AsrEngine {
             throw AsrEngineError.modelDownloadFailed(modelName: modelName, underlying: error.localizedDescription)
         }
 
-        onProgress(EnginePreparationProgress(phase: "Loading model", fraction: nil))
+        onProgress(EnginePreparationProgress(phase: "Loading speech model", fraction: nil))
         let config = WhisperKitConfig(
             modelFolder: modelFolder.path,
             verbose: false,

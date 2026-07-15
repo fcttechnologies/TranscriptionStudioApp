@@ -56,7 +56,7 @@ struct SessionFeed: View {
         .swipeActionsContainer()
         .contentMargins(.vertical, DesignMetrics.spacingM, for: .scrollContent)
         .scrollDismissesKeyboard(.interactively)
-        .background(.background)
+        .background(.feedCanvas)
         .accessibilityIdentifier("home.feed")
     }
 

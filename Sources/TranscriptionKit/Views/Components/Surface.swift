@@ -43,6 +43,18 @@ extension View {
     }
 }
 
+public extension ShapeStyle where Self == Color {
+    /// The home feed's canvas — the grouped background the card surfaces sit on, so cards
+    /// read as raised in light mode too (white-on-white has no seam).
+    static var feedCanvas: Color {
+        #if os(iOS)
+        Color(.systemGroupedBackground)
+        #else
+        Color(nsColor: .windowBackgroundColor)
+        #endif
+    }
+}
+
 /// A small uppercase section label — the quiet header above a group of controls or rows.
 public struct SectionLabel: View {
     let text: LocalizedStringKey

@@ -36,6 +36,16 @@ struct TitleGeneratorTests {
         #expect(TitleGenerator.heuristicTitle(from: "\"quick sync on hiring\"") == "Quick sync on hiring")
     }
 
+    @Test func sanitizeStripsAModelTitlePreamble() {
+        // The on-device model sometimes ignores "no preamble" and replies "Title: …" —
+        // sanitize strips it (case-insensitively) before the word cap so the cap counts
+        // real title words.
+        #expect(TitleGenerator.sanitize("Title: Proposal Update and Timeline Discussion")
+            == "Proposal Update and Timeline Discussion")
+        #expect(TitleGenerator.sanitize("title: Budget sync") == "Budget sync")
+        #expect(TitleGenerator.sanitize("Plain title with no preamble") == "Plain title with no preamble")
+    }
+
     @Test func heuristicTrimsTrailingPunctuationFromTheCutWord() {
         // "numbers," is the 6th word — the cap lands mid-clause (no sentence-ending
         // punctuation before it), so its trailing comma, now the end of the whole title,

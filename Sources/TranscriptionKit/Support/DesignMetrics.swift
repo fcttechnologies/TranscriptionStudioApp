@@ -93,25 +93,11 @@ public enum DesignMetrics {
     public static let jobStepConnectorWidth: CGFloat = 2
     public static let jobProgressHeight: CGFloat = 6
 
-    // MARK: Floating shell (the single-view home)
-    /// Diameter of the four circular corner controls.
-    public static let floatingControlSize: CGFloat = 52
-    /// Glyph point size inside a floating control.
-    public static let floatingGlyphSize: CGFloat = 19
-    /// Inset of the floating chrome from the home view's edges.
-    public static let floatingMargin: CGFloat = 20
-    /// Top content margin so the feed starts clear of the top controls.
-    public static let feedTopMargin: CGFloat = 84
-    /// Bottom content margin so the last row scrolls clear of the bottom chrome.
-    public static let feedBottomMargin: CGFloat = 104
+    // MARK: Home feed (the single view)
     /// The feed column's readable max width (both platforms).
     public static let feedMaxWidth: CGFloat = 640
     public static let feedRowSpacing: CGFloat = 8
     public static let feedSectionSpacing: CGFloat = 20
-    /// Vertical gap between compose-menu items and between the menu and the "+".
-    public static let composeItemSpacing: CGFloat = 12
-    /// How far apart glass shapes can sit and still blend in the bottom cluster.
-    public static let glassClusterSpacing: CGFloat = 24
 
     // MARK: Mini-player
     public static let miniPlayerHeight: CGFloat = 56
@@ -120,10 +106,7 @@ public enum DesignMetrics {
     public static let miniPlayerTileSize: CGFloat = 36
 
     // MARK: Sheets
-    /// Diameter of the circular sheet-close button (App Store / Music pattern).
-    public static let closeButtonSize: CGFloat = 30
-    public static let closeGlyphSize: CGFloat = 12
-    /// Fixed macOS sheet sizes (iOS sheets use detents instead).
+    /// Fixed macOS sheet sizes (iOS sheets are full-height by default).
     public static let macSheetSize = CGSize(width: 520, height: 620)
     public static let macDetailSheetSize = CGSize(width: 760, height: 680)
 
