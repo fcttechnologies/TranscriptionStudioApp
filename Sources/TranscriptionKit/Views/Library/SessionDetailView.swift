@@ -16,6 +16,8 @@ public struct SessionDetailView: View {
     @State private var hasAudio = false
     @State private var exportFormat: TranscriptExport.Format?
     @State private var showingIntelligence = false
+    @State private var isRenaming = false
+    @State private var draftTitle = ""
 
     public init(session: TranscriptSession) {
         self.session = session
@@ -53,6 +55,10 @@ public struct SessionDetailView: View {
         #endif
         .toolbar {
             ToolbarItem {
+                Button("Rename", systemImage: "pencil") { beginRenaming() }
+                    .accessibilityIdentifier("session.rename")
+            }
+            ToolbarItem {
                 Button("Intelligence", systemImage: "sparkles") { showingIntelligence = true }
                     .accessibilityIdentifier("session.intelligence")
             }
@@ -79,6 +85,12 @@ public struct SessionDetailView: View {
         }
         .sheet(isPresented: $showingIntelligence) {
             SessionIntelligenceSheet(session: session)
+        }
+        .alert("Rename Session", isPresented: $isRenaming) {
+            TextField("Title", text: $draftTitle)
+                .accessibilityIdentifier("session.renameField")
+            Button("Cancel", role: .cancel) {}
+            Button("Save") { commitRename() }
         }
         .modifier(PlayheadTracker(playback: app.playback, lineStarts: currentLineStarts,
                                   playingLineID: $playingLineID))
@@ -128,6 +140,20 @@ public struct SessionDetailView: View {
             Spacer(minLength: 0)
         }
         .padding(.bottom, DesignMetrics.spacingS)
+    }
+
+    // MARK: Rename
+
+    private func beginRenaming() {
+        draftTitle = session.title
+        isRenaming = true
+    }
+
+    private func commitRename() {
+        let trimmed = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        session.title = trimmed
+        try? modelContext.save()
     }
 
     private func copyTranscript() {

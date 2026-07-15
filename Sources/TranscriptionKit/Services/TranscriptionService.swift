@@ -26,6 +26,7 @@ public final class TranscriptionService {
     private let inspector: InspectorStore
     private let wordTimestamps: Bool
     private let modelName: String
+    private let titleGenerator: TitleGenerator
 
     /// Set by `prepareEngines`; false means the diarizer couldn't load and the job proceeds
     /// with speakers unknown rather than failing.
@@ -37,7 +38,8 @@ public final class TranscriptionService {
                 recorder: PipelineRecorder,
                 inspector: InspectorStore,
                 wordTimestamps: Bool = false,
-                modelName: String = "") {
+                modelName: String = "",
+                titleGenerator: TitleGenerator = TitleGenerator()) {
         self.asrEngine = asrEngine
         self.diarizer = diarizer
         self.modelContext = modelContext
@@ -45,6 +47,7 @@ public final class TranscriptionService {
         self.inspector = inspector
         self.wordTimestamps = wordTimestamps
         self.modelName = modelName
+        self.titleGenerator = titleGenerator
     }
 
     /// `PipelineRecorder.time` is `nonisolated` and runs its operation off the main
@@ -212,6 +215,7 @@ public final class TranscriptionService {
 
         job.advance(to: saveStep, stageText: "Saving…", progress: 0.92)
         try await persist(session: session, attributed: attributed, sessionID: sessionID)
+        titleGenerator.applyGeneratedTitle(to: session, modelContext: modelContext)
     }
 
     /// Diarize the buffer through the app's diarizer, pushing raw frames to the inspector.

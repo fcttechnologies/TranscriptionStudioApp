@@ -105,9 +105,13 @@ struct TranscriptionServiceTests {
         -> (TranscriptionService, PipelineRecorder, InspectorStore) {
         let store = InspectorStore()
         let recorder = PipelineRecorder(store: store)
+        // No Apple Intelligence hardware needed: title-gen's model path is exercised in
+        // TitleGeneratorTests, not here.
+        let titleGenerator = TitleGenerator(statusProvider: { .unavailable(.notSupported) })
         let service = TranscriptionService(asrEngine: asr, diarizer: diarizer, modelContext: context,
                                            recorder: recorder, inspector: store,
-                                           wordTimestamps: wordTimestamps, modelName: "mock-model")
+                                           wordTimestamps: wordTimestamps, modelName: "mock-model",
+                                           titleGenerator: titleGenerator)
         return (service, recorder, store)
     }
 

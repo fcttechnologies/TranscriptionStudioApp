@@ -21,7 +21,10 @@ struct RecordingArchiverTests {
     private func makeArchiver(context: ModelContext) -> RecordingArchiver {
         let inspector = InspectorStore()
         let recorder = PipelineRecorder(store: inspector)
-        return RecordingArchiver(modelContext: context, recorder: recorder)
+        // No Apple Intelligence hardware needed: title-gen's model path is exercised in
+        // TitleGeneratorTests, not here.
+        let titleGenerator = TitleGenerator(statusProvider: { .unavailable(.notSupported) })
+        return RecordingArchiver(modelContext: context, recorder: recorder, titleGenerator: titleGenerator)
     }
 
     private func segment(text: String, start: TimeInterval = 0) -> AttributedSegment {
