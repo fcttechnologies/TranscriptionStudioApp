@@ -22,16 +22,21 @@ if [ -z "$IDENTITY" ]; then
   exit 1
 fi
 echo "› Signing identity: $IDENTITY"
+TEAM_ID="X26SC78YDG"   # Fernando's team; automatic signing resolves the Mac Team Provisioning Profile under it
 
 xcodegen generate >/dev/null
 DERIVED="$(mktemp -d)"
 trap 'rm -rf "$DERIVED"' EXIT
 
-echo "› Building Release (stably signed)…"
+# Automatic signing + -allowProvisioningUpdates mints (and then reuses) a "Mac Team Provisioning
+# Profile" that includes the restricted CloudKit / Push / Enhanced-Security capabilities, so the
+# STANDALONE .app runs without Xcode AND CloudKit-syncs. It uses the Apple-account session already
+# in Xcode; the same Apple Development cert keeps the code identity stable, so TCC grants persist.
+echo "› Building Release (automatic signing + provisioning updates, CloudKit-enabled)…"
 xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio -configuration Release \
   -derivedDataPath "$DERIVED" -destination 'platform=macOS' \
-  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$IDENTITY" PROVISIONING_PROFILE_SPECIFIER="" \
-  CODE_SIGNING_REQUIRED=YES CODE_SIGNING_ALLOWED=YES build
+  -allowProvisioningUpdates \
+  CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$TEAM_ID" build
 
 APP="$DERIVED/Build/Products/Release/TranscriptionStudio.app"
 rm -rf "$DEST/TranscriptionStudio.app"
