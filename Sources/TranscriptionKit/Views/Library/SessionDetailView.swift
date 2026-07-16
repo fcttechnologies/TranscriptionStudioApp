@@ -312,14 +312,23 @@ public struct SessionDetailView: View {
 
 /// Announces the shown transcript as the onscreen relevant entity for Siri / Apple
 /// Intelligence — unless it's a private session, which is withheld from the assistant surface
-/// entirely (`PrivacyGate.isEligibleForAssistant`).
+/// entirely (`PrivacyGate.isEligibleForAssistant`). Two cues carry the same identity: the
+/// view-level `appEntityIdentifier(_:)` annotation, and the advertised viewing activity whose
+/// `NSUserActivity.appEntityIdentifier` matches (`SessionActivity`) — so "summarize this"
+/// resolves to the visible session with zero parameters.
 private struct OnscreenTranscript: ViewModifier {
     let session: TranscriptSession
 
     func body(content: Content) -> some View {
         if PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) {
-            content.appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
-                                                         identifier: session.id.uuidString))
+            content
+                .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
+                                                      identifier: session.id.uuidString))
+                .userActivity(SessionActivity.viewingType) { activity in
+                    SessionActivity.configureViewing(activity,
+                                                     sessionID: session.id,
+                                                     title: session.title)
+                }
         } else {
             content
         }
