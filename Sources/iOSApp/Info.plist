@@ -51,6 +51,10 @@
 	<string>1</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Transcription Studio records from your microphone to transcribe and identify speakers — entirely on this device. Nothing leaves your phone.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

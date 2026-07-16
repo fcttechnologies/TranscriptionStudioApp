@@ -104,6 +104,10 @@ public final class RecordingController {
     @ObservationIgnored private var latestFrames = SpeakerFrameMatrix(activities: [], committedFrameCount: 0)
     /// Owns the mixed archive buffer, the diar-track buffer, and the finished-run persistence.
     @ObservationIgnored private let archiver: RecordingArchiver
+    #if os(iOS)
+    /// Mirrors the run onto the Lock Screen / Dynamic Island (throttled internally to ~1/s).
+    @ObservationIgnored private let liveActivity = RecordingLiveActivityDriver()
+    #endif
     /// Guards the teardown path so simultaneous capture failures tear the run down only once.
     @ObservationIgnored private var isTearingDown = false
     @ObservationIgnored private var startInstant = ContinuousClock.now
@@ -217,6 +221,9 @@ public final class RecordingController {
         lastDiarInstant = .now
         phase = .recording
         loadSampler.start()
+        #if os(iOS)
+        liveActivity.start(sessionID: sessionID)
+        #endif
         recorder.record(PipelineEvent(sessionID: sessionID, stage: .capture,
                                       message: "Recording started (\(mode.title))",
                                       metadata: ["mode": mode.rawValue]))
@@ -316,6 +323,10 @@ public final class RecordingController {
                 guard let self, self.isRecording else { return }
                 if !self.isPaused { self.tickElapsed() }
                 self.decayLevelIfIdle()
+                #if os(iOS)
+                self.liveActivity.update(elapsed: self.elapsed, isPaused: self.isPaused,
+                                         levels: self.waveform)
+                #endif
             }
         }
     }
@@ -342,6 +353,9 @@ public final class RecordingController {
         guard isRecording, !isPaused else { return }
         accumulatedElapsed += seconds(ContinuousClock.now - startInstant)
         isPaused = true
+        #if os(iOS)
+        liveActivity.update(elapsed: elapsed, isPaused: true, levels: waveform, force: true)
+        #endif
         recorder.record(PipelineEvent(sessionID: sessionID, stage: .capture, message: "Paused"))
     }
 
@@ -349,6 +363,9 @@ public final class RecordingController {
         guard isRecording, isPaused else { return }
         startInstant = .now
         isPaused = false
+        #if os(iOS)
+        liveActivity.update(elapsed: elapsed, isPaused: false, levels: waveform, force: true)
+        #endif
         recorder.record(PipelineEvent(sessionID: sessionID, stage: .capture, message: "Resumed"))
     }
 
@@ -361,6 +378,9 @@ public final class RecordingController {
         phase = .finishing
         isPaused = false
         clockTask?.cancel(); clockTask = nil
+        #if os(iOS)
+        await liveActivity.end(elapsed: elapsed)
+        #endif
 
         // Stop sources: their `chunks` streams finish, which finishes the ASR/diar input streams,
         // which lets the consumer tasks emit their final committed state and complete naturally.
@@ -456,6 +476,9 @@ public final class RecordingController {
         phase = .finishing
         isPaused = false
         clockTask?.cancel(); clockTask = nil
+        #if os(iOS)
+        await liveActivity.end(elapsed: elapsed)
+        #endif
         for source in sources { await source.stop() }
         let drained = await drainConsumers(timeout: drainTimeout)
         if !drained {

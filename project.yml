@@ -84,6 +84,8 @@ targets:
       - target: ShareExtensioniOS
       # The Background Assets downloader extension, auto-embedded into the app's Extensions folder.
       - target: BackgroundAssetsExtension
+      # The widget extension carrying the recording + playback Live Activities.
+      - target: WidgetExtensioniOS
     info:
       path: Sources/iOSApp/Info.plist
       properties:
@@ -93,6 +95,10 @@ targets:
         UIBackgroundModes:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync
+        # Live Activities (recording + playback), rendered by WidgetExtensioniOS. Frequent
+        # updates cover the recording activity's ~1/s waveform refresh.
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
         # --- Background Assets (self-hosted, unmanaged) -------------------------------------
         # The system reads these before first launch: it downloads the manifest at BAManifestURL,
         # then wakes BackgroundAssetsExtension to schedule the WhisperKit model files it lists.
@@ -211,6 +217,37 @@ targets:
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements
+
+  # The widget extension (iOS only) — hosts the recording + playback Live Activities (Dynamic
+  # Island + Lock Screen). Links only the lean GlanceKit (attributes + button intents + pure
+  # clock/level math); the heavy TranscriptionKit never enters the extension's memory sandbox.
+  # The intents perform in the app's process (LiveActivityIntent), so the extension stays a
+  # renderer.
+  WidgetExtensioniOS:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      # Only the Swift sources compile; iOS/ holds the Info.plist referenced via build settings.
+      - path: Sources/WidgetExtension
+        excludes:
+          - "iOS/**"
+    dependencies:
+      - package: TranscriptionStudioPackage
+        product: GlanceKit
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.WidgetExtension
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/WidgetExtension/iOS/Info.plist
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
 
   # The Background Assets downloader extension (iOS only). An ExtensionKit extension — no
   # NSExtension dict; the extension point is declared via EXAppExtensionAttributes in its

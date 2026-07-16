@@ -23,6 +23,12 @@ let package = Package(
         // and the memory-capped Background Assets downloader extension — so, like ShareKit, it
         // must stay free of heavy deps (no WhisperKit/CoreAI).
         .library(name: "BackgroundAssetsKit", targets: ["BackgroundAssetsKit"]),
+        // The lean Live Activity kit: the recording/playback ActivityAttributes, the Live
+        // Activity button intents (app-process trampolines), and the pure clock/level math.
+        // Linked by BOTH the host app (via TranscriptionKit, which drives the activities) and
+        // the memory-capped widget extension (which renders them) — so, like ShareKit, it must
+        // stay free of heavy deps (no WhisperKit/CoreAI).
+        .library(name: "GlanceKit", targets: ["GlanceKit"]),
         // The macOS-only feature kit: yt-dlp/ffmpeg URL ingest, ScreenCaptureKit
         // meeting capture, and the Mac window shell.
         .library(name: "TranscriptionMacKit", targets: ["TranscriptionMacKit"]),
@@ -51,10 +57,15 @@ let package = Package(
             resources: [.process("Resources")]
         ),
         .target(
+            name: "GlanceKit",
+            path: "Sources/GlanceKit"
+        ),
+        .target(
             name: "TranscriptionKit",
             dependencies: [
                 "ShareKit",
                 "BackgroundAssetsKit",
+                "GlanceKit",
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
                 .product(name: "SpeakerKit", package: "argmax-oss-swift"),
                 .product(name: "FCTEntities", package: "FCTFoundation"),
@@ -62,7 +73,10 @@ let package = Package(
                 // CloudKit sync-status monitor + the first-launch import bootstrap gate (the
                 // companion UX depends on the user seeing sync state, not a jarring empty feed).
                 .product(name: "FCTCloudKit", package: "FCTFoundation"),
-                .product(name: "FCTSync", package: "FCTFoundation")
+                .product(name: "FCTSync", package: "FCTFoundation"),
+                // The generic Live Activity lifecycle + system now-playing coordinator the
+                // playback/recording activity managers drive.
+                .product(name: "FCTGlanceables", package: "FCTFoundation")
             ],
             path: "Sources/TranscriptionKit",
             linkerSettings: [
@@ -88,6 +102,7 @@ let package = Package(
                 "TranscriptionKit",
                 "ShareKit",
                 "BackgroundAssetsKit",
+                "GlanceKit",
                 .product(name: "FCTEntities", package: "FCTFoundation")
             ],
             path: "Tests/TranscriptionKitTests",

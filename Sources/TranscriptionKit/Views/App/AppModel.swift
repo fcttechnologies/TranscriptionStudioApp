@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftData
+import GlanceKit
 
 /// The top-level app model — the one object every surface reads. It owns the injected
 /// engines (behind their protocols, so the real WhisperKit / Sortformer engines drop in
@@ -161,6 +162,32 @@ public final class AppModel {
                                              modelContext: modelContext,
                                              settings: self.settings,
                                              captureFactory: captureFactory)
+        registerActivityActions()
+    }
+
+    /// Wire the Live Activity buttons' app-process trampolines (GlanceKit's
+    /// `StudioActivityActions`) to the real controllers. The activity intents perform in this
+    /// process, so registering here — once, when the model is built — is what makes the Lock
+    /// Screen / Dynamic Island Stop, pause and play buttons act.
+    private func registerActivityActions() {
+        #if os(iOS)
+        StudioActivityActions.stopRecording = { [weak self] in
+            guard let self else { return }
+            if let id = await self.recording.stop() {
+                await TranscriptionIntentDonations.donateStopRecording()
+                self.openSession(id: id)
+            } else if self.activeSheet == .liveRecording {
+                self.activeSheet = nil
+            }
+        }
+        StudioActivityActions.toggleRecordingPause = { [weak self] in
+            guard let recording = self?.recording else { return }
+            recording.isPaused ? recording.resume() : recording.pause()
+        }
+        StudioActivityActions.togglePlayback = { [weak self] in
+            self?.playback.togglePlayPause()
+        }
+        #endif
     }
 
     /// Mock-default convenience (previews, tests, engine-less demos).
