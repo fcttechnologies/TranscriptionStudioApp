@@ -1,8 +1,8 @@
 // `TranscriptExport.Format`'s per-case presentation (id/displayName/fileExtension) and the
 // constructible parts of `TranscriptExportDocument`, the write-only `FileDocument` a
 // `fileExporter` saves an export as. Pure, no filesystem I/O — `TranscriptExportTests.swift`
-// covers the render(_:as:) string formats; this covers the format metadata + document wrapper
-// that file didn't touch.
+// covers the render(_:as:) string formats and `DocxExporterTests.swift` covers the DOCX byte
+// output; this covers the format metadata + document wrapper those files didn't touch.
 //
 // `init(configuration:)` and `fileWrapper(configuration:)` take `FileDocumentReadConfiguration`/
 // `FileDocumentWriteConfiguration`, which SwiftUI constructs internally and expose no public
@@ -32,20 +32,30 @@ struct TranscriptExportFormatMetadataTests {
         #expect(TranscriptExport.Format.markdown.fileExtension == "md")
         #expect(TranscriptExport.Format.srt.fileExtension == "srt")
         #expect(TranscriptExport.Format.vtt.fileExtension == "vtt")
+        #expect(TranscriptExport.Format.docx.fileExtension == "docx")
     }
 }
 
 @Suite("TranscriptExportDocument")
 struct TranscriptExportDocumentTests {
-    @Test func carriesTheTextAndFormatItWasInitializedWith() {
-        let document = TranscriptExportDocument(text: "hello world", format: .markdown)
-        #expect(document.text == "hello world")
+    @Test func carriesTheDataAndFormatItWasInitializedWith() {
+        let document = TranscriptExportDocument(data: Data("hello world".utf8), format: .markdown)
+        #expect(document.data == Data("hello world".utf8))
         #expect(document.format == .markdown)
+    }
+
+    @Test func theTextConvenienceInitializerUTF8EncodesTheString() {
+        let document = TranscriptExportDocument(text: "hello world", format: .plainText)
+        #expect(document.data == Data("hello world".utf8))
     }
 
     @Test func isWriteOnly() {
         #expect(TranscriptExportDocument.readableContentTypes.isEmpty)
-        #expect(TranscriptExportDocument.writableContentTypes == [.plainText, .text])
+        #expect(TranscriptExportDocument.writableContentTypes.contains(.plainText))
+        #expect(TranscriptExportDocument.writableContentTypes.contains(.text))
+        // DOCX doesn't conform to `.text` (it's a composite package, not plain text), so its
+        // own resolved type must be advertised explicitly or `fileExporter` would reject it.
+        #expect(TranscriptExportDocument.writableContentTypes.contains(TranscriptExportDocument.contentType(for: .docx)))
     }
 
     @Test func contentTypeMatchesTheFormatsExtensionWhenRegistered() {

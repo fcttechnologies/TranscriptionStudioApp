@@ -150,26 +150,26 @@ public enum TranscriptSessionStore {
 
     /// A specific session rendered in an export format, paired with its title (for the
     /// filename). Computed here on the main actor from the stored segments — the raw
-    /// SwiftData model never crosses back out, only the rendered (Sendable) string.
-    public static func exportedText(forID id: UUID, as format: TranscriptExport.Format,
+    /// SwiftData model never crosses back out, only the rendered (Sendable) bytes.
+    public static func exportedData(forID id: UUID, as format: TranscriptExport.Format,
                                     in container: ModelContainer = AppModelContainer.shared)
-        -> (title: String, text: String)? {
+        -> (title: String, data: Data)? {
         guard let session = allSessions(in: container).first(where: { $0.id == id }) else { return nil }
         return renderedExport(session, as: format)
     }
 
     /// The newest session rendered in an export format, paired with its title.
-    public static func latestExportedText(as format: TranscriptExport.Format,
+    public static func latestExportedData(as format: TranscriptExport.Format,
                                           in container: ModelContainer = AppModelContainer.shared)
-        -> (title: String, text: String)? {
+        -> (title: String, data: Data)? {
         guard let session = allSessions(in: container).first else { return nil }
         return renderedExport(session, as: format)
     }
 
     private static func renderedExport(_ session: TranscriptSession,
-                                       as format: TranscriptExport.Format) -> (title: String, text: String) {
+                                       as format: TranscriptExport.Format) -> (title: String, data: Data) {
         let items = TranscriptExport.items(from: session)
-        return (session.title, TranscriptExport.render(items, as: format, title: session.title))
+        return (session.title, TranscriptExport.renderData(items, as: format, title: session.title))
     }
 
     // MARK: Fetch

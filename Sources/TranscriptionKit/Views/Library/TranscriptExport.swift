@@ -11,6 +11,7 @@ public enum TranscriptExport {
         case markdown
         case srt
         case vtt
+        case docx
 
         public var id: String { rawValue }
 
@@ -20,6 +21,7 @@ public enum TranscriptExport {
             case .markdown: String(localized: "Markdown")
             case .srt: String(localized: "SubRip (.srt)")
             case .vtt: String(localized: "WebVTT (.vtt)")
+            case .docx: String(localized: "Word (.docx)")
             }
         }
 
@@ -29,6 +31,7 @@ public enum TranscriptExport {
             case .markdown: "md"
             case .srt: "srt"
             case .vtt: "vtt"
+            case .docx: "docx"
             }
         }
     }
@@ -62,12 +65,26 @@ public enum TranscriptExport {
         }
     }
 
+    /// Renders a text-based format as a string. DOCX has no meaningful string form (it's a
+    /// binary zip package) — call `renderData(_:as:title:)` instead, which handles every format
+    /// including it.
     public static func render(_ items: [Item], as format: Format, title: String = "") -> String {
         switch format {
         case .plainText: plainText(items)
         case .markdown: markdown(items, title: title)
         case .srt: srt(items)
         case .vtt: vtt(items)
+        case .docx: preconditionFailure("DOCX is binary — use renderData(_:as:title:) instead.")
+        }
+    }
+
+    /// The canonical byte-level render, and the one entry point every export surface (the
+    /// `fileExporter`, `ExportTranscriptIntent`, Shortcuts) should call: text formats UTF-8
+    /// encode `render(_:as:title:)`'s string, DOCX renders as a real OOXML package.
+    public static func renderData(_ items: [Item], as format: Format, title: String = "") -> Data {
+        switch format {
+        case .docx: DocxExporter.build(items, title: title)
+        case .plainText, .markdown, .srt, .vtt: Data(render(items, as: format, title: title).utf8)
         }
     }
 
@@ -144,18 +161,27 @@ public enum TranscriptExport {
     }
 }
 
-/// The write-only document a `fileExporter` saves an export as. Content is rendered before
-/// the exporter presents, so the document is just a string with a content type.
+/// The write-only document a `fileExporter` saves an export as. Content is rendered (via
+/// `TranscriptExport.renderData`) before the exporter presents, so the document is just bytes
+/// with a content type — a text format's UTF-8 string or DOCX's binary OOXML package.
 public struct TranscriptExportDocument: FileDocument {
     public static let readableContentTypes: [UTType] = []
-    public static let writableContentTypes: [UTType] = [.plainText, .text]
+    /// `.text` covers every textual format (plain/markdown/srt/vtt all conform to it) without
+    /// hardcoding each one's concrete UTI; DOCX doesn't conform to `.text` (it's a composite
+    /// package), so its own resolved type is added explicitly.
+    public static let writableContentTypes: [UTType] = [.plainText, .text, contentType(for: .docx)]
 
-    public let text: String
+    public let data: Data
     public let format: TranscriptExport.Format
 
-    public init(text: String, format: TranscriptExport.Format) {
-        self.text = text
+    public init(data: Data, format: TranscriptExport.Format) {
+        self.data = data
         self.format = format
+    }
+
+    /// Convenience for the text formats — UTF-8 encodes the string.
+    public init(text: String, format: TranscriptExport.Format) {
+        self.init(data: Data(text.utf8), format: format)
     }
 
     /// Best-available UTType for a format (falls back to plain text when the system has no
@@ -169,6 +195,6 @@ public struct TranscriptExportDocument: FileDocument {
     }
 
     public func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        FileWrapper(regularFileWithContents: Data(text.utf8))
+        FileWrapper(regularFileWithContents: data)
     }
 }

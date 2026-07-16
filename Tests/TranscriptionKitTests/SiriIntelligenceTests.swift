@@ -107,24 +107,32 @@ struct SiriIntelligenceTests {
         return (container, session.id)
     }
 
-    @Test func exportedTextRendersPlainTextByID() throws {
+    @Test func exportedDataRendersPlainTextByID() throws {
         let (container, id) = try makeSegmentedStore()
-        let exported = try #require(TranscriptSessionStore.exportedText(forID: id, as: .plainText, in: container))
+        let exported = try #require(TranscriptSessionStore.exportedData(forID: id, as: .plainText, in: container))
         #expect(exported.title == "Standup notes")
-        #expect(exported.text.contains("quarterly roadmap"))
+        #expect(String(decoding: exported.data, as: UTF8.self).contains("quarterly roadmap"))
     }
 
-    @Test func latestExportedTextRendersAsMarkdown() throws {
+    @Test func latestExportedDataRendersAsMarkdown() throws {
         let (container, _) = try makeSegmentedStore()
-        let exported = try #require(TranscriptSessionStore.latestExportedText(as: .markdown, in: container))
+        let exported = try #require(TranscriptSessionStore.latestExportedData(as: .markdown, in: container))
         #expect(exported.title == "Standup notes")
-        #expect(exported.text.contains("# Standup notes"))
-        #expect(exported.text.contains("quarterly roadmap"))
+        let text = String(decoding: exported.data, as: UTF8.self)
+        #expect(text.contains("# Standup notes"))
+        #expect(text.contains("quarterly roadmap"))
     }
 
-    @Test func exportedTextReturnsNilForUnknownID() throws {
+    @Test func latestExportedDataRendersDocxAsAValidZip() throws {
         let (container, _) = try makeSegmentedStore()
-        #expect(TranscriptSessionStore.exportedText(forID: UUID(), as: .srt, in: container) == nil)
+        let exported = try #require(TranscriptSessionStore.latestExportedData(as: .docx, in: container))
+        #expect(exported.title == "Standup notes")
+        #expect(exported.data.starts(with: [0x50, 0x4b, 0x03, 0x04]))   // "PK\u{03}\u{04}" zip signature
+    }
+
+    @Test func exportedDataReturnsNilForUnknownID() throws {
+        let (container, _) = try makeSegmentedStore()
+        #expect(TranscriptSessionStore.exportedData(forID: UUID(), as: .srt, in: container) == nil)
     }
 
     // MARK: App Shortcuts capacity

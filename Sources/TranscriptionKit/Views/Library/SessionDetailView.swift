@@ -233,9 +233,9 @@ public struct SessionDetailView: View {
 
     private var exportDocument: TranscriptExportDocument? {
         guard let exportFormat else { return nil }
-        let text = TranscriptExport.render(TranscriptExport.items(from: session),
-                                           as: exportFormat, title: session.title)
-        return TranscriptExportDocument(text: text, format: exportFormat)
+        let data = TranscriptExport.renderData(TranscriptExport.items(from: session),
+                                               as: exportFormat, title: session.title)
+        return TranscriptExportDocument(data: data, format: exportFormat)
     }
 
     private var exportFileName: String {

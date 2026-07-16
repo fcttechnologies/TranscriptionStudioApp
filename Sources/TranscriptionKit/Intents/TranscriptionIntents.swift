@@ -390,13 +390,13 @@ public struct ExportTranscriptIntent: AppIntent {
 
     public func perform() async throws
         -> some IntentResult & ReturnsValue<ExportedTranscriptFileEntity> & ProvidesDialog {
-        let resolved: (title: String, text: String)?
+        let resolved: (title: String, data: Data)?
         if let session, let id = UUID(uuidString: session.id) {
-            resolved = await TranscriptSessionStore.exportedText(forID: id, as: format)
+            resolved = await TranscriptSessionStore.exportedData(forID: id, as: format)
         } else {
-            resolved = await TranscriptSessionStore.latestExportedText(as: format)
+            resolved = await TranscriptSessionStore.latestExportedData(as: format)
         }
-        guard let resolved, !resolved.text.isEmpty else { throw TranscriptionIntentError.noTranscripts }
+        guard let resolved, !resolved.data.isEmpty else { throw TranscriptionIntentError.noTranscripts }
 
         let safeName = resolved.title.isEmpty ? "Transcript" : resolved.title
         // Write the rendered transcript to a uniquely-scoped temp file so the returned
@@ -407,7 +407,7 @@ public struct ExportTranscriptIntent: AppIntent {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let fileURL = dir.appendingPathComponent("\(safeName).\(format.fileExtension)")
-        try Data(resolved.text.utf8).write(to: fileURL)
+        try resolved.data.write(to: fileURL)
 
         let entity = try ExportedTranscriptFileEntity(id: .file(url: fileURL), title: safeName)
         return .result(value: entity, dialog: "Exported \(safeName).")
@@ -420,7 +420,8 @@ extension TranscriptExport.Format: AppEnum {
     }
 
     public static var caseDisplayRepresentations: [TranscriptExport.Format: DisplayRepresentation] {
-        [.plainText: "Plain Text", .markdown: "Markdown", .srt: "SubRip (.srt)", .vtt: "WebVTT (.vtt)"]
+        [.plainText: "Plain Text", .markdown: "Markdown", .srt: "SubRip (.srt)", .vtt: "WebVTT (.vtt)",
+         .docx: "Word (.docx)"]
     }
 }
 
