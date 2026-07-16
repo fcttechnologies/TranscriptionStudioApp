@@ -157,3 +157,22 @@ Full write-up: `Documentation/COMPANION.md`. The traps worth flagging here:
   discontinuities only (the system extrapolates from elapsed + rate; rate 0 = paused), and
   `deactivate()` must both clear the info dictionary and remove every registered command target —
   a leaked target keeps ghost transport controls alive after unload.
+- **Phase 3 write boundary lives in `FCTIntelligence.ConfirmableWrite`** (draft→`PendingWrite.confirm()`).
+  A `.write` action is NEVER a model-callable `Tool` — the `AIToolSafety.vetted*` seams still reject
+  `.write` from any `LanguageModelSession`. The app-side commit does EventKit; the field mapping
+  (`EventDraftMapper`, `EventKitBuilder`) is where the unit tests live (constructing `EKEvent`/
+  `EKReminder` needs no permission, so field mapping is testable; `save`/access is a device check).
+- **Calendar uses write-only scope; Reminders has NO write-only scope** (`requestFullAccessToReminders`
+  is the minimal available — grounded via sosumi TN3152). Info.plist keys differ accordingly
+  (`NSCalendarsWriteOnlyAccessUsageDescription` vs `NSRemindersFullAccessUsageDescription`).
+- **`CNContactPickerViewController` needs no Contacts permission** (out-of-process) — so speaker→contact
+  binding is permission-free; only mention resolution (a `CNContactStore` read) needs `NSContactsUsageDescription`.
+  The naming sheet resolves mentions ONLY when access is already granted (`MentionResolver.canResolve`),
+  so opening it never surprises the user with a prompt.
+- **Siri name resolution = Spotlight `keywords`.** Bound speaker names + extracted mentions are folded
+  into `TranscriptSessionEntity.people` (`@Property(indexingKey: \.keywords)`) via `SessionPeople`, and
+  `SpeakerAssignmentStore` reindexes the session on every bind — so a name query matches even when the
+  transcript only said "Speaker N". Reindex is async; allow a beat after binding before testing search.
+- **Contacts resolver = `FCTContacts` (new module).** `ContactMatcher` is pure/framework-free (testable);
+  it returns an unambiguous best match only when one exists (two same-first-name contacts → nil, caller
+  disambiguates). The CNContactStore provider creates the store per-call (it's not `Sendable`).
