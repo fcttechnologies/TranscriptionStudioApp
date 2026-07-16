@@ -22,6 +22,10 @@
 	<string>https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json</string>
 	<key>BAMaxInstallSize</key>
 	<integer>1638464446</integer>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.fcttechnologies.TranscriptionStudioiOS.transcription.*</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

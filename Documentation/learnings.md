@@ -176,3 +176,32 @@ Full write-up: `Documentation/COMPANION.md`. The traps worth flagging here:
 - **Contacts resolver = `FCTContacts` (new module).** `ContactMatcher` is pure/framework-free (testable);
   it returns an unambiguous best match only when one exists (two same-first-name contacts → nil, caller
   disambiguates). The CNContactStore provider creates the store per-call (it's not `Sendable`).
+
+## Background transcription (BGContinuedProcessingTask — iOS 26+)
+
+See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
+
+- **The system provides the Live Activity — you don't build one.** `BGContinuedProcessingTask`
+  renders its own system Live Activity from `title`/`subtitle`/`progress`; there is NO developer
+  ActivityKit widget for it (confirmed sosumi + WWDC25-227). A custom "Transcribing" activity in
+  `WidgetExtensioniOS` would be a *second, redundant* Live Activity for the same job — deliberately
+  not built. The brief's "stage text + progress + cancel" is delivered via the system activity
+  (subtitle = `job.stageText`, progress = `job.progress`, Cancel → `TranscriptionJob.cancel()`).
+- **`BGTaskScheduler.submit(_:)` is DEPRECATED in iOS 27** → use `submitTaskRequest(_:)`
+  (async throws) / `submitTaskRequest(_:completionHandler:)`. The iOS-26 docs still show `submit`;
+  the SDK-27 deprecation warning fails the warnings-as-errors bar. `submitTaskRequest` must NOT be
+  called from the main thread (it may block; completion lands on an arbitrary queue) — submit from
+  a detached `Task`, building the (non-Sendable) request off-main from Sendable strings.
+- **Continued-task handlers register LAZILY, not at didFinishLaunching.** Unlike other `BGTask`s,
+  register the wildcard handler when the intent is first expressed (first job submit) — guarded so
+  it happens exactly once (a second `register` of the same identifier is fatal).
+- **Wildcard identifiers:** Info.plist `BGTaskSchedulerPermittedIdentifiers` holds `<bundle-id>.<ctx>.*`;
+  register the wildcard once and submit concrete per-job ids (`…<ctx>.<uuid>`) under it.
+- **`.gpu` is the only `Resources` option** — gate it on `BGTaskScheduler.supportedResources.contains(.gpu)`
+  and pair with the `com.apple.developer.background-tasks.continued-processing.gpu` entitlement.
+  ANE (Neural Engine) work continues regardless; the resource specifically covers GPU. A real-device
+  build needs the provisioning profile to carry the entitlement (simulator doesn't validate it).
+- **Launch handler ↔ MainActor bridge:** register with `using: .main` and adopt isolation via
+  `MainActor.assumeIsolated` in the handler — the `BGContinuedProcessingTask` is non-Sendable, so
+  this avoids crossing an actor boundary to touch the `@MainActor` job model. `expirationHandler`
+  fires on an arbitrary queue → capture only the Sendable identifier and hop via `Task { @MainActor in }`.

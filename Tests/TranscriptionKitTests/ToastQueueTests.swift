@@ -1,12 +1,10 @@
 // The ToastCenter/EngineToasts/Toast behaviors pass 1 left uncovered: the action-tap path,
 // interaction-pause/resume around auto-dismiss, the queue's backlog cap, a stale-id dismiss
 // being ignored, the prewarm→toast mapping's `.idle` case (a model switch resetting the
-// state), and the app's wired toast builders. Plus BackgroundExecution's macOS passthrough —
-// `canImport(UIKit)` is false on macOS, so the iOS `UIApplication` background-task path never
-// compiles into this test binary; it's real-device/hardware-gated and isn't exercised here.
+// state), and the app's wired toast builders.
+// (BackgroundExecution's bridge + macOS passthrough live in BackgroundExecutionTests.swift.)
 
 import Foundation
-import Synchronization
 import Testing
 @testable import TranscriptionKit
 
@@ -170,27 +168,5 @@ struct ToastBuildersTests {
         #expect(toast.style == .error)
         #expect(toast.message == "unsupported container")
         #expect(toast.dedupKey == "import-failed")
-    }
-}
-
-@Suite("BackgroundExecution — macOS passthrough")
-struct BackgroundExecutionTests {
-    // On macOS (`canImport(UIKit)` false) `running` is a bare `Task` wrapper: the closure runs
-    // to completion with no background-task assertion machinery involved.
-    @Test func runsTheClosureToCompletion() async {
-        let ran = Mutex(false)
-        let task = BackgroundExecution.running("Test") { ran.withLock { $0 = true } }
-        await task.value
-        #expect(ran.withLock { $0 })
-    }
-
-    // Multiple concurrent `running` calls each complete independently.
-    @Test func multipleConcurrentRunsEachCompleteIndependently() async {
-        let count = Mutex(0)
-        let tasks = (0..<3).map { _ in
-            BackgroundExecution.running("Test") { count.withLock { $0 += 1 } }
-        }
-        for task in tasks { await task.value }
-        #expect(count.withLock { $0 } == 3)
     }
 }

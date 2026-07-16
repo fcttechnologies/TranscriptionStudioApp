@@ -122,9 +122,17 @@ targets:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync
         # Live Activities (recording + playback), rendered by WidgetExtensioniOS. Frequent
-        # updates cover the recording activity's ~1/s waveform refresh.
+        # updates cover the recording activity's ~1/s waveform refresh — and the
+        # BGContinuedProcessingTask's system Live Activity, which mirrors a file/link job's
+        # stage + progress ~1/s while it runs in the background.
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
+        # Background transcription (BGContinuedProcessingTask, iOS 26+): a file/link job keeps
+        # running with GPU/ANE cover when the app is backgrounded mid-run. The wildcard suffix is
+        # a per-job UUID; the concrete id is registered + submitted at runtime
+        # (ContinuedTranscriptionTask). Must stay in sync with `identifierPrefix` there.
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.fcttechnologies.TranscriptionStudioiOS.transcription.*
         # --- Background Assets (self-hosted, unmanaged) -------------------------------------
         # The system reads these before first launch: it downloads the manifest at BAManifestURL,
         # then wakes BackgroundAssetsExtension to schedule the WhisperKit model files it lists.

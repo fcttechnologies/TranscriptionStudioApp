@@ -255,7 +255,7 @@ public final class AppModel {
         case .file(let url):
             let job = TranscriptionJob(title: title, steps: TranscriptionService.fileJobSteps)
             jobs.add(job)
-            job.task = BackgroundExecution.running("Transcribe") { await service.runFileJob(fileURL: url, job: job) }
+            BackgroundExecution.run(job: job, title: title) { await service.runFileJob(fileURL: url, job: job) }
         case .url(let string):
             let job = TranscriptionJob(title: title, steps: TranscriptionService.urlJobSteps)
             jobs.add(job)
@@ -264,7 +264,7 @@ public final class AppModel {
                 job.fail("URL transcription isn't available on this device.")
                 return
             }
-            job.task = BackgroundExecution.running("Transcribe") { await service.runURLJob(urlString: string, downloader: downloader, job: job) }
+            BackgroundExecution.run(job: job, title: title) { await service.runURLJob(urlString: string, downloader: downloader, job: job) }
         }
     }
 
