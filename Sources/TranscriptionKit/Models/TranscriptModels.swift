@@ -11,6 +11,7 @@ public enum SessionKind: String, Sendable, Codable, CaseIterable {
 
 public enum SessionStatus: String, Sendable, Codable, CaseIterable {
     case inProgress            // recording or transcribing now
+    case pendingRemote         // a link queued from iOS, awaiting a Mac to claim + transcribe
     case complete
     case failed
 }
@@ -37,6 +38,15 @@ public final class TranscriptSession {
     /// The full plain-text transcript, denormalized for fast search/copy.
     public var fullText: String = ""
     public var errorMessage: String?
+
+    /// Companion claim marker. When a Mac claims a `.pendingRemote` link to transcribe it, it
+    /// stamps the claim time here and moves the session to `.inProgress`; `nil` for every
+    /// locally-created session (which is how the watcher tells a claimed remote job from a Mac's
+    /// own local URL job). Paired with `claimedBy` so a stalled claim can be reclaimed. See
+    /// `RemoteJobClaim`.
+    public var claimedAt: Date?
+    /// The stable identifier of the device that claimed this remote job; `nil` until claimed.
+    public var claimedBy: String?
 
     @Relationship(deleteRule: .cascade, inverse: \StoredSegment.session)
     public var segments: [StoredSegment]? = []
@@ -114,5 +124,27 @@ public final class StoredSegment {
         if let words = attributed.asr.words {
             wordsJSON = try? JSONEncoder().encode(words)
         }
+    }
+}
+
+/// A device's last-seen heartbeat, written to the shared CloudKit store so the *other* device
+/// can show a presence indicator. The Mac companion writes/updates its row every heartbeat while
+/// running; iOS reads the most recent `lastSeen` to tell whether a Mac is currently available to
+/// process queued links. Status display only — it never gates queuing. CloudKit-ready: every
+/// attribute defaulted, no unique constraint (identity is the UUID `id`; `deviceIDString` keys
+/// the per-device upsert).
+@Model
+public final class MacPresence {
+    public var id: UUID = UUID()
+    /// The stable per-install device identifier this heartbeat belongs to.
+    public var deviceIDString: String = ""
+    /// A human-readable device name for the presence label (e.g. "Fernando's Mac").
+    public var deviceName: String = ""
+    public var lastSeen: Date = Date()
+
+    public init(deviceIDString: String, deviceName: String, lastSeen: Date = Date()) {
+        self.deviceIDString = deviceIDString
+        self.deviceName = deviceName
+        self.lastSeen = lastSeen
     }
 }

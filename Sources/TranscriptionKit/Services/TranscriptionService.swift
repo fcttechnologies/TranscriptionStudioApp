@@ -118,10 +118,22 @@ public final class TranscriptionService {
     @discardableResult
     public func runURLJob(urlString: String, downloader: any URLAudioDownloading,
                           job: TranscriptionJob) async -> UUID? {
-        let sessionID = UUID()
         let session = TranscriptSession(title: urlString, kind: .urlTranscription)
-        session.id = sessionID
+        session.id = UUID()
         session.sourceURLString = urlString
+        return await runURLJob(on: session, isNewSession: true, downloader: downloader, job: job)
+    }
+
+    /// Process a URL job into an **existing** session — the companion path: a `.pendingRemote`
+    /// link queued on iOS, already claimed here on the Mac (status `.inProgress`, claim marker
+    /// set) and living in the shared store. `isNewSession` is `false`, so the session is updated
+    /// in place rather than inserted, and a failure is persisted as `.failed` so the originating
+    /// phone sees the outcome sync back instead of a job stuck "transcribing" forever.
+    @discardableResult
+    public func runURLJob(on session: TranscriptSession, isNewSession: Bool,
+                          downloader: any URLAudioDownloading, job: TranscriptionJob) async -> UUID? {
+        let sessionID = session.id
+        let urlString = session.sourceURLString ?? session.title
 
         do {
             try await prepareEngines(job: job, sessionID: sessionID)
@@ -141,7 +153,8 @@ public final class TranscriptionService {
             }
 
             try await transcribeAndPersist(samples: samples, session: session, job: job,
-                                           transcribeStep: 2, saveStep: 3, sessionID: sessionID)
+                                           transcribeStep: 2, saveStep: 3, sessionID: sessionID,
+                                           isNewSession: isNewSession)
 
             job.advance(to: 4, stageText: "Cleaning up…", progress: 0.98)
             await timed(.system, sessionID: sessionID, "Cleanup temp files") {
@@ -152,6 +165,13 @@ public final class TranscriptionService {
             return sessionID
         } catch {
             await downloader.cleanup(jobID: sessionID)
+            if !isNewSession {
+                // A claimed remote job: record the failure in the shared store so the phone that
+                // queued it sees "failed" sync back rather than a job stuck mid-flight.
+                session.status = .failed
+                session.errorMessage = error.localizedDescription
+                try? modelContext.save()
+            }
             recorder.record(PipelineEvent(sessionID: sessionID, stage: .download, level: .error,
                                           message: "URL job failed",
                                           metadata: ["error": error.localizedDescription]))
@@ -196,7 +216,7 @@ public final class TranscriptionService {
     /// Archive audio → diarize → ASR → fuse → persist. Shared by both job kinds.
     private func transcribeAndPersist(samples: [Float], session: TranscriptSession,
                                       job: TranscriptionJob, transcribeStep: Int, saveStep: Int,
-                                      sessionID: UUID) async throws {
+                                      sessionID: UUID, isNewSession: Bool = true) async throws {
         session.duration = Double(samples.count) / AudioChunk.sampleRate
         archiveAudio(samples: samples, session: session, sessionID: sessionID)
 
@@ -214,7 +234,8 @@ public final class TranscriptionService {
                                       metadata: ["segments": "\(attributed.count)"]))
 
         job.advance(to: saveStep, stageText: "Saving…", progress: 0.92)
-        try await persist(session: session, attributed: attributed, sessionID: sessionID)
+        try await persist(session: session, attributed: attributed, sessionID: sessionID,
+                          isNewSession: isNewSession)
         titleGenerator.applyGeneratedTitle(to: session, modelContext: modelContext)
     }
 
@@ -254,13 +275,15 @@ public final class TranscriptionService {
     // MARK: - Persistence
 
     private func persist(session: TranscriptSession, attributed: [AttributedSegment],
-                         sessionID: UUID) async throws {
+                         sessionID: UUID, isNewSession: Bool = true) async throws {
         try await timed(.persistence, sessionID: sessionID, "Save session",
                         metadata: ["segments": "\(attributed.count)"]) {
             session.fullText = attributed.map(\.asr.text).joined(separator: " ")
             session.status = .complete
+            session.errorMessage = nil
             session.segments = attributed.map { StoredSegment(from: $0) }
-            modelContext.insert(session)
+            // A claimed remote session is already in the store; only a freshly built one is inserted.
+            if isNewSession { modelContext.insert(session) }
             try modelContext.save()
         }
     }

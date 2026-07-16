@@ -8,7 +8,7 @@ import SwiftData
 /// entitlements (`iCloud.com.fcttechnologies.TranscriptionStudio`, shared by the Mac and iOS
 /// targets — that shared id is what makes Mac↔iOS sync).
 public enum AppModelContainer {
-    public static let schema = Schema([TranscriptSession.self, StoredSegment.self])
+    public static let schema = Schema([TranscriptSession.self, StoredSegment.self, MacPresence.self])
 
     public static let shared: ModelContainer = {
         if isRunningTests {
