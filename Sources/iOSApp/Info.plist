@@ -49,8 +49,14 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
+	<string>Transcription Studio adds meetings you review from a transcript to your calendar. It only ever adds — it never reads your existing calendar.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Transcription Studio matches names in your transcripts to your contacts so speakers and mentions show real names — read only, entirely on this device.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Transcription Studio records from your microphone to transcribe and identify speakers — entirely on this device. Nothing leaves your phone.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Transcription Studio adds action items you review from a transcript to your reminders.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
