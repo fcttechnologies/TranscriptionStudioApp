@@ -250,7 +250,10 @@ public final class AppModel {
     public static func live(captureFactory: @escaping RecordingController.CaptureFactory,
                             urlDownloader: (any URLAudioDownloading)? = nil) -> AppModel {
         let inspector = InspectorStore()
-        let recorder = PipelineRecorder(store: inspector)
+        // Additive MetricKit state reporting: the live recorder tags each pipeline stage as an
+        // app state so a production hang/hitch/crash is attributed to the stage it occurred in
+        // (the mock/preview recorder above leaves this nil).
+        let recorder = PipelineRecorder(store: inspector, stateReporter: PipelineStateReporter.shared)
         let backend = DiarizationBackend.default
         let crossCheck: DiarizationBackend = backend == .sortformer ? .speakerKit : .sortformer
         return AppModel(modelContext: AppModelContainer.localContext(),

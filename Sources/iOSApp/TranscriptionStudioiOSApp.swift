@@ -12,6 +12,9 @@ struct TranscriptionStudioiOSApp: App {
     /// the app runs (launch's `reindexAll` only covers the gap at startup). Retained for the
     /// app's lifetime; created in the launch task so it never spins up under tests.
     @State private var spotlightObserver: SpotlightIndexObserver?
+    /// MetricKit production diagnostics — daily metric reports + crash/hang/hitch/launch/memory
+    /// events, tagged with the pipeline stage they occurred in. Held for the app's lifetime.
+    @State private var metricsReporter = MetricsReporter()
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -73,6 +76,8 @@ struct TranscriptionStudioiOSApp: App {
                     // download base, so the warmup below finds it on disk and skips the network.
                     BackgroundAssetsModelInstaller.installStagedModel()
                     AppModelContainer.stampMainContextAuthor()
+                    // Start consuming MetricKit reports for the rest of the session (idempotent).
+                    metricsReporter.start()
                     TranscriptSpotlightIndex.reindexAll()
                     // Keep the index fresh with cross-device changes for the rest of the session.
                     if spotlightObserver == nil {

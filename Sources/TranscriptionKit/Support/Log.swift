@@ -20,5 +20,8 @@ extension Logger {
     public nonisolated static let persistence = Logger(subsystem: subsystem, category: "persistence")
     public nonisolated static let inspector = Logger(subsystem: subsystem, category: "inspector")
     public nonisolated static let models = Logger(subsystem: subsystem, category: "models")
+    /// MetricKit production diagnostics (daily metric reports + crash/hang/hitch/launch/memory
+    /// events from the field). Metrics only — never transcript content.
+    public nonisolated static let metrics = Logger(subsystem: subsystem, category: "metrics")
     public nonisolated static let backgroundAssets = Logger(subsystem: subsystem, category: "background-assets")
 }

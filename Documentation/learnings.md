@@ -314,3 +314,50 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
 - **`NSFaceIDUsageDescription`** is required on both app targets (project.yml `info.properties`)
   or the Face ID prompt crashes. `LocalAuthentication` is a system framework — importing it in
   TranscriptionKit auto-links; no `project.yml` dependency needed.
+
+## MetricKit production diagnostics + StateReporting (roadmap §10)
+
+- **MetricKit was fully redesigned in SDK-27 — do NOT use training memory of `MXMetricManager`.**
+  The surface is now the Swift-first `MetricManager`: an *instantiable* class (not a shared
+  singleton), created once and held for the app's lifetime. Reports arrive as non-throwing
+  `AsyncSequence`s — `manager.metricReports` (daily `MetricReport`) and `manager.diagnosticReports`
+  (per-event `DiagnosticReport`) — iterated with `for await` in two long-lived detached tasks (one
+  per sequence; iterating the *same* sequence twice, or creating multiple managers with the same
+  domains, splits reports non-deterministically). `MetricReport`/`DiagnosticReport`/`MetricResult`/
+  `DiagnosticResult` replace `MXMetricPayload`/`MXDiagnosticPayload` and their typed properties.
+- **macOS 27 IS supported now** (historically MetricKit was iOS-only). Both MetricKit and
+  StateReporting list macOS 27.0+; the SPM package builds clean on macOS with a plain
+  `import MetricKit` / `import StateReporting` (system frameworks auto-link, no Package.swift or
+  project.yml change). So both app shells wire it — no `#if os` / `#available` guard needed.
+- **State reporting lives in a SEPARATE `StateReporting` framework, coordinated only by a domain
+  string.** `MetricManager(enabledStateReportingDomains: [StateReportingDomain(rawValue: domain)])`
+  enables aggregation; `StateReporter.reporter(for: domain)` (a *per-domain process singleton*)
+  emits transitions via `reportTransition(to: label)`. The two never reference each other — they
+  meet at the reverse-DNS domain constant (`PipelineStateLabel.stateDomain`). So the `MetricManager`
+  can live in the app shell while the `StateReporter` wrapper lives in `AppModel.live()` (passed to
+  `PipelineRecorder`); nothing needs threading between them.
+- **`reporter(for:)`'s metadata type params default to `Never.self`** — you can report bare state
+  labels (`reportTransition(to: "diarization")`) with no metadata types at all. Only reach for
+  `@ReportableMetadata` structs if you actually want stable/volatile context.
+- **StateReporting rate-limits and DROPS data if called in a tight loop.** The pipeline records
+  many events/sec while streaming, all mapping to the same coarse state → dedup so a transition
+  fires only when the *label changes* (a stage boundary, human-timescale). `PipelineStateReporter`
+  tracks the current label under a `Mutex` and skips unchanged/ambient (`.system` → nil) stages so
+  an interleaved system log line can't clobber the state a concurrent hang should be attributed to.
+- **The report payloads are `Codable` but NOT constructible in a test** (no public inits; they only
+  arrive from the system). So the decision/formatting layer (`MetricsSummary.swift`) is written
+  over own value types and unit-tested; `MetricsReporter` holds a thin adapter that reads the real
+  reports into them. Same pattern the brief prescribed for the old MX types — still needed.
+- **`MetricReport.intervalEntries.fullDayEntry` is NON-optional** (`Array.fullDayEntry` returns
+  `MetricReport.IntervalEntry`, not `IntervalEntry?`) — don't `if let` it.
+- **`HitchTimeMetric` / `ScrollHitchTimeMetric` expose `.ratio` (`Measurement<Unit>`, dimensionless),
+  NOT a histogram.** Only `HangTimeMetric` and `TimeToFirstDrawMetric` are `Histogram<UnitDuration>`.
+  Histogram bucket bounds are `Measurement<DimensionType>` (use `.converted(to: .seconds).value`),
+  not raw `Double`. `MetricResult` histograms give buckets only, so a mean is an approximation
+  (bucket-midpoint-weighted) — `HistogramSummary` computes and labels it as `~avg×count`.
+- **What can only be verified with real field payloads:** the adapters (`MetricsReporter.summary(for:)`
+  for both report kinds) run only when the system delivers a report — metrics daily, diagnostics
+  when an event fires *and* the device is in a sampling group with detection enabled. There is no
+  way to synthesize a `MetricReport`/`DiagnosticReport` to exercise the adapter end-to-end; it's
+  proven by construction (grounded field types) + the pure-layer tests, and confirmed live only by
+  reading OSLog `category:metrics` from a real install over days (TestFlight/App Store, not a sim).

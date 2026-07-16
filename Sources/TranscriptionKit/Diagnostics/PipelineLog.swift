@@ -56,9 +56,14 @@ public struct PipelineEvent: Sendable, Identifiable {
 /// test); components hold it as a plain `let`.
 public final class PipelineRecorder: Sendable {
     private let store: InspectorStore?
+    /// Additive MetricKit bridge: each recorded event's stage is reported as an app state so a
+    /// production hang/hitch/crash is attributed to the pipeline stage it happened during. Nil
+    /// in tests/previews and the mock `AppModel`; the live `AppModel` injects the shared reporter.
+    private let stateReporter: (any PipelineStateReporting)?
 
-    public init(store: InspectorStore?) {
+    public init(store: InspectorStore?, stateReporter: (any PipelineStateReporting)? = nil) {
         self.store = store
+        self.stateReporter = stateReporter
     }
 
     public func record(_ event: PipelineEvent) {
@@ -79,6 +84,9 @@ public final class PipelineRecorder: Sendable {
                 store.append(event)
             }
         }
+        // Mirror the stage as a MetricKit state (deduped inside the reporter). Ambient stages
+        // map to nil and are skipped so they don't clobber the state a concurrent hang belongs to.
+        stateReporter?.report(stage: event.stage)
     }
 
     /// Convenience: time an async operation and record its close with the duration attached.
