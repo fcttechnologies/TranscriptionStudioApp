@@ -190,7 +190,11 @@ public enum TranscriptSessionStore {
 
     private static func allSessions(in container: ModelContainer) -> [TranscriptSession] {
         let context = ModelContext(container)
+        // Private sessions are withheld from the entire Siri / Spotlight / App-Intent read-path
+        // (`PrivacyGate.isEligibleForAssistant`), filtered in the fetch so the limit is spent on
+        // surfaceable rows only.
         var descriptor = FetchDescriptor<TranscriptSession>(
+            predicate: #Predicate { !$0.isPrivate },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
         descriptor.fetchLimit = maxFetchedSessions
         return (try? context.fetch(descriptor)) ?? []
@@ -209,9 +213,14 @@ public enum TranscriptSpotlightIndex {
     public nonisolated static let indexName = "TranscriptionStudioSessions"
     private static let donator = EntityDonator(indexName: indexName)
 
-    /// Index (or refresh) one session.
+    /// Index (or refresh) one session. A private session is never indexed — and if it just
+    /// became private, its prior entry is removed instead (`PrivacyGate.isEligibleForAssistant`).
     public static func index(_ session: TranscriptSession) {
         guard !AppModelContainer.isRunningTests else { return }
+        guard PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) else {
+            deindex(id: session.id)
+            return
+        }
         let entity = TranscriptSessionEntity(session)
         Task {
             do {

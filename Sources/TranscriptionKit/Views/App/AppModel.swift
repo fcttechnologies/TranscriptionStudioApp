@@ -21,6 +21,10 @@ public final class AppModel {
     public let settings: AppSettings
     public let modelContext: ModelContext
 
+    /// Biometric gate for opening a private session. A `var` (not an init param) so tests can
+    /// swap in a fake without threading it through every constructor.
+    @ObservationIgnored public var authenticator: any BiometricAuthenticating = BiometricAuthenticator()
+
     // Engines behind their contracts — mocks today, real engines later, same UI. These are
     // the launch-time engines the live recorder uses; transcription jobs pull their engines
     // from the per-model cache below so a Settings model change applies to the next job.
@@ -66,8 +70,36 @@ public final class AppModel {
     /// as a relevant entity — "summarize this" / "ask about this" then resolve to it without a
     /// disambiguation turn (see `SessionRelevance`).
     public func openSession(id: UUID) {
+        let isPrivate = session(forID: id)?.isPrivate ?? false
+        if PrivacyGate.requiresAuthentication(isPrivate: isPrivate) {
+            // Private: gate on a biometric unlock before anything is revealed (async).
+            Task { await unlockAndPresent(id: id) }
+        } else {
+            // Non-private: present immediately (synchronous, as before).
+            present(id: id, isPrivate: false)
+        }
+    }
+
+    /// The private-session path: clear a biometric unlock, then present. A private session is
+    /// never donated to the assistant. Internal (not private) so the gate is deterministically
+    /// unit-tested with a fake authenticator.
+    func unlockAndPresent(id: UUID) async {
+        guard await authenticator.authenticate(reason: "Unlock this private session.") else { return }
+        present(id: id, isPrivate: true)
+    }
+
+    /// Present the session sheet and — unless it's private — donate it as the relevant entity.
+    private func present(id: UUID, isPrivate: Bool) {
         activeSheet = .session(id)
-        SessionRelevance.donateActiveSession(id: id)
+        if PrivacyGate.isEligibleForAssistant(isPrivate: isPrivate) {
+            SessionRelevance.donateActiveSession(id: id)
+        }
+    }
+
+    /// Resolve a session by id in the shared context (nil if it's gone).
+    private func session(forID id: UUID) -> TranscriptSession? {
+        let descriptor = FetchDescriptor<TranscriptSession>(predicate: #Predicate { $0.id == id })
+        return try? modelContext.fetch(descriptor).first
     }
 
     /// Start a recording from anywhere in the shell (the "+" menu, ⌘N, the intent path

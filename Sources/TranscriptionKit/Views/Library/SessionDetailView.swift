@@ -55,7 +55,8 @@ public struct SessionDetailView: View {
                                                    playingLineID: playingLineID,
                                                    onTapLine: hasAudio ? { app.playback.play(from: $0.start) } : nil,
                                                    showsSpeaker: layout == .grouped,
-                                                   karaoke: hasAudio)
+                                                   karaoke: hasAudio,
+                                                   confidenceHighlighting: app.settings.showConfidence)
                             }
                         }
                     }
@@ -89,6 +90,14 @@ public struct SessionDetailView: View {
                     Menu {
                         Button("Rename", systemImage: "pencil") { beginRenaming() }
                         Button("Copy Transcript", systemImage: "doc.on.doc") { copyTranscript() }
+                        Toggle(isOn: confidenceBinding) {
+                            Label("Highlight Confidence", systemImage: "text.magnifyingglass")
+                        }
+                        .accessibilityIdentifier("session.confidenceToggle")
+                        Toggle(isOn: privacyBinding) {
+                            Label("Lock with Face ID", systemImage: session.isPrivate ? "lock.fill" : "lock.open")
+                        }
+                        .accessibilityIdentifier("session.privacyToggle")
                         Menu {
                             ForEach(TranscriptExport.Format.allCases) { format in
                                 Button(format.displayName) { exportFormat = format }
@@ -134,11 +143,12 @@ public struct SessionDetailView: View {
         }
         .modifier(PlayheadTracker(playback: app.playback, lineStarts: currentLineStarts,
                                   playingLineID: $playingLineID))
-        // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing.
-        .appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
-                                              identifier: session.id.uuidString))
+        // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing —
+        // but never for a private session (it's withheld from the assistant surface).
+        .modifier(OnscreenTranscript(session: session))
         .onAppear {
             hasAudio = app.playback.prepare(session: session)
+            guard PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) else { return }
             let entity = TranscriptSessionEntity(session)
             Task { await TranscriptionIntentDonations.donateOpenTranscript(entity) }
         }
@@ -231,6 +241,24 @@ public struct SessionDetailView: View {
         Binding(get: { exportFormat != nil }, set: { if !$0 { exportFormat = nil } })
     }
 
+    /// Persisted verbatim/confidence display toggle (see `AppSettings.showConfidence`).
+    private var confidenceBinding: Binding<Bool> {
+        Binding(get: { app.settings.showConfidence },
+                set: { app.settings.showConfidence = $0 })
+    }
+
+    /// Per-session privacy lock. Flipping it persists the flag and re-syncs the assistant index
+    /// (`index(_:)` self-guards — it removes a now-private session, re-adds a now-public one). No
+    /// extra auth to toggle: the reader has already cleared the lock to be viewing this at all.
+    private var privacyBinding: Binding<Bool> {
+        Binding(get: { session.isPrivate },
+                set: { newValue in
+                    session.isPrivate = newValue
+                    try? modelContext.save()
+                    TranscriptSpotlightIndex.index(session)
+                })
+    }
+
     private var exportDocument: TranscriptExportDocument? {
         guard let exportFormat else { return nil }
         let data = TranscriptExport.renderData(TranscriptExport.items(from: session),
@@ -279,6 +307,22 @@ public struct SessionDetailView: View {
         #else
         UIPasteboard.general.string = text
         #endif
+    }
+}
+
+/// Announces the shown transcript as the onscreen relevant entity for Siri / Apple
+/// Intelligence — unless it's a private session, which is withheld from the assistant surface
+/// entirely (`PrivacyGate.isEligibleForAssistant`).
+private struct OnscreenTranscript: ViewModifier {
+    let session: TranscriptSession
+
+    func body(content: Content) -> some View {
+        if PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) {
+            content.appEntityIdentifier(EntityIdentifier(for: TranscriptSessionEntity.self,
+                                                         identifier: session.id.uuidString))
+        } else {
+            content
+        }
     }
 }
 

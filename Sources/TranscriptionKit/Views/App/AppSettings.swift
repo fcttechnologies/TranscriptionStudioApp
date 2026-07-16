@@ -78,6 +78,7 @@ public final class AppSettings {
         static let diarizerBackend = "settings.diarizerBackend"
         static let wordTimestamps = "settings.wordTimestamps"
         static let autoFollowTranscript = "settings.autoFollowTranscript"
+        static let showConfidence = "settings.showConfidence"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -96,6 +97,11 @@ public final class AppSettings {
     public var autoFollowTranscript: Bool {
         didSet { defaults.set(autoFollowTranscript, forKey: Keys.autoFollowTranscript) }
     }
+    /// Verbatim/confidence display: flag low-confidence words in a saved transcript — off by
+    /// default so the reading view stays clean; a verifier turns it on per the detail view.
+    public var showConfidence: Bool {
+        didSet { defaults.set(showConfidence, forKey: Keys.showConfidence) }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -106,5 +112,6 @@ public final class AppSettings {
             .flatMap(DiarizerBackend.init(rawValue:)) ?? DiarizerBackend.platformDefault
         self.wordTimestamps = defaults.object(forKey: Keys.wordTimestamps) as? Bool ?? false
         self.autoFollowTranscript = defaults.object(forKey: Keys.autoFollowTranscript) as? Bool ?? true
+        self.showConfidence = defaults.object(forKey: Keys.showConfidence) as? Bool ?? false
     }
 }

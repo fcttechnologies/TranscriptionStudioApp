@@ -52,6 +52,15 @@ public final class TranscriptSession {
     public var fullText: String = ""
     public var errorMessage: String?
 
+    /// Per-session privacy lock. When set, opening this session's transcript requires a
+    /// biometric (Face ID / Touch ID, device-passcode fallback) unlock, and the session is
+    /// withheld from the assistant surface — never Spotlight-indexed, never donated as a
+    /// relevant entity, never returned by a Siri/App-Intent library query. Defaulted (CloudKit-
+    /// safe). See `PrivacyGate` and `Documentation/PRIVACY-LOCK.md` (which also documents why
+    /// per-session CloudKit *sync* exclusion isn't cleanly achievable in this single-container
+    /// architecture).
+    public var isPrivate: Bool = false
+
     /// Companion claim marker. When a Mac claims a `.pendingRemote` link to transcribe it, it
     /// stamps the claim time here and moves the session to `.inProgress`; `nil` for every
     /// locally-created session (which is how the watcher tells a claimed remote job from a Mac's

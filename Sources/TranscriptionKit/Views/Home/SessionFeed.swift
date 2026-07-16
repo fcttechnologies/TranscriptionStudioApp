@@ -135,6 +135,12 @@ struct SessionRow: View {
                 Text(metadata).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
+            if session.isPrivate {
+                Image(systemName: "lock.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Locked")
+            }
             if session.isProcessingRemote {
                 ProgressView().controlSize(.small)
             } else if session.isAwaitingRemote {
@@ -144,7 +150,7 @@ struct SessionRow: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(session.title), \(metadata)")
+        .accessibilityLabel("\(session.title), \(session.isPrivate ? "locked, " : "")\(metadata)")
     }
 
     private var metadata: String {

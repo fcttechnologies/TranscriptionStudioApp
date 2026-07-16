@@ -283,3 +283,34 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   overlay is absent and the build fails — even with a concrete arm64 `-destination`. Pass
   `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` for any Release-config simulator build (Debug is fine — it
   defaults to active-arch only). Device archives are unaffected (device is arm64).
+
+
+## Moat features — confidence mode + per-session privacy lock
+
+- **ASR confidence was already captured + surfaced, always-on, per-segment.** `Confidence.asrScore`
+  collapses `exp(avgLogprob)·(1−noSpeechProb)` to a `[0,1]` legibility score; `ConfidenceText`
+  (FCTComponentsUI) draws a dotted underline whose weight rises as the score falls, rendered by
+  `TranscriptTurnView`. The moat adds a **per-word** layer on top: when word timestamps were
+  captured (`AsrWord.probability`, stored in `StoredSegment.wordsJSON`), a detail-view toggle
+  flags the individual low-confidence *words*, not just the segment. Word data is absent unless
+  `AppSettings.wordTimestamps` is on (off by default), so the per-word view **degrades to the
+  per-segment score** cleanly. The flagging/normalization is pure + unit-tested
+  (`ConfidenceFlagging`).
+- **SwiftData+CloudKit sync exclusion is per-configuration/per-model-TYPE, never per-instance.**
+  Grounded via sosumi: `cloudKitDatabase` is a `ModelConfiguration` property; a `@Model` type
+  belongs to exactly one configuration. There is no API to keep *some* `TranscriptSession` rows
+  local while others sync. True per-session sync exclusion would need private sessions in a
+  **separate local-only `ModelContainer`** (`cloudKitDatabase: .none`), routed at *creation*
+  (a post-hoc toggle can't honestly promise "never left the device" — it already synced). That
+  fractures the single-container assumption wired across the feed fetch, `SessionStoreObserver`,
+  `AppModel.openSession`, `TranscriptSessionEntity`/Siri, Spotlight, and playback — and SwiftData
+  object graphs can't move between containers. So per the moat brief's explicit fallback, the
+  **biometric lock is built fully** and CloudKit exclusion is **honestly documented** as a known
+  limitation (see `Documentation/PRIVACY-LOCK.md`), not faked.
+- **Private ⇒ withheld from the assistant surface.** A biometric-locked session that Siri could
+  still read aloud or Spotlight could surface would be an obvious hole, so `isPrivate` also skips
+  Spotlight indexing, the relevant-entity donation, and FM highlights extraction. This is the
+  clean, correct slice of "keep it local" achievable without the container split.
+- **`NSFaceIDUsageDescription`** is required on both app targets (project.yml `info.properties`)
+  or the Face ID prompt crashes. `LocalAuthentication` is a system framework — importing it in
+  TranscriptionKit auto-links; no `project.yml` dependency needed.

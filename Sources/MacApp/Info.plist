@@ -35,6 +35,8 @@
 	<string>Transcription Studio adds meetings you review from a transcript to your calendar. It only ever adds — it never reads your existing calendar.</string>
 	<key>NSContactsUsageDescription</key>
 	<string>Transcription Studio matches names in your transcripts to your contacts so speakers and mentions show real names — read only, entirely on this device.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Transcription Studio uses Face ID to unlock sessions you've marked private, so only you can open them.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Transcription Studio records from your microphone to transcribe and identify speakers — entirely on this device. Nothing leaves your Mac.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>

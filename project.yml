@@ -53,6 +53,11 @@ targets:
         NSContactsUsageDescription: >-
           Transcription Studio matches names in your transcripts to your contacts so
           speakers and mentions show real names — read only, entirely on this device.
+        # Per-session privacy lock: Face ID / Touch ID (passcode fallback) gates opening a
+        # session you've marked private.
+        NSFaceIDUsageDescription: >-
+          Transcription Studio uses Face ID to unlock sessions you've marked private, so
+          only you can open them.
         # Custom URL scheme the Share extension opens to hand a staged link to this app.
         CFBundleURLTypes:
           - CFBundleURLName: com.fcttechnologies.TranscriptionStudio.ingest
@@ -118,6 +123,11 @@ targets:
         NSContactsUsageDescription: >-
           Transcription Studio matches names in your transcripts to your contacts so
           speakers and mentions show real names — read only, entirely on this device.
+        # Per-session privacy lock: Face ID / Touch ID (passcode fallback) gates opening a
+        # session you've marked private.
+        NSFaceIDUsageDescription: >-
+          Transcription Studio uses Face ID to unlock sessions you've marked private, so
+          only you can open them.
         UIBackgroundModes:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync

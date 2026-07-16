@@ -12,6 +12,10 @@ public struct TranscriptTurnView: View {
     var onTapLine: ((TranscriptTurn.Line) -> Void)?
     var showsSpeaker: Bool
     var karaoke: Bool
+    /// Verbatim/confidence display: when on, low-confidence words carry a subtle dotted
+    /// underline (per-word when word timestamps were captured, else the whole segment). Off by
+    /// default, so the live transcript and the default reading view are unaffected.
+    var confidenceHighlighting: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -19,12 +23,14 @@ public struct TranscriptTurnView: View {
                 playingLineID: String? = nil,
                 onTapLine: ((TranscriptTurn.Line) -> Void)? = nil,
                 showsSpeaker: Bool = true,
-                karaoke: Bool = false) {
+                karaoke: Bool = false,
+                confidenceHighlighting: Bool = false) {
         self.turn = turn
         self.playingLineID = playingLineID
         self.onTapLine = onTapLine
         self.showsSpeaker = showsSpeaker
         self.karaoke = karaoke
+        self.confidenceHighlighting = confidenceHighlighting
     }
 
     private var accent: Color { DesignMetrics.color(for: turn.speaker) }
@@ -68,6 +74,12 @@ public struct TranscriptTurnView: View {
                 // (unrelated to FCTComponentsUI.ShimmerText, which this file also imports for
                 // ConfidenceText) stays app-side — see Docs/Migration/TranscriptionStudio.md.
                 TranscriptionKit.ShimmerText(line.text, color: accent)
+            } else if confidenceHighlighting {
+                ConfidenceWordsText(spans: Confidence.spans(text: line.text,
+                                                            words: line.words,
+                                                            segmentScore: line.asrScore,
+                                                            threshold: DesignMetrics.lowConfidenceThreshold),
+                                    accent: accent)
             } else {
                 ConfidenceText(line.text, score: Double(line.asrScore), accent: accent)
             }

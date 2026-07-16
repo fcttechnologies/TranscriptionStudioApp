@@ -9,15 +9,20 @@ public struct TranscriptTurn: Identifiable, Equatable {
         public let text: String
         public let start: TimeInterval
         public let isProvisional: Bool
-        /// Whisper legibility score [0,1] for the confidence affordance.
+        /// Whisper legibility score [0,1] for the segment-level confidence affordance.
         public let asrScore: Float
+        /// Per-word model probabilities when word timestamps were captured; nil otherwise.
+        /// Feeds the confidence display's per-word flagging (degrades to `asrScore` when nil).
+        public let words: [AsrWord]?
 
-        public init(id: String, text: String, start: TimeInterval, isProvisional: Bool, asrScore: Float) {
+        public init(id: String, text: String, start: TimeInterval, isProvisional: Bool,
+                    asrScore: Float, words: [AsrWord]? = nil) {
             self.id = id
             self.text = text
             self.start = start
             self.isProvisional = isProvisional
             self.asrScore = asrScore
+            self.words = words
         }
     }
 
@@ -36,7 +41,8 @@ public struct TranscriptTurn: Identifiable, Equatable {
                             text: segment.asr.text,
                             start: segment.asr.start,
                             isProvisional: segment.isProvisional,
-                            asrScore: Confidence.asrScore(segment.asr))
+                            asrScore: Confidence.asrScore(segment.asr),
+                            words: segment.asr.words)
             if var last = turns.last, last.speaker == segment.speaker {
                 last.lines.append(line)
                 last.isProvisional = last.isProvisional || segment.isProvisional
@@ -62,8 +68,9 @@ public struct TranscriptTurn: Identifiable, Equatable {
                 AsrSegment(track: .mixed, start: segment.start, end: segment.end, text: segment.text,
                            avgLogprob: segment.avgLogprob, noSpeechProb: segment.noSpeechProb,
                            compressionRatio: segment.compressionRatio))
+            let words = segment.wordsJSON.flatMap { try? JSONDecoder().decode([AsrWord].self, from: $0) }
             let line = Line(id: segment.id.uuidString, text: segment.text, start: segment.start,
-                            isProvisional: false, asrScore: asrScore)
+                            isProvisional: false, asrScore: asrScore, words: words)
             if var last = turns.last, last.speaker == segment.speaker {
                 last.lines.append(line)
                 turns[turns.count - 1] = last
