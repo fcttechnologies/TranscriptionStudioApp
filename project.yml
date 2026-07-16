@@ -29,6 +29,8 @@ targets:
         product: TranscriptionKit
       - package: TranscriptionStudioPackage
         product: TranscriptionMacKit
+      # The Share extension, auto-embedded into the app's PlugIns folder.
+      - target: ShareExtensionMac
     info:
       path: Sources/MacApp/Info.plist
       properties:
@@ -38,6 +40,11 @@ targets:
         NSAudioCaptureUsageDescription: >-
           Transcription Studio captures system audio to transcribe meetings and
           calls — entirely on this device. Nothing leaves your Mac.
+        # Custom URL scheme the Share extension opens to hand a staged link to this app.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.fcttechnologies.TranscriptionStudio.ingest
+            CFBundleURLSchemes:
+              - transcriptionstudio
     settings:
       base:
         DEVELOPMENT_TEAM: ""
@@ -73,6 +80,8 @@ targets:
     dependencies:
       - package: TranscriptionStudioPackage
         product: TranscriptionKit
+      # The Share extension, auto-embedded into the app's PlugIns folder.
+      - target: ShareExtensioniOS
     info:
       path: Sources/iOSApp/Info.plist
       properties:
@@ -82,6 +91,11 @@ targets:
         UIBackgroundModes:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync
+        # Custom URL scheme the Share extension opens to hand a staged media file to this app.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.fcttechnologies.TranscriptionStudioiOS.ingest
+            CFBundleURLSchemes:
+              - transcriptionstudio
     settings:
       base:
         DEVELOPMENT_TEAM: ""
@@ -110,6 +124,67 @@ targets:
         # container as the Mac target). The CloudKit container is provisioned in Xcode — team
         # selection auto-creates it. Code + entitlements are all that's in scope here.
         CODE_SIGN_ENTITLEMENTS: Sources/iOSApp/TranscriptionStudioiOS.entitlements
+
+  # Share extensions — one per platform (a target has a single platform). Both build the same
+  # ShareViewController source (platform-conditional) + the lean ShareKit; each carries its own
+  # Info.plist (macOS = web-URL activation, iOS = movie/audio-file activation) and App Group
+  # entitlement. They stage the shared item into the App Group drop-box and never transcribe
+  # (extensions are memory-capped — WhisperKit would blow the budget).
+  ShareExtensionMac:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "27.0"
+    sources:
+      # Only the shared Swift source compiles; the iOS/ + macOS/ subfolders hold Info.plists +
+      # entitlements referenced via build settings, not bundled resources.
+      - path: Sources/ShareExtension
+        excludes:
+          - "macOS/**"
+          - "iOS/**"
+    dependencies:
+      - package: TranscriptionStudioPackage
+        product: ShareKit
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.ShareExtension
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/ShareExtension/macOS/Info.plist
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/macOS/ShareExtensionMac.entitlements
+
+  ShareExtensioniOS:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: Sources/ShareExtension
+        excludes:
+          - "macOS/**"
+          - "iOS/**"
+    dependencies:
+      - package: TranscriptionStudioPackage
+        product: ShareKit
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.ShareExtension
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/ShareExtension/iOS/Info.plist
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements
 
 schemes:
   TranscriptionStudio:
