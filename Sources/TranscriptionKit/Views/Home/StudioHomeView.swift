@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import FCTCloudKit
 #if os(iOS)
 import PhotosUI
 #endif
@@ -11,12 +12,12 @@ import PhotosUI
 /// Record tabs, the mini-player for live audio, and toasts for anything preparing or
 /// downloading. Both platforms embed this; `Capabilities` gates the Mac-only entry points.
 public struct StudioHomeView: View {
-    /// What the hosting platform can do — the Mac shell turns both on.
+    /// What the hosting platform can do — the Mac shell turns this on. (URL ingest is no longer a
+    /// capability flag: both platforms show Insert Link, and `AppModel.submitLink` routes to local
+    /// transcription or a remote queue based on whether the device has the URL downloader.)
     public struct Capabilities: Sendable {
-        public let urlIngest: Bool
         public let meetingCapture: Bool
-        public init(urlIngest: Bool = false, meetingCapture: Bool = false) {
-            self.urlIngest = urlIngest
+        public init(meetingCapture: Bool = false) {
             self.meetingCapture = meetingCapture
         }
     }
@@ -25,6 +26,9 @@ public struct StudioHomeView: View {
 
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
+    // Optional so previews/tests that host this view without the app-root injection still resolve.
+    @Environment(CloudKitSyncMonitor.self) private var cloudKitSync: CloudKitSyncMonitor?
+    @Environment(LibraryBootstrap.self) private var bootstrap: LibraryBootstrap?
     @Query(sort: \TranscriptSession.createdAt, order: .reverse) private var sessions: [TranscriptSession]
 
     @State private var searchText = ""
@@ -76,6 +80,12 @@ public struct StudioHomeView: View {
                 .environment(app)
         }
         .toastOverlay()
+        .overlay { bootstrapOverlay }
+        .task { bootstrap?.beginIfNeeded() }
+        .onChange(of: sessions.isEmpty) { _, isEmpty in
+            // The library arrived (or was never empty) — reveal the feed, don't sit behind the gate.
+            if !isEmpty { bootstrap?.markReady() }
+        }
         .dropDestination(for: URL.self) { urls, _ in
             for url in urls { startFile(url) }
             return !urls.isEmpty
@@ -120,15 +130,22 @@ public struct StudioHomeView: View {
     private var homeToolbar: some ToolbarContent {
         #if os(iOS)
         ToolbarItem(placement: .topBarLeading) { inspectorButton }
+        ToolbarItem(placement: .topBarTrailing) { syncIndicator }
         ToolbarItem(placement: .topBarTrailing) { settingsButton }
         DefaultToolbarItem(kind: .search, placement: .bottomBar)
         ToolbarSpacer(.flexible, placement: .bottomBar)
         ToolbarItem(placement: .bottomBar) { composeControl }
         #else
         ToolbarItem(placement: .navigation) { inspectorButton }
+        ToolbarItem { syncIndicator }
         ToolbarItem { settingsButton }
         ToolbarItem(placement: .primaryAction) { composeControl }
         #endif
+    }
+
+    /// A quiet CloudKit sync-status glyph (syncing/error; invisible when idle).
+    private var syncIndicator: some View {
+        SyncStatusIndicator(monitor: cloudKitSync)
     }
 
     private var inspectorButton: some View {
@@ -181,15 +198,29 @@ public struct StudioHomeView: View {
                 Button("Choose a File…", systemImage: "folder") {
                     isImporting = true
                 }
-                if capabilities.urlIngest {
-                    Button("Insert Link…", systemImage: "link") {
-                        app.activeSheet = .insertLink
-                    }
+                // Both platforms: the Mac transcribes the link locally, iOS queues it for the Mac.
+                Button("Insert Link…", systemImage: "link") {
+                    app.activeSheet = .insertLink
                 }
             } label: {
                 Label("Add", systemImage: "plus")
             }
             .accessibilityIdentifier("toolbar.compose")
+        }
+    }
+
+    /// First-launch "syncing your library…" state, shown over an empty feed while the initial
+    /// CloudKit import is still landing — so a fresh install doesn't read as "you have nothing".
+    @ViewBuilder
+    private var bootstrapOverlay: some View {
+        if bootstrap?.phase == .syncing, sessions.isEmpty {
+            ContentUnavailableView {
+                Label("Syncing your library…", systemImage: "arrow.triangle.2.circlepath")
+            } description: {
+                Text("Getting your transcripts from iCloud.")
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.feedCanvas)
         }
     }
 

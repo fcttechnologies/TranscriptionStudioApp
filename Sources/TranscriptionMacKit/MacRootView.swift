@@ -8,7 +8,7 @@ public struct MacRootView: View {
     public init() {}
 
     public var body: some View {
-        StudioHomeView(capabilities: .init(urlIngest: true, meetingCapture: true))
+        StudioHomeView(capabilities: .init(meetingCapture: true))
     }
 }
 

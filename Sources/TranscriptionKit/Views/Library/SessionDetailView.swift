@@ -37,10 +37,14 @@ public struct SessionDetailView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: DesignMetrics.turnSpacing) {
                         header
-                        ForEach(currentTurns) { turn in
-                            TranscriptTurnView(turn: turn,
-                                               playingLineID: playingLineID,
-                                               onTapLine: hasAudio ? { app.playback.play(from: $0.start) } : nil)
+                        if session.isRemotePlaceholder {
+                            RemoteWaitingView(isProcessing: session.isProcessingRemote)
+                        } else {
+                            ForEach(currentTurns) { turn in
+                                TranscriptTurnView(turn: turn,
+                                                   playingLineID: playingLineID,
+                                                   onTapLine: hasAudio ? { app.playback.play(from: $0.start) } : nil)
+                            }
                         }
                     }
                     .padding(DesignMetrics.spacingL)

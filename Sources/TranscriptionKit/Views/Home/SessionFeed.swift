@@ -112,7 +112,11 @@ struct SessionRow: View {
                 Text(metadata).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
-            if session.status == .failed {
+            if session.isProcessingRemote {
+                ProgressView().controlSize(.small)
+            } else if session.isAwaitingRemote {
+                Image(systemName: "hourglass").foregroundStyle(.secondary)
+            } else if session.status == .failed {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             }
         }
@@ -121,6 +125,9 @@ struct SessionRow: View {
     }
 
     private var metadata: String {
+        // A companion link waiting on (or transcribing on) the Mac reads its status, not stats.
+        if session.isAwaitingRemote { return "Waiting for your Mac…" }
+        if session.isProcessingRemote { return "Transcribing on your Mac…" }
         var parts = [session.createdAt.formatted(date: .omitted, time: .shortened)]
         if session.duration > 0 { parts.append(TimeFormat.clock(session.duration)) }
         if speakerCount > 1 { parts.append("\(speakerCount) speakers") }
