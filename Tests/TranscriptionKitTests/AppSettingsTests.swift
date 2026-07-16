@@ -21,6 +21,7 @@ struct AppSettingsTests {
         first.diarizerBackend = .speakerKit
         first.wordTimestamps = true
         first.autoFollowTranscript = false
+        first.locationCaptureEnabled = true
 
         // A fresh instance reads the persisted values back.
         let second = AppSettings(defaults: defaults)
@@ -28,6 +29,7 @@ struct AppSettingsTests {
         #expect(second.diarizerBackend == .speakerKit)
         #expect(second.wordTimestamps == true)
         #expect(second.autoFollowTranscript == false)
+        #expect(second.locationCaptureEnabled == true)
     }
 
     @Test func defaultsAreSaneWhenUnset() {
@@ -36,6 +38,8 @@ struct AppSettingsTests {
         #expect(settings.diarizerBackend == .sortformer)
         #expect(settings.wordTimestamps == false)
         #expect(settings.autoFollowTranscript == true)
+        // Location tagging is opt-in — off unless the user turns it on.
+        #expect(settings.locationCaptureEnabled == false)
     }
 
     @Test func whisperVariantNamesMatchWhisperKitRepo() {

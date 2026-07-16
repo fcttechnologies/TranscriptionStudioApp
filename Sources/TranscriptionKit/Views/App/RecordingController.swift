@@ -104,6 +104,15 @@ public final class RecordingController {
     @ObservationIgnored private var latestFrames = SpeakerFrameMatrix(activities: [], committedFrameCount: 0)
     /// Owns the mixed archive buffer, the diar-track buffer, and the finished-run persistence.
     @ObservationIgnored private let archiver: RecordingArchiver
+    /// Captures the coarse recording location once at start, when the user has opted in. Its
+    /// result lands in `capturedLocation` and is attached to the session at persist time.
+    @ObservationIgnored private let locationProvider = RecordingLocationProvider()
+    /// The in-flight location capture (started at `start`, self-bounded by the provider's
+    /// timeout), cancelled on the next `reset`.
+    @ObservationIgnored private var locationTask: Task<Void, Never>?
+    /// The resolved recording location, or nil until the capture lands (or if it never does —
+    /// a short recording that ends before the fix/geocode finishes degrades silently to none).
+    @ObservationIgnored private var capturedLocation: RecordingLocationProvider.CapturedLocation?
     #if os(iOS)
     /// Mirrors the run onto the Lock Screen / Dynamic Island (throttled internally to ~1/s).
     @ObservationIgnored private let liveActivity = RecordingLiveActivityDriver()
@@ -174,8 +183,22 @@ public final class RecordingController {
     public func start(mode: Mode) {
         guard phase == .idle else { return }
         reset(mode: mode)
+        beginLocationCapture()
         phase = .preparing(EnginePreparationProgress(phase: "Preparing engines…", fraction: nil))
         startTask = Task { [weak self] in await self?.runStart(mode: mode) }
+    }
+
+    /// Kick off the one-shot location capture at recording start, when the user has opted in. The
+    /// result lands in `capturedLocation` for the session write at stop; a run that ends before it
+    /// resolves simply persists without a location (silent degrade).
+    private func beginLocationCapture() {
+        guard settings.locationCaptureEnabled else { return }
+        let provider = locationProvider
+        locationTask = Task { [weak self] in
+            let captured = await provider.capture()
+            guard let self, !Task.isCancelled else { return }
+            self.capturedLocation = captured
+        }
     }
 
     /// Prepare the engines (with progress), then, if ASR is ready, wire capture and go live.
@@ -403,7 +426,8 @@ public final class RecordingController {
         loadSampler.stop()
 
         let id = archiver.persist(sessionID: sessionID, mode: mode, elapsed: elapsed,
-                                  segments: segments, latestTurns: latestTurns)
+                                  segments: segments, latestTurns: latestTurns,
+                                  location: capturedLocation)
         phase = .idle
         isTearingDown = false
         return id
@@ -491,7 +515,8 @@ public final class RecordingController {
         sources.removeAll()
         loadSampler.stop()
         _ = archiver.persist(sessionID: sessionID, mode: mode, elapsed: elapsed,
-                             segments: segments, latestTurns: latestTurns)
+                             segments: segments, latestTurns: latestTurns,
+                             location: capturedLocation)
         phase = .idle
         isTearingDown = false
     }
@@ -558,6 +583,9 @@ public final class RecordingController {
     private func reset(mode: Mode) {
         self.mode = mode
         sessionID = UUID()
+        locationTask?.cancel()
+        locationTask = nil
+        capturedLocation = nil
         elapsed = 0
         accumulatedElapsed = 0
         level = 0

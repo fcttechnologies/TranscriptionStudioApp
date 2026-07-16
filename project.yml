@@ -58,6 +58,12 @@ targets:
         NSFaceIDUsageDescription: >-
           Transcription Studio uses Face ID to unlock sessions you've marked private, so
           only you can open them.
+        # Opt-in recording-location tag (off by default). Captured once at recording start and
+        # reverse-geocoded to a coarse place name stored with the session — entirely on this
+        # device; the location is never uploaded.
+        NSLocationWhenInUseUsageDescription: >-
+          Transcription Studio can tag a recording with the place you made it, so you can find
+          it by location later — captured only while recording and kept entirely on this device.
         # Custom URL scheme the Share extension opens to hand a staged link to this app.
         CFBundleURLTypes:
           - CFBundleURLName: com.fcttechnologies.TranscriptionStudio.ingest
@@ -128,6 +134,12 @@ targets:
         NSFaceIDUsageDescription: >-
           Transcription Studio uses Face ID to unlock sessions you've marked private, so
           only you can open them.
+        # Opt-in recording-location tag (off by default). Captured once at recording start and
+        # reverse-geocoded to a coarse place name stored with the session — entirely on this
+        # device; the location is never uploaded.
+        NSLocationWhenInUseUsageDescription: >-
+          Transcription Studio can tag a recording with the place you made it, so you can find
+          it by location later — captured only while recording and kept entirely on this device.
         UIBackgroundModes:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync

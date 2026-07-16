@@ -63,7 +63,8 @@ final class RecordingArchiver {
                 mode: RecordingController.Mode,
                 elapsed: TimeInterval,
                 segments: [AttributedSegment],
-                latestTurns: [SpeakerTurn]) -> UUID? {
+                latestTurns: [SpeakerTurn],
+                location: RecordingLocationProvider.CapturedLocation? = nil) -> UUID? {
         guard !segments.isEmpty else { return nil }
         let kind: SessionKind = mode == .meeting ? .meetingRecording : .roomRecording
         let session = TranscriptSession(title: Self.defaultTitle(for: mode), kind: kind)
@@ -71,6 +72,13 @@ final class RecordingArchiver {
         session.status = .complete
         session.duration = elapsed
         session.fullText = segments.map(\.asr.text).joined(separator: " ")
+        // Opt-in recording-location metadata — set before the Spotlight index below so the place
+        // name is folded into the session's keywords on first index (`SessionKeywords`).
+        if let location {
+            session.locationName = location.name
+            session.coordinate = GeoCoordinate(latitude: location.latitude,
+                                               longitude: location.longitude)
+        }
 
         // Archive the mixed audio (compressed AAC) so the session is re-playable / re-runnable.
         let samples = archive.isEmpty

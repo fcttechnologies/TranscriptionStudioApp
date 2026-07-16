@@ -31,7 +31,7 @@ public struct SettingsView: View {
             Section("Transcript") {
                 Toggle("Auto-follow the live transcript", isOn: $settings.autoFollowTranscript)
             }
-            PermissionsSection()
+            PermissionsSection(locationCaptureEnabled: $settings.locationCaptureEnabled)
             StorageSection()
             Section {
                 LabeledContent("On-device", value: "All processing stays local")

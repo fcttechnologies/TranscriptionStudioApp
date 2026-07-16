@@ -361,3 +361,41 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   way to synthesize a `MetricReport`/`DiagnosticReport` to exercise the adapter end-to-end; it's
   proven by construction (grounded field types) + the pure-layer tests, and confirmed live only by
   reading OSLog `category:metrics` from a real install over days (TestFlight/App Store, not a sim).
+## Recording-location metadata (roadmap §11, opt-in)
+
+- **`CLGeocoder` + `reverseGeocodeLocation` are DEPRECATED in the 26/27 SDKs** ("use MapKit" /
+  "use `MKReverseGeocodingRequest`") — a deprecation *warning* that fails the app targets'
+  `SWIFT_TREAT_WARNINGS_AS_ERRORS`. The roadmap docs (§11/§6) still name `CLGeocoder`; that's
+  stale. Reverse-geocode with `MKReverseGeocodingRequest(location:)` (failable init) →
+  `try await request.mapItems` → the first `MKMapItem`. SPM `swift build` compiles the
+  deprecation as a plain warning (no warnings-as-errors there), so a green `swift build` does
+  NOT prove the xcode app build is warning-clean — check the deprecation output explicitly.
+- **`MKMapItem.init(placemark:)` and the `.placemark` property are DEPRECATED in SDK 27.** Build
+  a map item with `init(location: CLLocation, address: MKAddress)` and
+  `MKAddress(fullAddress:shortAddress:)`; set `.name` for the label. `openInMaps(launchOptions:)`
+  returns `Bool` and is NOT `@discardableResult` — `_ = mapItem.openInMaps()` or the unused
+  result trips warnings-as-errors.
+- **A coarse, privacy-forward place name off an `MKMapItem`:** `mapItem.name` is a real
+  landmark/business label *only* when `mapItem.pointOfInterestCategory != nil` — for a plain
+  address it's the street, which is more precise than a location tag should be. Prefer, in order:
+  the POI name (only when categorized) → `mapItem.addressRepresentations?.cityName` (coarse city)
+  → `mapItem.address?.shortAddress` (last resort). Keep that priority a pure function over plain
+  strings (`PlaceNameFormatter`) so it's unit-tested without MapKit hardware; the live fix +
+  geocode + Maps-open are on-device checks.
+- **One-shot location = `CLLocationUpdate.liveUpdates()`** (the modern async-sequence replacement
+  for the delegate-driven `CLLocationManager.requestLocation`): iterate, take the first
+  `update.location`, break; bail on `authorizationDenied`/`authorizationDeniedGlobally`/
+  `authorizationRestricted`; race the stream against a `Task.sleep` timeout so it never hangs.
+  `CLLocationUpdate` is `Sendable`, so the iteration can run in a nonisolated task and hand back
+  only extracted `Double`s (never the non-`Sendable` `CLLocation`). A separate `CLLocationManager`
+  is kept only to `requestWhenInUseAuthorization()` on first capture.
+- **AppIntents `IndexedEntity` `@Property(indexingKey:)` is 1:1 with a `CSSearchableItemAttributeSet`
+  key** — two `@Property`s can't both map to `\.keywords` (the second assignment wins). To fold a
+  second keyword source (a place name) in beside people names, aggregate them into ONE property's
+  value (`SessionKeywords.values(for:)`), don't add a second keyword-mapped property. Renaming the
+  Swift property (`people` → `keywords`) doesn't touch the on-disk Spotlight attribute (`\.keywords`
+  is unchanged), so no index migration.
+- **Location capture is fire-and-read, not awaited at stop.** `RecordingController` starts the
+  capture at `start()` and reads `capturedLocation` at `stop()` without awaiting — a recording long
+  enough to matter has resolved the fix+geocode by the time it ends; a sub-timeout recording
+  persists without a location (silent degrade), never blocking the stop/finishing path.

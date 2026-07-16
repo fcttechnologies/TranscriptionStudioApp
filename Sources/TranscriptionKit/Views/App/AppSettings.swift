@@ -79,6 +79,7 @@ public final class AppSettings {
         static let wordTimestamps = "settings.wordTimestamps"
         static let autoFollowTranscript = "settings.autoFollowTranscript"
         static let showConfidence = "settings.showConfidence"
+        static let locationCaptureEnabled = "settings.locationCaptureEnabled"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -102,6 +103,12 @@ public final class AppSettings {
     public var showConfidence: Bool {
         didSet { defaults.set(showConfidence, forKey: Keys.showConfidence) }
     }
+    /// Tag a live recording with the coarse place it was made (reverse-geocoded to a short place
+    /// name, captured once at recording start). **Off by default** — location never leaves the
+    /// device without an explicit opt-in, matching the app's "nothing leaves your device" pitch.
+    public var locationCaptureEnabled: Bool {
+        didSet { defaults.set(locationCaptureEnabled, forKey: Keys.locationCaptureEnabled) }
+    }
 
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -113,5 +120,6 @@ public final class AppSettings {
         self.wordTimestamps = defaults.object(forKey: Keys.wordTimestamps) as? Bool ?? false
         self.autoFollowTranscript = defaults.object(forKey: Keys.autoFollowTranscript) as? Bool ?? true
         self.showConfidence = defaults.object(forKey: Keys.showConfidence) as? Bool ?? false
+        self.locationCaptureEnabled = defaults.object(forKey: Keys.locationCaptureEnabled) as? Bool ?? false
     }
 }

@@ -38,21 +38,22 @@ public struct TranscriptSessionEntity: IndexedEntity {
     @Property(title: "Transcript", indexingKey: \.contentDescription)
     public var textPreview: String
 
-    /// Person names associated with the session — bound speaker contacts + extracted mentions —
-    /// indexed as Spotlight `keywords` so a name query resolves to this session even when the raw
-    /// transcript only labeled a "Speaker N" (Siri name resolution). See `SessionPeople`.
-    @Property(title: "People", indexingKey: \.keywords)
-    public var people: [String]
+    /// Free-text hooks indexed as Spotlight `keywords` so a query resolves to this session beyond
+    /// its title/transcript: person names (bound speaker contacts + extracted mentions) so a name
+    /// query matches even when the raw transcript only labeled "Speaker N", plus the recording
+    /// place name so "the meeting at the office" recalls it. See `SessionKeywords`.
+    @Property(title: "Keywords", indexingKey: \.keywords)
+    public var keywords: [String]
 
     public init(id: String, title: String, date: Date, kindLabel: String,
-                duration: TimeInterval, textPreview: String, people: [String] = []) {
+                duration: TimeInterval, textPreview: String, keywords: [String] = []) {
         self.id = id
         self.title = title
         self.date = date
         self.kindLabel = kindLabel
         self.duration = duration
         self.textPreview = textPreview
-        self.people = people
+        self.keywords = keywords
     }
 
     public var displayRepresentation: DisplayRepresentation {
@@ -79,7 +80,24 @@ extension TranscriptSessionEntity {
                   kindLabel: SessionKindStyle.label(session.kind),
                   duration: session.duration,
                   textPreview: String(session.fullText.prefix(280)),
-                  people: SessionPeople.names(for: session))
+                  keywords: SessionKeywords.values(for: session))
+    }
+}
+
+/// The session's Spotlight `keywords`: the person names (`SessionPeople`) plus the opt-in
+/// recording place name, deduplicated case-insensitively. Pure over the model, directly testable.
+/// Folding the place in here (rather than a second `@Property` on `\.keywords`, which one
+/// property must own) is what makes a place query resolve the session through the same index path
+/// people names already use.
+public enum SessionKeywords {
+    public static func values(for session: TranscriptSession) -> [String] {
+        var result = SessionPeople.names(for: session)
+        if let place = session.locationName?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !place.isEmpty,
+           !result.contains(where: { $0.caseInsensitiveCompare(place) == .orderedSame }) {
+            result.append(place)
+        }
+        return result
     }
 }
 

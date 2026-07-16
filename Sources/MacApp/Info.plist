@@ -37,6 +37,8 @@
 	<string>Transcription Studio matches names in your transcripts to your contacts so speakers and mentions show real names — read only, entirely on this device.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Transcription Studio uses Face ID to unlock sessions you've marked private, so only you can open them.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Transcription Studio can tag a recording with the place you made it, so you can find it by location later — captured only while recording and kept entirely on this device.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Transcription Studio records from your microphone to transcribe and identify speakers — entirely on this device. Nothing leaves your Mac.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>

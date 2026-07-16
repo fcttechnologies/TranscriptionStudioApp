@@ -188,6 +188,11 @@ public struct SessionDetailView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
+            // Opt-in recording location: one quiet chip, tapping opens Maps at the coordinate.
+            if let locationChip = LocationChipPolicy.chip(for: session) {
+                LocationChipView(chip: locationChip)
+                    .padding(.top, DesignMetrics.spacingXS)
+            }
         }
         .padding(.bottom, DesignMetrics.spacingS)
     }

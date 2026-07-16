@@ -185,4 +185,30 @@ struct RecordingArchiverTests {
         let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
         #expect(session.fullText == "one two")
     }
+
+    @Test func persistAttachesTheCapturedLocationWhenProvided() throws {
+        let context = try inMemoryContext()
+        let archiver = makeArchiver(context: context)
+        let location = RecordingLocationProvider.CapturedLocation(
+            name: "Mission District, San Francisco", latitude: 37.7599, longitude: -122.4148)
+
+        let id = archiver.persist(sessionID: UUID(), mode: .room, elapsed: 3,
+                                  segments: [segment(text: "hi")], latestTurns: [], location: location)
+        #expect(id != nil)
+
+        let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
+        #expect(session.locationName == "Mission District, San Francisco")
+        #expect(session.coordinate == GeoCoordinate(latitude: 37.7599, longitude: -122.4148))
+    }
+
+    @Test func persistLeavesLocationNilWhenNoneCaptured() throws {
+        let context = try inMemoryContext()
+        let archiver = makeArchiver(context: context)
+
+        _ = archiver.persist(sessionID: UUID(), mode: .room, elapsed: 3,
+                             segments: [segment(text: "hi")], latestTurns: [])
+        let session = try #require(try context.fetch(FetchDescriptor<TranscriptSession>()).first)
+        #expect(session.locationName == nil)
+        #expect(session.coordinate == nil)
+    }
 }

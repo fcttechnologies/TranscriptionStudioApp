@@ -5,6 +5,10 @@ import SwiftUI
 /// Settings) is macOS meeting capture's real TCC flow. Recording itself just prompts or
 /// points here when a grant is missing.
 struct PermissionsSection: View {
+    /// Opt-in recording-location tag (off by default) — a preference, not a status row, but it
+    /// lives here so the one "what a recording may capture" surface is together.
+    @Binding var locationCaptureEnabled: Bool
+
     @Environment(\.openURL) private var openURL
     @State private var micStatus: MicrophonePermission.Status = .authorized
     #if os(macOS)
@@ -17,16 +21,27 @@ struct PermissionsSection: View {
             #if os(macOS)
             screenRow
             #endif
+            locationRow
         } header: {
             Text("Permissions")
         } footer: {
             #if os(macOS)
-            Text("Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Everything stays on this device.")
+            Text("Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Location tagging is off unless you turn it on. Everything stays on this device.")
             #else
-            Text("Recording uses the microphone. Everything stays on this device.")
+            Text("Recording uses the microphone. Location tagging is off unless you turn it on. Everything stays on this device.")
             #endif
         }
         .onAppear(perform: refresh)
+    }
+
+    // MARK: Location tagging (both platforms)
+
+    @ViewBuilder
+    private var locationRow: some View {
+        Toggle(isOn: $locationCaptureEnabled) {
+            Label("Tag recordings with location", systemImage: "mappin.and.ellipse")
+        }
+        .accessibilityIdentifier("settings.permission.location")
     }
 
     // MARK: Microphone (both platforms)

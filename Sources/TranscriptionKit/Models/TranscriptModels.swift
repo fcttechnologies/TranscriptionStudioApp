@@ -16,6 +16,20 @@ public enum SessionStatus: String, Sendable, Codable, CaseIterable {
     case failed
 }
 
+/// A stored geographic coordinate — the raw lat/long behind a session's opt-in recording-location
+/// metadata. Persisted as a SwiftData Codable attribute (`TranscriptSession.coordinate`); kept a
+/// plain `Codable` value type rather than a `@Model` because it's framework-owned data with no
+/// query need (roadmap §11/§12). `Sendable` so it crosses the location provider's task boundaries.
+public struct GeoCoordinate: Codable, Sendable, Equatable, Hashable {
+    public var latitude: Double
+    public var longitude: Double
+
+    public init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
+
 /// One transcription/recording session — the library's unit. CloudKit-ready shape:
 /// defaults on every attribute, optional to-many with an inverse, no unique constraints
 /// (identity is the UUID `id`).
@@ -60,6 +74,17 @@ public final class TranscriptSession {
     /// per-session CloudKit *sync* exclusion isn't cleanly achievable in this single-container
     /// architecture).
     public var isPrivate: Bool = false
+
+    /// Opt-in recording-location metadata (roadmap §11). A short human place name resolved by
+    /// reverse geocoding once at live-recording start (`RecordingLocationProvider`), folded into
+    /// the Spotlight keywords (`SessionKeywords`) so "the meeting at the office" recalls the
+    /// session. `nil` unless the user turned location capture on *and* a fix resolved — a denied
+    /// permission or failed fix degrades silently to no location. Defaulted → CloudKit-safe.
+    public var locationName: String?
+    /// The raw coordinate behind `locationName`, backing the Maps deep-link chip. A SwiftData
+    /// Codable attribute — the blessed use of that escape hatch for a framework-owned value with
+    /// no query need (§11/§12), unlike the extracted-highlight `@Model`s. Defaulted → CloudKit-safe.
+    public var coordinate: GeoCoordinate?
 
     /// Companion claim marker. When a Mac claims a `.pendingRemote` link to transcribe it, it
     /// stamps the claim time here and moves the session to `.inProgress`; `nil` for every
