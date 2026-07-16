@@ -53,6 +53,12 @@ public final class TranscriptSession {
     /// when Apple Intelligence can't run. See `HighlightsExtractor`.
     public var highlightsStatusRaw: String = HighlightsStatus.pending.rawValue
 
+    /// Suggestion chips the user waved away — the stable per-item ids ("event:<uuid>", …) from
+    /// `ActionSuggestions`, so a dismissed chip never resurfaces for this session. Per item,
+    /// never a session-wide switch; a plain string array (CloudKit-compatible, like `attendees`)
+    /// so dismissals sync across devices with the session.
+    public var dismissedSuggestionIDs: [String] = []
+
     @Relationship(deleteRule: .cascade, inverse: \StoredSegment.session)
     public var segments: [StoredSegment]? = []
 

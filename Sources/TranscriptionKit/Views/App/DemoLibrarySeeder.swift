@@ -37,6 +37,17 @@ public enum DemoLibrarySeeder {
             (.me, 46.5, "Locked. I'll send the recap and the revised timeline tonight."),
         ]
         fill(session, lines: lines, duration: 52)
+        // Highlights as the FM pass would leave them, so the Suggested row and the confirm
+        // sheets show real content in the demo library.
+        session.events = [TranscriptEvent(title: "Photography session",
+                                          dateText: "Thursday morning",
+                                          date: upcoming(weekday: 5, hour: 9))]
+        session.actionItems = [
+            TranscriptActionItem(task: "Send the recap and the revised timeline",
+                                 owner: "Me", dueDateText: "tonight",
+                                 dueDate: upcoming(hour: 20)),
+        ]
+        session.highlightsStatus = .ready
         return session
     }
 
@@ -50,7 +61,24 @@ public enum DemoLibrarySeeder {
             (.speaker(0), 28.4, "Follow-ups go out tomorrow morning, bakery first."),
         ]
         fill(session, lines: lines, duration: 34)
+        session.actionItems = [
+            TranscriptActionItem(task: "Send the bakery the menu board quote in writing",
+                                 owner: "Me", dueDateText: "tomorrow morning",
+                                 dueDate: upcoming(hour: 9, dayOffset: 1)),
+        ]
+        session.people = [TranscriptPerson(name: "Marisol")]
+        session.highlightsStatus = .ready
         return session
+    }
+
+    /// The next occurrence of `hour` (optionally on `weekday`, optionally starting `dayOffset`
+    /// days out) — keeps the demo's suggested dates believably in the future on any run day.
+    private static func upcoming(weekday: Int? = nil, hour: Int, dayOffset: Int = 0) -> Date? {
+        let from = Calendar.current.date(byAdding: .day, value: dayOffset, to: .now) ?? .now
+        var components = DateComponents(hour: hour)
+        components.weekday = weekday
+        return Calendar.current.nextDate(after: from, matching: components,
+                                         matchingPolicy: .nextTime)
     }
 
     private static func fill(_ session: TranscriptSession,

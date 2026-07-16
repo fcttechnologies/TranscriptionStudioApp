@@ -69,6 +69,14 @@ public enum DesignMetrics {
     /// Below this attribution confidence, a segment gets a "check this" affordance.
     public static let lowConfidenceThreshold: Float = 0.55
 
+    // MARK: Suggestion chips (the detail view's "Suggested" row)
+    public static let suggestionChipVPadding: CGFloat = 7
+    public static let suggestionChipHPadding: CGFloat = 12
+    /// The chip's item text truncates past this, so one long title can't swallow the row.
+    public static let suggestionDetailMaxWidth: CGFloat = 190
+    /// The per-chip dismiss glyph's tap frame (small by design — a secondary affordance).
+    public static let suggestionDismissTarget: CGFloat = 24
+
     // MARK: Level meter
     public static let levelMeterBarCount = 5
     public static let levelMeterBarWidth: CGFloat = 4

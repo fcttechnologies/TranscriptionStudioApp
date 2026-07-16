@@ -21,6 +21,7 @@ public struct SessionDetailView: View {
     @State private var hasAudio = false
     @State private var exportFormat: TranscriptExport.Format?
     @State private var showingIntelligence = false
+    @State private var activeSuggestion: ActionSuggestion?
     @State private var isRenaming = false
     @State private var draftTitle = ""
     /// The last moment the reader scrolled by hand — auto-follow yields until it passes.
@@ -43,11 +44,12 @@ public struct SessionDetailView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: DesignMetrics.turnSpacing) {
                         header
-                        // Phase 3 seam: the assistant layer's proactive suggestion chips land
-                        // here, between the identity header and the transcript.
                         if session.isRemotePlaceholder {
                             RemoteWaitingView(isProcessing: session.isProcessingRemote)
                         } else {
+                            // The assistant layer's delivery surface: extracted highlights as
+                            // dismissible chips, each opening its Phase 3 confirm sheet.
+                            SuggestedActionsRow(session: session) { activeSuggestion = $0 }
                             ForEach(currentTurns) { turn in
                                 TranscriptTurnView(turn: turn,
                                                    playingLineID: playingLineID,
@@ -119,6 +121,11 @@ public struct SessionDetailView: View {
         .sheet(isPresented: $showingIntelligence) {
             SessionIntelligenceSheet(session: session)
         }
+        // A tapped chip's Phase 3 draft-then-confirm surface, presented over this sheet so
+        // confirming (or closing) lands the reader back on the transcript.
+        .sheet(item: $activeSuggestion) { suggestion in
+            suggestionSheet(for: suggestion)
+        }
         .alert("Rename Session", isPresented: $isRenaming) {
             TextField("Title", text: $draftTitle)
                 .accessibilityIdentifier("session.renameField")
@@ -173,6 +180,34 @@ public struct SessionDetailView: View {
             .foregroundStyle(.secondary)
         }
         .padding(.bottom, DesignMetrics.spacingS)
+    }
+
+    // MARK: Suggested actions
+
+    /// The Phase 3 confirm surface a tapped chip opens — reused as-is, presented locally so the
+    /// reader stays in the transcript. A confirmed write also retires its chip (served, not
+    /// re-suggested); closing without confirming leaves the chip standing.
+    @ViewBuilder
+    private func suggestionSheet(for suggestion: ActionSuggestion) -> some View {
+        switch suggestion.kind {
+        case .calendarEvent:
+            CalendarDraftConfirmView(eventID: suggestion.itemID) { suggestionServed(suggestion) }
+        case .reminder:
+            ReminderDraftConfirmView(actionItemID: suggestion.itemID) { suggestionServed(suggestion) }
+        case .contact:
+            #if os(iOS)
+            SpeakerAssignmentSheet(sessionID: session.id)
+            #else
+            // Contact suggestions are never derived on macOS (no contact-picker surface).
+            EmptyView()
+            #endif
+        }
+    }
+
+    private func suggestionServed(_ suggestion: ActionSuggestion) {
+        withAnimation(reduceMotion ? nil : DesignMetrics.snappySpring) {
+            ActionSuggestions.dismiss(suggestion.id, on: session, in: modelContext)
+        }
     }
 
     // MARK: Karaoke auto-follow

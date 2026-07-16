@@ -205,3 +205,26 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   `MainActor.assumeIsolated` in the handler — the `BGContinuedProcessingTask` is non-Sendable, so
   this avoids crossing an actor boundary to touch the `@MainActor` job model. `expirationHandler`
   fires on an arbitrary queue → capture only the Sendable identifier and hop via `Task { @MainActor in }`.
+## Suggestion chips (the proactive delivery surface)
+
+- **The chip surface is a pure mapping, not a store.** `ActionSuggestions.suggestions(for:includeContacts:now:)`
+  derives chips from the extracted `@Model`s on every body pass; `SuggestedActionsRow` is a thin
+  renderer. All chip policy (kind order, dated-before-undated, past-event staleness vs. past-due
+  action items kept, `done` filtering, dismissal) lives there and is unit-tested — don't add
+  policy in the view.
+- **Dismissal is a per-item string set on the session** (`dismissedSuggestionIDs: [String]`,
+  ids shaped `"event:<uuid>"`), CloudKit-additive like `attendees`. A *confirmed* write also
+  dismisses its chip via the `onConfirmed: (() -> Void)? = nil` hook on the two confirm views
+  (nil from the shell's App Intent route — behavior there is unchanged).
+- **Chips clamp, they don't stretch: under a horizontal `ScrollView`'s ideal-size proposal,
+  `.frame(maxWidth:)` sizes to the child's own width clamped to the max** — so short item text
+  hugs and only long text truncates. (Under a *finite* proposal the same frame would expand to
+  the max and pad short chips with dead space.) The day hint (`· Thu, Jul 16`) sits outside the
+  truncating frame so a long title can't swallow the useful part.
+- **Beta-sim crash reports naming `intelligencetasksd` / `BackgroundShortcutRunner` are system-
+  daemon noise, not the app.** The sim tooling's crash detector surfaces any fresh `.ips`; before
+  reacting, confirm the app's pid is still alive (`simctl spawn <udid> launchctl list | grep
+  <bundle-id>`). Chasing these as app crashes burns cycles on nothing.
+- **`SimTap` by label on an element scrolled out of view can land on the wrong target** (it taps
+  the stale coordinate — in our case an off-screen chip's tap hit the *previous* chip's dismiss ×).
+  Scroll the element into view first, or tap by fresh on-screen coordinates from the settled map.

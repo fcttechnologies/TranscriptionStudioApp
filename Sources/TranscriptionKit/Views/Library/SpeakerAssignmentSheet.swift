@@ -8,8 +8,8 @@ import ContactsUI
 /// lets the user bind each to a real contact through the system contact picker — which runs
 /// out-of-process and needs *no* Contacts permission. A bound name is denormalized onto the session
 /// (so labels + the Spotlight index need no re-fetch) and makes "what did they say" searchable by
-/// name. This is a plain review list, not the proactive-chip surface (a later taste pass); the detail
-/// view is deliberately left untouched.
+/// name. A plain review list, reached from the shell's sheet routing and from the detail view's
+/// "Save Contact" suggestion chips.
 struct SpeakerAssignmentSheet: View {
     let sessionID: UUID
     @Environment(\.dismiss) private var dismiss

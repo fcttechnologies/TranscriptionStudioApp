@@ -4,10 +4,13 @@ import SwiftData
 /// **Draft-then-confirm — Calendar.** Reviews an extracted `TranscriptEvent` as an editable draft and,
 /// only on an explicit tap, commits it through the generalized `ConfirmableWrite` boundary
 /// (`CalendarWriteAction`), which requests the minimal write-only calendar scope and saves the event.
-/// Nothing is written until the user taps Add. This is the functional confirm surface Phase 3 ships —
-/// the proactive suggestion-chip design is a separate, later taste pass.
+/// Nothing is written until the user taps Add. Reached from the shell's sheet routing (App Intents)
+/// and from the detail view's suggestion chips (`SuggestedActionsRow`).
 struct CalendarDraftConfirmView: View {
     let eventID: UUID
+    /// Fires after a successful write, before this sheet dismisses — the suggestion-chip host
+    /// uses it to retire the served chip. Nil (a no-op) from the shell's App Intent route.
+    var onConfirmed: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -86,6 +89,7 @@ struct CalendarDraftConfirmView: View {
                 ToastCenter.shared.show(Toast(
                     title: "Added to Calendar", message: draft.title,
                     systemImage: "calendar.badge.checkmark", style: .success))
+                onConfirmed?()
                 dismiss()
             } catch {
                 saving = false
@@ -103,6 +107,8 @@ struct CalendarDraftConfirmView: View {
 /// `ReminderWriteAction` (minimal reminders scope) only on confirmation.
 struct ReminderDraftConfirmView: View {
     let actionItemID: UUID
+    /// Fires after a successful write, before this sheet dismisses (see `CalendarDraftConfirmView`).
+    var onConfirmed: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -184,6 +190,7 @@ struct ReminderDraftConfirmView: View {
                 ToastCenter.shared.show(Toast(
                     title: "Added Reminder", message: draft.title,
                     systemImage: "checklist.checked", style: .success))
+                onConfirmed?()
                 dismiss()
             } catch {
                 saving = false
