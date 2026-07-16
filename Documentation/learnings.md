@@ -399,3 +399,39 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   capture at `start()` and reads `capturedLocation` at `stop()` without awaiting — a recording long
   enough to matter has resolved the fix+geocode by the time it ends; a sub-timeout recording
   persists without a location (silent degrade), never blocking the stop/finishing path.
+## Foundation Models — PCC escalation for long transcripts (roadmap §8, Item A)
+
+- **`PrivateCloudComputeLanguageModel.contextSize` is `async throws`; `SystemLanguageModel.contextSize`
+  is a plain sync getter.** Grounded via sosumi (both pages). The PCC one is
+  `nonisolated(nonsending) final var contextSize: Int { get async throws }` — so `try await
+  pcc.contextSize`, and read it *inside* the do/catch that already guards the PCC generation so a
+  failed context-size fetch degrades to on-device like any other PCC failure. The on-device value
+  is read synchronously via `AIModelProfile.onDeviceContextSize` (FCTIntelligence), which wraps
+  `SystemLanguageModel.default.contextSize` (`@backDeployed`, non-throwing, nonisolated).
+- **The on-device context window is 4,096 tokens on the base model** (confirmed in Apple's
+  "Managing the context window" article). The old hard 12_000-char ceiling ≈ 3k tokens of that.
+  The runtime budget now derives from the live `contextSize`: `max(0, contextTokens −
+  reservedContextTokens) × charactersPerToken` with `charactersPerToken = 4`,
+  `reservedContextTokens = 1_024` → reproduces ~12,288 chars at 4,096 tokens and grows on a larger
+  window. The reserve covers instructions + question + prompt scaffolding + the response.
+- **Reuse FCTIntelligence's tier machinery — do NOT reimplement the PCC availability probe.**
+  `ModelAvailability.isPCCAvailable` checks the `com.apple.developer.private-cloud-compute`
+  entitlement *before* constructing the model, because **constructing
+  `PrivateCloudComputeLanguageModel()` without the entitlement is an uncatchable `fatalError`**
+  (documented in FCTIntelligence, sim-proven twice). `SessionIntelligence` injects
+  `any ModelAvailabilityProbing` (default `ModelAvailability()`) and only constructs the PCC model
+  once `plannedTier` returns `.privateCloudCompute` (which requires `isPCCAvailable`). Never new up
+  the PCC model speculatively.
+- **The escalation policy is a pure static (`generationTier` + `transcriptCharacterBudget`), wired
+  to live inputs by the injectable instance seam `plannedTier(forTranscriptCharacters:)`.** Escalate
+  to PCC *only* on strict on-device overflow AND PCC available; boundary (== budget) stays
+  on-device; overflow with PCC unavailable degrades to trimmed on-device (never a new error). This
+  keeps every branch unit-testable with a `FixedAvailability` fake + a fixed `contextSizeProvider`,
+  no Apple Intelligence hardware — matching the existing injectable-status posture.
+- **A default argument in a `public init` may only reference public/`@usableFromInline` symbols.**
+  The `contextSizeProvider` default must reference `AIModelProfile.onDeviceContextSize` (public)
+  directly, not an internal `static` helper (compiles as an error, not a warning).
+- **`TitleGenerator` stays on-device (4k-char budget), and `HighlightsExtractor` routes through
+  FCTIntelligence's `GuidedExtractor`/`StructuredGenerator`** — those already own the on-device→PCC
+  tiering for *structured* generation. The `SessionIntelligence` escalation is the *free-text*
+  (summarize/answer) counterpart; there is no shared free-text escalation seam yet (atlas candidate).
