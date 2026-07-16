@@ -425,6 +425,10 @@ public enum StudioSheet: Equatable, Identifiable, Sendable {
     case askLibrary
     /// A saved session's transcript.
     case session(UUID)
+    /// Draft-then-confirm: review an extracted `TranscriptEvent` before adding it to Calendar.
+    case confirmCalendarEvent(UUID)
+    /// Draft-then-confirm: review an extracted `TranscriptActionItem` before adding it to Reminders.
+    case confirmReminder(UUID)
 
     public var id: String {
         switch self {
@@ -434,6 +438,8 @@ public enum StudioSheet: Equatable, Identifiable, Sendable {
         case .insertLink: "insertLink"
         case .askLibrary: "askLibrary"
         case .session(let id): "session-\(id.uuidString)"
+        case .confirmCalendarEvent(let id): "confirmEvent-\(id.uuidString)"
+        case .confirmReminder(let id): "confirmReminder-\(id.uuidString)"
         }
     }
 }

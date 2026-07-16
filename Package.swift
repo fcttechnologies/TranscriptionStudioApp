@@ -73,6 +73,9 @@ let package = Package(
                 // The on-device intelligence spine: the app-parameterized SemanticAssistant
                 // (Siri-Q&A flagship) + GuidedExtractor/PromptSafety (the FM extraction substrate).
                 .product(name: "FCTIntelligence", package: "FCTFoundation"),
+                // Name → contact resolution (speaker mapping, mention matching, Siri name
+                // resolution) — the pure matcher + the CNContactStore-backed provider.
+                .product(name: "FCTContacts", package: "FCTFoundation"),
                 // CloudKit sync-status monitor + the first-launch import bootstrap gate (the
                 // companion UX depends on the user seeing sync state, not a jarring empty feed).
                 .product(name: "FCTCloudKit", package: "FCTFoundation"),
@@ -107,7 +110,8 @@ let package = Package(
                 "BackgroundAssetsKit",
                 "GlanceKit",
                 .product(name: "FCTEntities", package: "FCTFoundation"),
-                .product(name: "FCTIntelligence", package: "FCTFoundation")
+                .product(name: "FCTIntelligence", package: "FCTFoundation"),
+                .product(name: "FCTContacts", package: "FCTFoundation")
             ],
             path: "Tests/TranscriptionKitTests",
             resources: [.process("Resources")]

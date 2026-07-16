@@ -40,6 +40,19 @@ targets:
         NSAudioCaptureUsageDescription: >-
           Transcription Studio captures system audio to transcribe meetings and
           calls — entirely on this device. Nothing leaves your Mac.
+        # Ecosystem actions (Phase 3). Calendar is write-only — the app only ever *adds* an
+        # event you review and confirm; it never reads your calendar. Reminders has no write-only
+        # scope, so it requests the minimal available (full). Contacts is read-only, used to match
+        # a mentioned name to a saved contact for speaker mapping and Siri name resolution.
+        NSCalendarsWriteOnlyAccessUsageDescription: >-
+          Transcription Studio adds meetings you review from a transcript to your
+          calendar. It only ever adds — it never reads your existing calendar.
+        NSRemindersFullAccessUsageDescription: >-
+          Transcription Studio adds action items you review from a transcript to
+          your reminders.
+        NSContactsUsageDescription: >-
+          Transcription Studio matches names in your transcripts to your contacts so
+          speakers and mentions show real names — read only, entirely on this device.
         # Custom URL scheme the Share extension opens to hand a staged link to this app.
         CFBundleURLTypes:
           - CFBundleURLName: com.fcttechnologies.TranscriptionStudio.ingest
@@ -92,6 +105,19 @@ targets:
         NSMicrophoneUsageDescription: >-
           Transcription Studio records from your microphone to transcribe and
           identify speakers — entirely on this device. Nothing leaves your phone.
+        # Ecosystem actions (Phase 3). Calendar is write-only — the app only ever *adds* an
+        # event you review and confirm; it never reads your calendar. Reminders has no write-only
+        # scope, so it requests the minimal available (full). Contacts is read-only, used to match
+        # a mentioned name to a saved contact for speaker mapping and Siri name resolution.
+        NSCalendarsWriteOnlyAccessUsageDescription: >-
+          Transcription Studio adds meetings you review from a transcript to your
+          calendar. It only ever adds — it never reads your existing calendar.
+        NSRemindersFullAccessUsageDescription: >-
+          Transcription Studio adds action items you review from a transcript to
+          your reminders.
+        NSContactsUsageDescription: >-
+          Transcription Studio matches names in your transcripts to your contacts so
+          speakers and mentions show real names — read only, entirely on this device.
         UIBackgroundModes:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync

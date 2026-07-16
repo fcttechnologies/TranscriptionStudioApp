@@ -271,6 +271,10 @@ public struct StudioHomeView: View {
                 // The session vanished (deleted elsewhere) — nothing to show.
                 Color.clear.onAppear { app.returnHome() }
             }
+        case .confirmCalendarEvent(let id):
+            CalendarDraftConfirmView(eventID: id)
+        case .confirmReminder(let id):
+            ReminderDraftConfirmView(actionItemID: id)
         }
     }
 
