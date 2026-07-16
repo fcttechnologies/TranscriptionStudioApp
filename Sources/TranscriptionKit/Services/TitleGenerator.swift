@@ -16,6 +16,9 @@ public struct TitleGenerator: Sendable {
     /// and the heuristic fallback so either path yields the same shape of title.
     static let maxWords = 6
     static let fallbackTitle = "Untitled Transcript"
+    /// Low, near-deterministic temperature for title generation — carried by the verb's profile
+    /// (`TranscriptVerb.title`), shared with the unified session shape.
+    static let titleTemperature = 0.3
 
     private let statusProvider: @Sendable () -> IntelligenceStatus
 
@@ -52,9 +55,11 @@ public struct TitleGenerator: Sendable {
         }
         #if canImport(FoundationModels)
         do {
-            let session = LanguageModelSession(instructions: Instructions(Self.instructions))
-            let options = GenerationOptions(temperature: 0.3)
-            let response = try await session.respond(to: Prompt(Self.prompt(for: transcript)), options: options)
+            // Shares the unified `TranscriptModelProfile` session shape with summarize/ask; the
+            // profile carries the title instructions + low temperature. Title-gen stays on-device.
+            let session = LanguageModelSession(
+                profile: TranscriptModelProfile(verb: .title, model: SystemLanguageModel.default))
+            let response = try await session.respond(to: Prompt(Self.prompt(for: transcript)))
             let sanitized = Self.sanitize(response.content)
             return sanitized.isEmpty ? Self.heuristicTitle(from: transcript) : sanitized
         } catch {

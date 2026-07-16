@@ -80,7 +80,7 @@ public struct SessionIntelligence: Sendable {
 
     /// A tight summary plus key points, as formatted text.
     public func summarize(transcript: String) async throws -> String {
-        try await generate(instructions: Self.summaryInstructions, transcript: transcript) { body in
+        try await generate(verb: .summarize, transcript: transcript) { body in
             "Summarize this transcript.\n\nTranscript:\n\(body)"
         }
     }
@@ -88,19 +88,19 @@ public struct SessionIntelligence: Sendable {
     /// A concise answer grounded strictly in the transcript.
     public func answer(question: String, transcript: String) async throws -> String {
         let trimmedQuestion = question.trimmingCharacters(in: .whitespacesAndNewlines)
-        return try await generate(instructions: Self.qaInstructions, transcript: transcript) { body in
+        return try await generate(verb: .ask, transcript: transcript) { body in
             "Transcript:\n\(body)\n\nQuestion: \(trimmedQuestion)"
         }
     }
 
     // MARK: Generation
 
-    /// Run one generation verb. Escalates to Private Cloud Compute *only* when the transcript
-    /// overflows the live on-device context budget and PCC is available; otherwise stays
-    /// on-device, trimming the transcript to the on-device budget (the previous behavior).
-    /// `buildPrompt` assembles the verb's prompt from a transcript body already trimmed to the
-    /// chosen tier's budget.
-    private func generate(instructions: String, transcript: String,
+    /// Run one generation verb through the shared `TranscriptModelProfile` session shape. Escalates
+    /// to Private Cloud Compute *only* when the transcript overflows the live on-device context
+    /// budget and PCC is available; otherwise stays on-device, trimming to the on-device budget (the
+    /// previous behavior). `buildPrompt` assembles the verb's prompt from a transcript body already
+    /// trimmed to the chosen tier's budget; the verb's instructions live in the profile.
+    private func generate(verb: TranscriptVerb, transcript: String,
                           buildPrompt: @Sendable (String) -> String) async throws -> String {
         let status = statusProvider()
         guard status.isAvailable else { throw IntelligenceError.unavailable(status.message) }
@@ -118,7 +118,7 @@ public struct SessionIntelligence: Sendable {
                 let pcc = PrivateCloudComputeLanguageModel()
                 let budget = Self.transcriptCharacterBudget(contextTokens: try await pcc.contextSize)
                 let prompt = buildPrompt(Self.trimmedForContext(transcript, maxCharacters: budget))
-                let session = LanguageModelSession(model: pcc, instructions: Instructions(instructions))
+                let session = LanguageModelSession(profile: TranscriptModelProfile(verb: verb, model: pcc))
                 let response = try await session.respond(to: Prompt(prompt))
                 Logger.models.info("Intelligence generation complete (Private Cloud Compute)")
                 return response.content.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -126,11 +126,11 @@ public struct SessionIntelligence: Sendable {
                 // A mid-flight PCC failure (network / quota) degrades to the trimmed on-device
                 // path rather than surfacing an error where on-device would have produced an answer.
                 Logger.models.info("Private Cloud Compute generation failed — degrading to on-device")
-                return try await generateOnDevice(instructions: instructions, transcript: transcript,
+                return try await generateOnDevice(verb: verb, transcript: transcript,
                                                   buildPrompt: buildPrompt)
             }
         case .onDevice:
-            return try await generateOnDevice(instructions: instructions, transcript: transcript,
+            return try await generateOnDevice(verb: verb, transcript: transcript,
                                               buildPrompt: buildPrompt)
         }
         #else
@@ -139,12 +139,14 @@ public struct SessionIntelligence: Sendable {
     }
 
     #if canImport(FoundationModels)
-    /// The on-device path: trim the transcript to the live on-device budget and generate locally.
-    private func generateOnDevice(instructions: String, transcript: String,
+    /// The on-device path: trim the transcript to the live on-device budget and generate locally
+    /// through the shared profile on the default system model.
+    private func generateOnDevice(verb: TranscriptVerb, transcript: String,
                                   buildPrompt: @Sendable (String) -> String) async throws -> String {
         let budget = Self.transcriptCharacterBudget(contextTokens: contextSizeProvider())
         let prompt = buildPrompt(Self.trimmedForContext(transcript, maxCharacters: budget))
-        let session = LanguageModelSession(instructions: Instructions(instructions))
+        let session = LanguageModelSession(
+            profile: TranscriptModelProfile(verb: verb, model: SystemLanguageModel.default))
         let response = try await session.respond(to: Prompt(prompt))
         Logger.models.info("Intelligence generation complete (on-device)")
         return response.content.trimmingCharacters(in: .whitespacesAndNewlines)

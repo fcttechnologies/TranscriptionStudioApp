@@ -435,3 +435,34 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   FCTIntelligence's `GuidedExtractor`/`StructuredGenerator`** — those already own the on-device→PCC
   tiering for *structured* generation. The `SessionIntelligence` escalation is the *free-text*
   (summarize/answer) counterpart; there is no shared free-text escalation seam yet (atlas candidate).
+
+## Foundation Models — Dynamic Profiles verb unification (roadmap §8, Item B)
+
+- **`LanguageModelSession.DynamicProfile` shipped as named** (grounded via sosumi — surprising, the
+  roadmap wrote it speculatively). It's a real protocol with `Profile`, `DynamicInstructions`, a
+  `DynamicProfileBuilder` result builder, and `LanguageModelSession(profile:history:)`
+  (`convenience init(profile: sending some DynamicProfile, ...)`). A `DynamicProfile.body` resolves
+  to exactly one active `Profile` — the builder enforces "one profile active at a time" at compile
+  time via `if / else if / else` (and `if let`), unifying heterogeneous branch types the way
+  ViewBuilder does. Config modifiers: `.model(_:)`, `.temperature(_:)`, `.samplingMode(_:)`,
+  `.reasoningLevel(_:)`, `.maximumResponseTokens(_:)`; also `.historyTransform`, lifecycle hooks.
+- **`.model(_:)` takes `any LanguageModel`** — so one call site accepts either
+  `SystemLanguageModel.default` or a `PrivateCloudComputeLanguageModel` without a branch-type split.
+  Both `SystemLanguageModel` and `PrivateCloudComputeLanguageModel` conform to `LanguageModel`. This
+  is how Item A's model choice threads into the unified profile: the caller passes the concrete,
+  already-availability-checked model in; the profile just applies `.model(model)`.
+- **The unification is a single-source-of-config win, not a runtime-switching one — be honest about
+  it.** DynamicProfile's headline feature is switching config mid-session as app state changes; TS's
+  three verbs are independent one-shot sessions, so that capability isn't exercised. What the
+  refactor genuinely buys: the summarize/ask/title instructions + per-verb temperature live in ONE
+  `TranscriptVerb`/`TranscriptModelProfile` pair instead of three drifting
+  `LanguageModelSession(instructions:)` sites. The per-call `respond(to:)` no longer passes
+  instructions or `GenerationOptions(temperature:)` — both move into the profile.
+- **Keep the verb→instructions/temperature mapping in a Foundation-Models-free enum** so it stays
+  pure/unit-testable on any platform; only the `DynamicProfile`-conforming struct sits behind
+  `#if canImport(FoundationModels)`. The profile's *resolved* config can't be asserted without a live
+  session, so the enum mapping carries the unit tests and the conformance is proved by the build.
+- **Moving temperature from a call-site `GenerationOptions` to a profile `.temperature` modifier is
+  behavior-preserving:** call-site `respond(options:)` overrides the profile (documented precedence:
+  call-site > innermost profile > dynamic-profile default), so dropping the call-site options lets
+  the profile's value apply unchanged.
