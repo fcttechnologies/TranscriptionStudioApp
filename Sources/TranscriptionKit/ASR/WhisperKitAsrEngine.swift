@@ -22,10 +22,11 @@ public enum AsrEngineError: LocalizedError, Sendable {
 /// long-lived state (download → load → prewarm), and this serializes access to it so
 /// `prepare()`/`transcribe()`/`stream()` never race each other.
 public actor WhisperKitAsrEngine: AsrEngine {
-    /// Mac has the RAM/ANE headroom for the large-v3 turbo variant; iOS defaults to the
-    /// small, always-resident `base` model. Callers (Settings) can override either.
+    /// Both platforms default to large-v3-turbo (the app ships turbo-only). This default also
+    /// drives the LIVE-recording engine — NB: if turbo can't keep up with real-time streaming on
+    /// iPhone, the fix is a lighter model for the streaming path *only*, not reviving a base default.
     public static let defaultModelNameMac = "openai_whisper-large-v3-v20240930_turbo"
-    public static let defaultModelNameiOS = "openai_whisper-base"
+    public static let defaultModelNameiOS = "openai_whisper-large-v3-v20240930_turbo"
 
     public static var platformDefaultModelName: String {
         #if os(macOS)
