@@ -29,7 +29,12 @@ public struct StudioHomeView: View {
     // Optional so previews/tests that host this view without the app-root injection still resolve.
     @Environment(CloudKitSyncMonitor.self) private var cloudKitSync: CloudKitSyncMonitor?
     @Environment(LibraryBootstrap.self) private var bootstrap: LibraryBootstrap?
-    @Query(sort: \TranscriptSession.createdAt, order: .reverse) private var sessions: [TranscriptSession]
+    // Explicit fetch rather than @Query: @Query re-evaluates for local writes but not for a
+    // remote CloudKit import merged on the container's background context, which would leave the
+    // feed stale until relaunch. `storeObserver` bumps `changeToken` on both local saves and
+    // remote imports, and the feed re-fetches off it (see SessionStoreObserver).
+    @State private var sessions: [TranscriptSession] = []
+    @State private var storeObserver: SessionStoreObserver?
 
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
@@ -81,7 +86,17 @@ public struct StudioHomeView: View {
         }
         .toastOverlay()
         .overlay { bootstrapOverlay }
-        .task { bootstrap?.beginIfNeeded() }
+        .task {
+            if storeObserver == nil {
+                storeObserver = SessionStoreObserver(container: modelContext.container)
+            }
+            refreshSessions()
+            bootstrap?.beginIfNeeded()
+        }
+        // Re-fetch when a local save or a remote CloudKit import lands. Replacing the `sessions`
+        // array (stable session identity) lets the feed's ForEach diff in place — scroll position
+        // and the day sections are preserved, no jarring rebuild.
+        .onChange(of: storeObserver?.changeToken) { _, _ in refreshSessions() }
         .onChange(of: sessions.isEmpty) { _, isEmpty in
             // The library arrived (or was never empty) — reveal the feed, don't sit behind the gate.
             if !isEmpty { bootstrap?.markReady() }
@@ -245,6 +260,16 @@ public struct StudioHomeView: View {
                 Color.clear.onAppear { app.returnHome() }
             }
         }
+    }
+
+    // MARK: Feed data
+
+    /// Fetch the feed newest-first from the view context. A fresh fetch reads the store's current
+    /// state — including rows a CloudKit import merged in — which is what a bare `@Query` misses.
+    private func refreshSessions() {
+        let descriptor = FetchDescriptor<TranscriptSession>(
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        sessions = (try? modelContext.fetch(descriptor)) ?? []
     }
 
     // MARK: Ingest actions

@@ -125,6 +125,30 @@ Screen presentation itself — verify on a device:
 3. Let playback run out on its own → the activity ends by itself; closing the mini-player
    clears the Lock Screen player (no stale now-playing info or dead commands).
 
+### Manual two-device check — CloudKit feed refresh (iPhone ↔ Mac)
+
+The feed re-renders on a remote CloudKit import (a `TranscriptSession` created on another device)
+without a relaunch. A bare SwiftData `@Query` does not reliably re-evaluate off the background
+import merge, so the feed drives itself from an explicit fetch refreshed by `SessionStoreObserver`
+(`HistoryObserver` for remote imports + `ModelContext.didSave` for local saves). The remote path
+can only be confirmed with two signed-in devices sharing the iCloud account — a single
+sim/process never exercises a real cross-device import.
+
+Verify once (both devices signed into the same iCloud account, iCloud + Background Modes →
+Remote notifications enabled, network up):
+
+1. Launch the app on **both** the iPhone and the Mac; let each finish its initial sync (the sync
+   glyph settles to idle). Leave **both foregrounded, side by side** — do not force-quit either.
+2. On the **iPhone**, create a new session (record a short clip, or import a file) and let it save.
+3. Expect: within a few seconds (CloudKit push latency), the new session appears at the top of the
+   **Mac** feed on its own — no relaunch, no force-quit. The Mac's scroll position and day sections
+   are preserved (the row diffs in; the whole list does not rebuild).
+4. Reverse it: create on the Mac, watch it land on the iPhone.
+5. Edits/deletes propagate the same way — delete on one device, the row leaves the other's feed.
+
+If the row only appears after force-quitting and relaunching the receiving device, the remote
+refresh path has regressed.
+
 ## Deferred (forge-able later)
 
 - NeMo golden-tensor byte gate: the zoo's capture scripts can regenerate reference
