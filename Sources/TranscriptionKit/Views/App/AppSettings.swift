@@ -41,9 +41,9 @@ public final class AppSettings {
             }
         }
 
-        /// large-v3-turbo is the default on both platforms — the speed/accuracy sweet spot,
-        /// verified great on recent iPhones. (The smaller variants stay user-selectable in
-        /// Settings for older/low-storage devices.)
+        /// large-v3-turbo is the only model the app uses (the Settings picker was removed — it's
+        /// the speed/accuracy sweet spot, verified great on iPhone). The other cases remain solely
+        /// so the Storage section can recognize + clean a previously-downloaded variant.
         public static var platformDefault: WhisperModel { .largeTurbo }
     }
 
