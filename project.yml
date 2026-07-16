@@ -3,6 +3,13 @@ options:
   bundleIdPrefix: com.fcttechnologies
   createIntermediateGroups: true
 
+# Suppress Xcode's "Update to recommended settings" nag durably (it fires when these are below
+# the current Xcode version, and the .xcodeproj is regenerated every build so a manual "Perform
+# Changes" click would never stick).
+attributes:
+  LastUpgradeCheck: "9999"
+  LastSwiftUpdateCheck: "9999"
+
 # All real code lives in the local Swift package (Package.swift in this directory);
 # the app targets are thin shells. Regenerate the project with `xcodegen generate`
 # (the .xcodeproj is gitignored so worktree builds never conflict on pbxproj).
@@ -86,6 +93,10 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Transcription Studio
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: "1,2"
+        # iPad must support all orientations (or declare full-screen) or Xcode warns; iPhone keeps
+        # the standard three (no upside-down).
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
