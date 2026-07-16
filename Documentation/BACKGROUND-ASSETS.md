@@ -121,3 +121,19 @@ simulator build):**
 4. **Regenerate if the model changes.** Run `scripts/gen-ba-manifest.sh` to rebuild the manifest
    from a fresh on-disk model, and update `BAMaxInstallSize` / `BADownloadAllowance` to match the
    new total.
+
+## ⚠️ The `com.apple.developer.background-assets` entitlement — dev vs ship
+This entitlement is **removed from the entitlements files for now.** It isn't provisionable on a
+sideloaded / automatic-signing dev build (Xcode: *"not found and could not be included in
+profile"*), and Background Assets never fires on a sideload anyway — the OS only schedules
+pre-launch downloads for App Store / TestFlight installs. So it's pure build friction today.
+
+**At ship time**, re-add it to both `Sources/iOSApp/TranscriptionStudioiOS.entitlements` and
+`Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements`:
+```xml
+<key>com.apple.developer.background-assets</key>
+<true/>
+```
+and enable the **Background Assets** capability on the App ID in the Developer portal (or via
+Xcode's Signing & Capabilities) so the profile can carry it. Everything else (the extension, the
+manifest, the `BA*` Info.plist keys) stays as-is.
