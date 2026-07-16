@@ -6,8 +6,10 @@ import UniformTypeIdentifiers
 // Each intent is a thin adapter over the app's existing model/use-cases — no business logic
 // lives here. Intents that drive live capture or navigation set the router state, then hand
 // control back to the app via `.result(opensIntent: OpenAppIntent())` (see `OpenAppIntent.swift`);
-// read-only intents (search, latest, ask, summarize, export, status) run in the background
-// against the shared store.
+// the long-running transcribe intents (file/link) open the app and then *follow* their
+// `TranscriptionJob` to completion — reporting progress and honoring cancellation
+// (`LongRunningIntent`/`CancellableIntent`); read-only intents (search, latest, ask, summarize,
+// export, status) run in the background against the shared store.
 
 /// Errors surfaced to Siri/Shortcuts as spoken/displayed dialog.
 enum TranscriptionIntentError: Error, CustomLocalizedStringResourceConvertible {
@@ -149,11 +151,16 @@ public struct GetRecordingStatusIntent: AppIntent {
 
 // MARK: - Transcribe a file
 
-/// Kick a file transcription. Opens the app so the job runs in the live process and its
-/// progress is visible on the Transcribe surface. Always foreground — the pipeline runs in
-/// the app process, so (unlike `StartRecordingIntent`/`OpenTranscriptIntent`) there's no
-/// dynamic "may not need it" case.
-public struct TranscribeFileIntent: AppIntent {
+/// Kick a file transcription and follow it to completion. A file transcription is the canonical
+/// long-running-intent case (heavy on-device ML inference that can take minutes), so this is a
+/// `LongRunningIntent` + `CancellableIntent`: it opens the app so the job runs in the live
+/// process with its progress visible on the Transcribe surface, reports that progress to
+/// Siri/Shortcuts/Live Activities, and — via `performBackgroundTask` — keeps the pipeline alive
+/// with extended runtime if the user backgrounds the app mid-job. A cancel from any of those
+/// surfaces flows to the existing `TranscriptionJob.cancel()`, the real cancellation path.
+/// Always foreground — the pipeline runs in the app process, so (unlike
+/// `StartRecordingIntent`/`OpenTranscriptIntent`) there's no dynamic "may not need it" case.
+public struct TranscribeFileIntent: LongRunningIntent, CancellableIntent {
     public static let title: LocalizedStringResource = "Transcribe a File"
     public static let description = IntentDescription(
         "Transcribe an audio or video file with Transcription Studio.")
@@ -167,7 +174,8 @@ public struct TranscribeFileIntent: AppIntent {
 
     public init() {}
 
-    public func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+    public func perform() async throws
+        -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
         let name = file.filename
         let title = (name as NSString).deletingPathExtension
         let displayTitle = title.isEmpty ? "Audio file" : title
@@ -184,11 +192,34 @@ public struct TranscribeFileIntent: AppIntent {
             try file.data.write(to: dest)
             url = dest
         }
-        await MainActor.run {
+        let job = await MainActor.run { () -> TranscriptionJob in
             appModel.returnHome()   // the job's progress lives in the feed's In Progress section
-            appModel.startTranscription(title: displayTitle, source: .file(url))
+            return appModel.startTranscription(title: displayTitle, source: .file(url))
         }
-        return .result(opensIntent: OpenAppIntent(), dialog: "Transcribing \(displayTitle).")
+        return try await completeTranscription(job: job, displayTitle: displayTitle, appModel: appModel)
+    }
+}
+
+extension LongRunningIntent where Self: CancellableIntent {
+    /// Shared long-running body for the transcribe intents: extend the runtime via
+    /// `performBackgroundTask`, mirror the job's progress into the intent's system `Progress`,
+    /// route a system cancellation to `TranscriptionJob.cancel()`, then open and return the
+    /// produced session. Lives on the protocol so `TranscribeFileIntent` and `TranscribeLinkIntent`
+    /// share one implementation.
+    func completeTranscription(job: TranscriptionJob, displayTitle: String,
+                               appModel: AppModel) async throws
+        -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
+        let sessionID = try await performBackgroundTask {
+            try await TranscribeJobTracking.awaitCompletion(of: job, reporting: progress)
+        } onCancel: { _ in
+            Task { @MainActor in job.cancel() }
+        }
+        guard let sessionID,
+              let saved = await TranscriptSessionStore.entityAndText(forID: sessionID) else {
+            throw TranscriptionJobFailure(message: "The transcription finished without producing a transcript.")
+        }
+        await MainActor.run { appModel.openSession(id: sessionID) }
+        return .result(value: saved.entity, dialog: "Transcribed \(displayTitle).")
     }
 }
 
@@ -340,8 +371,10 @@ public struct SummarizeTranscriptIntent: AppIntent {
 // MARK: - Export
 
 /// Export a transcript as a downloadable file — plain text, Markdown, SRT, or WebVTT.
-/// Defaults to the latest recording. Returns an `IntentFile` (not a giant inline string) so
-/// Shortcuts can save/share/AirDrop it like any other file result.
+/// Defaults to the latest recording. Returns an `ExportedTranscriptFileEntity` (a `FileEntity`,
+/// not a bare `IntentFile`) so Shortcuts can save/share/AirDrop it like any other file result
+/// *and* the system carries the export's ownership signal — an exported transcript leaves the
+/// app boundary, so the entity reports `.shared` and Siri confirms before an automated share.
 public struct ExportTranscriptIntent: AppIntent {
     public static let title: LocalizedStringResource = "Export Transcript"
     public static let description = IntentDescription(
@@ -356,7 +389,7 @@ public struct ExportTranscriptIntent: AppIntent {
     public init() {}
 
     public func perform() async throws
-        -> some IntentResult & ReturnsValue<IntentFile> & ProvidesDialog {
+        -> some IntentResult & ReturnsValue<ExportedTranscriptFileEntity> & ProvidesDialog {
         let resolved: (title: String, text: String)?
         if let session, let id = UUID(uuidString: session.id) {
             resolved = await TranscriptSessionStore.exportedText(forID: id, as: format)
@@ -366,10 +399,18 @@ public struct ExportTranscriptIntent: AppIntent {
         guard let resolved, !resolved.text.isEmpty else { throw TranscriptionIntentError.noTranscripts }
 
         let safeName = resolved.title.isEmpty ? "Transcript" : resolved.title
-        let file = IntentFile(data: Data(resolved.text.utf8),
-                              filename: "\(safeName).\(format.fileExtension)",
-                              type: TranscriptExportDocument.contentType(for: format))
-        return .result(value: file, dialog: "Exported \(safeName).")
+        // Write the rendered transcript to a uniquely-scoped temp file so the returned
+        // `FileEntity` has a real on-disk URL (its identity), while the file the user sees keeps
+        // a clean `title.ext` name and repeated exports never collide.
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("IntentExports", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let fileURL = dir.appendingPathComponent("\(safeName).\(format.fileExtension)")
+        try Data(resolved.text.utf8).write(to: fileURL)
+
+        let entity = try ExportedTranscriptFileEntity(id: .file(url: fileURL), title: safeName)
+        return .result(value: entity, dialog: "Exported \(safeName).")
     }
 }
 

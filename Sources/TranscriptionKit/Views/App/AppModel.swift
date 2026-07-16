@@ -61,9 +61,13 @@ public final class AppModel {
     }
 
     /// Present a saved session's transcript (a row tap, a finished recording, Spotlight,
-    /// `OpenTranscriptIntent`).
+    /// `OpenTranscriptIntent`). Opening a session is the app's clearest "this is the active /
+    /// last-opened transcript" signal, so it's also where we donate that session to the system
+    /// as a relevant entity — "summarize this" / "ask about this" then resolve to it without a
+    /// disambiguation turn (see `SessionRelevance`).
     public func openSession(id: UUID) {
         activeSheet = .session(id)
+        SessionRelevance.donateActiveSession(id: id)
     }
 
     /// Start a recording from anywhere in the shell (the "+" menu, ⌘N, the intent path
@@ -242,8 +246,12 @@ public final class AppModel {
 
     /// Start a transcription job for a picked/dropped file or a pasted URL. Runs the real
     /// pipeline (`TranscriptionService`) with the engines for the currently-selected model +
-    /// diarizer backend, walking the web-app step trail and persisting a real session.
-    public func startTranscription(title: String, source: TranscriptionSource) {
+    /// diarizer backend, walking the web-app step trail and persisting a real session. Returns
+    /// the created `TranscriptionJob` so a caller that needs to follow the job to completion —
+    /// the long-running `TranscribeFileIntent`/`TranscribeLinkIntent` reporting Siri/Shortcuts
+    /// progress and honoring cancellation — can observe it; fire-and-forget callers ignore it.
+    @discardableResult
+    public func startTranscription(title: String, source: TranscriptionSource) -> TranscriptionJob {
         let service = TranscriptionService(asrEngine: transcriptionAsrEngine(for: settings.whisperModel),
                                            diarizer: transcriptionDiarizer(for: settings.diarizerBackend),
                                            modelContext: modelContext,
@@ -256,15 +264,17 @@ public final class AppModel {
             let job = TranscriptionJob(title: title, steps: TranscriptionService.fileJobSteps)
             jobs.add(job)
             BackgroundExecution.run(job: job, title: title) { await service.runFileJob(fileURL: url, job: job) }
+            return job
         case .url(let string):
             let job = TranscriptionJob(title: title, steps: TranscriptionService.urlJobSteps)
             jobs.add(job)
             guard let downloader = urlDownloader else {
                 // URL ingest is Mac-only; the URL field isn't shown on iOS, so this is a guard.
                 job.fail("URL transcription isn't available on this device.")
-                return
+                return job
             }
             BackgroundExecution.run(job: job, title: title) { await service.runURLJob(urlString: string, downloader: downloader, job: job) }
+            return job
         }
     }
 
