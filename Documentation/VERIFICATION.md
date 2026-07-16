@@ -55,6 +55,57 @@ except the neural forward's *values* is covered without the model.
 4. **Click any segment to play its audio** — ear vs. label in one click.
 5. Diarizer A/B: run the same session through SpeakerKit and compare timelines.
 
+## Share extension (share-to-transcribe)
+
+The Share extension makes the app a share-sheet target: **macOS** accepts a web **link** →
+transcribes it; **iOS** accepts a **media file/video** → transcribes it. The extension never
+runs WhisperKit (it's memory-capped ~120 MB) — it stages the shared item into the App Group
+drop-box (`group.com.fcttechnologies.TranscriptionStudio`) and pings the host via the custom
+URL scheme `transcriptionstudio://ingest?id=<uuid>`; the host drains the drop-box (on the ping
+*and* on every foreground, the iOS safety net) and enqueues a real job.
+
+### Automated coverage (`ShareKitTests`, always on)
+
+The pure logic is unit-tested with no share sheet or real App Group container (the drop-box
+takes an injectable container dir):
+
+- **URL-scheme round-trip** — `IngestURLScheme.ingestURL(id:)` ⇄ `parseIngest`; foreign
+  schemes/hosts rejected; an id-less ping still parses (the host drains the whole box).
+- **File-vs-URL routing** — `SharedItemClassifier.classify(typeIdentifiers:)`: movie/audio
+  UTIs → `.mediaFile`, `public.url` → `.webURL`, media wins when both are advertised, text/
+  image/empty → `.unsupported`.
+- **Drop-box stage/drain/remove** — a `.url` manifest and a `.file` (bytes copied in) round-
+  trip through disk; `remove` clears manifest + staged bytes; `drain` returns oldest-first.
+- **Manifest codability** — `PendingIngest` encodes losslessly (default `Date` coding).
+
+Both extension targets compile under warnings-as-errors and embed into their app's PlugIns —
+covered by the app builds (`xcodebuild` iOS on a sim, macOS Debug).
+
+### Manual device/sim check (not automatable — needs a real share action)
+
+The share-sheet tap itself can't be scripted headlessly. Verify once per platform:
+
+**iOS (media file → transcribe):**
+1. Build+run `TranscriptionStudioiOS` on a device/sim; grant nothing special (App Group is
+   automatic). Foreground the app once so it's installed.
+2. Open **Files** or **Photos**, pick a video/audio clip, tap **Share**, choose
+   **Transcription Studio**. The sheet shows "Sending to Transcription Studio…" briefly.
+3. Expect: the app comes forward (or, if the open didn't land, reopen it manually — the
+   foreground drain catches it) and a new transcription job appears in the library, running
+   to a saved session. Confirm the session's audio matches the shared clip.
+
+**macOS (link → transcribe):**
+1. Build+install the signed app: `scripts/package-mac.sh` (automatic signing registers the
+   App Group). Launch it once.
+2. In **Safari**, on any YouTube/TikTok/media page, click **Share → Transcription Studio**
+   (enable it once under the Share menu's *Edit Extensions* if not shown).
+3. Expect: the app comes forward and a "Link · <host>" job appears, downloads + transcribes
+   on-device, and lands as a saved session.
+
+**Signing note:** the App Group + the extension's provisioning are minted by automatic signing
+with `-allowProvisioningUpdates` (already how `package-mac.sh` builds). First run may need the
+app foregrounded once so the extension is registered with the system.
+
 ## Deferred (forge-able later)
 
 - NeMo golden-tensor byte gate: the zoo's capture scripts can regenerate reference
