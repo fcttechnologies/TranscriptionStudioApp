@@ -25,7 +25,8 @@ extension AppModel {
             switch item.kind {
             case .url:
                 if let urlString = item.urlString {
-                    startTranscription(title: item.title, source: .url(urlString))
+                    // Mac transcribes locally; iOS queues a pendingRemote job for the Mac.
+                    submitLink(urlString: urlString, title: item.title)
                 }
             case .file:
                 if let staged = IngestDropBox.stagedFileURL(for: item),

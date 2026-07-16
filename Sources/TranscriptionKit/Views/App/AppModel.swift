@@ -41,6 +41,10 @@ public final class AppModel {
     @ObservationIgnored private var asrEngineCache: [String: any AsrEngine] = [:]
     @ObservationIgnored private var diarizerCache: [String: any DiarizationEngine] = [:]
 
+    // Mac companion services (started on the Mac only — see `startMacCompanionServices`).
+    @ObservationIgnored private var remoteJobWatcher: RemoteJobWatcher?
+    @ObservationIgnored private var presenceHeartbeat: PresenceHeartbeat?
+
     // Live controllers.
     public let recording: RecordingController
     public let playback: PlaybackController
@@ -235,6 +239,72 @@ public final class AppModel {
             }
             job.task = BackgroundExecution.running("Transcribe") { await service.runURLJob(urlString: string, downloader: downloader, job: job) }
         }
+    }
+
+    // MARK: Companion link routing (iOS queues, Mac transcribes)
+
+    /// Submit a link for transcription from the "+" menu or the Share extension. On a device with
+    /// the URL downloader (Mac) it transcribes locally; elsewhere (iOS) it queues a
+    /// `.pendingRemote` session for a Mac to claim and transcribe over CloudKit. Routing never
+    /// depends on Mac presence — a link always queues; presence is display only.
+    public func submitLink(urlString: String, title: String) {
+        switch LinkSubmissionRoute.decide(hasURLDownloader: urlDownloader != nil) {
+        case .local:
+            startTranscription(title: title, source: .url(urlString))
+        case .remote:
+            queueRemoteLink(urlString: urlString, title: title)
+        }
+    }
+
+    /// Create and persist a `.pendingRemote` URL session (iOS) — the queued job a Mac claims and
+    /// transcribes, its result syncing back via CloudKit.
+    private func queueRemoteLink(urlString: String, title: String) {
+        let session = TranscriptSession(title: title, kind: .urlTranscription)
+        session.sourceURLString = urlString
+        session.status = .pendingRemote
+        modelContext.insert(session)
+        try? modelContext.save()
+    }
+
+    // MARK: Mac companion services (watcher + presence heartbeat)
+
+    /// Start the Mac-side companion services — the remote-job watcher (claims + transcribes links
+    /// queued from iOS) and the presence heartbeat (writes a last-seen row iOS reads). A no-op on
+    /// a device without the URL downloader (iOS), and idempotent, so it's safe to call on every
+    /// launch. Call once the model container is live (from the Mac shell's launch task).
+    public func startMacCompanionServices() {
+        guard urlDownloader != nil, remoteJobWatcher == nil else { return }
+        let deviceID = CompanionDevice.identifier
+
+        let heartbeat = PresenceHeartbeat(modelContext: modelContext, deviceID: deviceID,
+                                          deviceName: CompanionDevice.name)
+        heartbeat.start()
+        presenceHeartbeat = heartbeat
+
+        let watcher = RemoteJobWatcher(modelContext: modelContext, deviceID: deviceID,
+                                       process: { [weak self] session in
+            await self?.processClaimedRemoteJob(session)
+        })
+        watcher.start()
+        remoteJobWatcher = watcher
+    }
+
+    /// Run the URL pipeline into an already-claimed remote session, surfacing progress in the
+    /// Mac's own In Progress feed. The claim (status → `.inProgress`, marker set) has already been
+    /// persisted by the watcher; the pipeline fills the session in and writes the completed (or
+    /// failed) result back to the shared store, where it syncs to the phone.
+    private func processClaimedRemoteJob(_ session: TranscriptSession) async {
+        guard let downloader = urlDownloader else { return }
+        let service = TranscriptionService(asrEngine: transcriptionAsrEngine(for: settings.whisperModel),
+                                           diarizer: transcriptionDiarizer(for: settings.diarizerBackend),
+                                           modelContext: modelContext,
+                                           recorder: recorder,
+                                           inspector: inspector,
+                                           wordTimestamps: settings.wordTimestamps,
+                                           modelName: settings.whisperModel.whisperKitVariant)
+        let job = TranscriptionJob(title: session.title, steps: TranscriptionService.urlJobSteps)
+        jobs.add(job)
+        await service.runURLJob(on: session, isNewSession: false, downloader: downloader, job: job)
     }
 
     /// The cached ASR engine for a chosen model (built once per variant). Mock/preview app
