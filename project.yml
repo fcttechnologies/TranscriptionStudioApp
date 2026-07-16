@@ -82,6 +82,8 @@ targets:
         product: TranscriptionKit
       # The Share extension, auto-embedded into the app's PlugIns folder.
       - target: ShareExtensioniOS
+      # The Background Assets downloader extension, auto-embedded into the app's Extensions folder.
+      - target: BackgroundAssetsExtension
     info:
       path: Sources/iOSApp/Info.plist
       properties:
@@ -91,6 +93,30 @@ targets:
         UIBackgroundModes:
           - audio
           - remote-notification   # CloudKit push-triggered SwiftData sync
+        # --- Background Assets (self-hosted, unmanaged) -------------------------------------
+        # The system reads these before first launch: it downloads the manifest at BAManifestURL,
+        # then wakes BackgroundAssetsExtension to schedule the WhisperKit model files it lists.
+        # BAManifestURL must resolve, at ship time, to the committed manifest
+        # (Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json). See
+        # Documentation/BACKGROUND-ASSETS.md.
+        BAManifestURL: https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json
+        BAAppGroupID: group.com.fcttechnologies.TranscriptionStudio
+        # Uncompressed on-disk size of all assets (bytes) — shown on the App Store. Matches the
+        # manifest total; regenerate both with scripts/gen-ba-manifest.sh if the model changes.
+        BAMaxInstallSize: 1638464446
+        # App-review-enforced ceilings on the initial (post-install) download. All our downloads
+        # are non-essential, so the essential allowance is 0 and the non-essential allowance
+        # covers the model total plus a small margin. Domains the extension may fetch from —
+        # HuggingFace resolves large files via a redirect to its LFS CDN, so those hosts are
+        # allow-listed too (verify the exact CDN host at ship time; see the docs).
+        BAInitialDownloadRestrictions:
+          BADownloadAllowance: 1700000000
+          BAEssentialDownloadAllowance: 0
+          BADownloadDomainAllowList:
+            - huggingface.co
+            - "*.huggingface.co"
+            - "*.hf.co"
+            - "*.cloudfront.net"
         # Custom URL scheme the Share extension opens to hand a staged media file to this app.
         CFBundleURLTypes:
           - CFBundleURLName: com.fcttechnologies.TranscriptionStudioiOS.ingest
@@ -185,6 +211,38 @@ targets:
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements
+
+  # The Background Assets downloader extension (iOS only). An ExtensionKit extension — no
+  # NSExtension dict; the extension point is declared via EXAppExtensionAttributes in its
+  # Info.plist and the entry point via @main. The system launches it before the app's first
+  # launch to pre-download the WhisperKit model. Stays lean (BackgroundAssetsKit + Foundation,
+  # no WhisperKit) to fit the extension's tight memory sandbox. Default (nonisolated) actor
+  # isolation — the BADownloaderExtension callbacks are nonisolated, unlike the MainActor shells.
+  BackgroundAssetsExtension:
+    type: extensionkit-extension
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: Sources/BackgroundAssetsExtension
+        excludes:
+          - "Info.plist"
+          - "BackgroundAssetsExtension.entitlements"
+    dependencies:
+      - package: TranscriptionStudioPackage
+        product: BackgroundAssetsKit
+    settings:
+      base:
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/BackgroundAssetsExtension/Info.plist
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        CODE_SIGN_ENTITLEMENTS: Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements
 
 schemes:
   TranscriptionStudio:

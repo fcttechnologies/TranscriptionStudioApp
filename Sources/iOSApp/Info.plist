@@ -2,6 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BAAppGroupID</key>
+	<string>group.com.fcttechnologies.TranscriptionStudio</string>
+	<key>BAInitialDownloadRestrictions</key>
+	<dict>
+		<key>BADownloadAllowance</key>
+		<integer>1700000000</integer>
+		<key>BADownloadDomainAllowList</key>
+		<array>
+			<string>huggingface.co</string>
+			<string>*.huggingface.co</string>
+			<string>*.hf.co</string>
+			<string>*.cloudfront.net</string>
+		</array>
+		<key>BAEssentialDownloadAllowance</key>
+		<integer>0</integer>
+	</dict>
+	<key>BAManifestURL</key>
+	<string>https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json</string>
+	<key>BAMaxInstallSize</key>
+	<integer>1638464446</integer>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

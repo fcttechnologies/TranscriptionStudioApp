@@ -20,4 +20,5 @@ extension Logger {
     public nonisolated static let persistence = Logger(subsystem: subsystem, category: "persistence")
     public nonisolated static let inspector = Logger(subsystem: subsystem, category: "inspector")
     public nonisolated static let models = Logger(subsystem: subsystem, category: "models")
+    public nonisolated static let backgroundAssets = Logger(subsystem: subsystem, category: "background-assets")
 }

@@ -45,3 +45,45 @@ Non-obvious traps and decisions a fresh agent on this project should know.
   path. If the Mac container ever comes back `nil` at runtime, the `<TeamID>.group.…` prefixed
   identifier is the fallback to try (older macOS convention) — but automatic signing with
   `-allowProvisioningUpdates` registers the plain `group.` id, which is what's wired.
+
+## Background Assets (pre-launch WhisperKit model download, iOS)
+
+- **Two API generations — use the modern one.** The WWDC22 API (`checkForUpdates`,
+  `manifest`-less callbacks, `NSExtensionPrincipalClass`) is superseded by the SDK-26/27 flow:
+  `BADownloaderExtension` conforming to `AppExtension`, driven by
+  `downloads(for:manifestURL:extensionInfo:) -> Set<BADownload>` and
+  `backgroundDownload(_:finishedWithFileURL:)`. Don't trust training memory here — the framework
+  changed shape across releases.
+- **It's an ExtensionKit extension, not a classic app-extension.** Product type
+  `com.apple.product-type.extensionkit-extension` (xcodegen `type: extensionkit-extension`).
+  Info.plist declares `EXAppExtensionAttributes.EXExtensionPointIdentifier =
+  com.apple.background-asset-downloader-extension` (note: `asset`, singular) with **NO**
+  `NSExtension` dict. Entry point is `@main` — which **requires `import ExtensionFoundation`** or
+  you get "cannot use static method 'main()' here" (a warning that's an error under
+  `SWIFT_TREAT_WARNINGS_AS_ERRORS`). It embeds into `Extensions/`, not `PlugIns/`.
+- **`BADownloadManager.withExclusiveControl` closure is `(Bool, Error?)`, not `(Error?)`.** Apple's
+  doc example shows a single `error in` param; the real SDK-27 signature passes
+  `(acquiredLock: Bool, error: Error?)`.
+- **`BAURLDownload.fileSize` must be the EXACT byte size** or the download fails — take it from the
+  real on-disk model (`scripts/gen-ba-manifest.sh` reads `stat -f%z`), never an estimate. The
+  turbo variant is 24 files totalling 1638464446 bytes; the AudioEncoder weights alone are ~1.27 GB.
+- **The extension can't write to the app's own container** — only the shared App Group. So the
+  extension stages finished files in the App Group (`applicationGroupIdentifier:` on the download)
+  and the *app* relocates them into WhisperKit's Application-Support download base on launch. Make
+  the staging layout mirror the download-base layout (`models/<repo>/<variant>/…`) so it's a
+  straight move, and use each download's `identifier` as that relative path so the finish callback
+  recovers the destination with no side table.
+- **Non-essential downloads** don't gate launch — right for us since WhisperKit downloads on demand
+  anyway. Essential downloads block first launch and need `BAEssentialDownloadAllowance`.
+- **Foreground fallback is WhisperKit's own download, not `BADownloadManager`.** WhisperKit already
+  downloads on demand via a background `URLSession` on iOS; kicking a `BADownloadManager` foreground
+  download in the same hot path would fetch the model twice. Keep WhisperKit's as the single runtime
+  fallback; `BADownloadManager.startForegroundDownload` is wired + tested as a ready capability for an
+  explicit "download now" button, but not auto-invoked.
+- **The extension trigger needs the App Store install flow.** The OS wakes the extension before
+  first launch only for App Store / TestFlight installs — never a sideload or `xcodebuild install`.
+  The code compiles + embeds on any build; only the *firing* needs the Store path. Everything else
+  (URL/layout math, manifest parse, staged-file relocation) is unit/integration testable now.
+- **`BADownloadDomainAllowList` must cover the HuggingFace LFS CDN, not just `huggingface.co`.**
+  `resolve/main/...weight.bin` 302-redirects to a CDN host — allow-list it (verify the exact host
+  at ship time; HF's CDN domain can change).

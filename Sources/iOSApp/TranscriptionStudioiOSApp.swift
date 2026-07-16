@@ -35,11 +35,17 @@ struct TranscriptionStudioiOSApp: App {
                     if phase == .active { app.ingestPendingShares() }
                 }
                 .task {
+                    // Relocate any speech model the Background Assets downloader extension
+                    // pre-fetched (before first launch) from the App Group into WhisperKit's
+                    // download base, so the warmup below finds it on disk and skips the network.
+                    BackgroundAssetsModelInstaller.installStagedModel()
                     TranscriptSpotlightIndex.reindexAll()
                     // Drain anything the Share extension staged while the app wasn't running.
                     app.ingestPendingShares()
                     // Warm the speech model up front so the first job isn't blocked by the
-                    // one-time model compile (see AppModel.prewarmDefaultEngine).
+                    // one-time model compile (see AppModel.prewarmDefaultEngine). If the model
+                    // isn't present (extension never ran — e.g. a sideloaded build), WhisperKit's
+                    // own background-session download is the guaranteed fallback.
                     app.prewarmDefaultEngine()
                 }
         }

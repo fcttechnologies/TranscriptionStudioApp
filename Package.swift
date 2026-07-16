@@ -17,6 +17,12 @@ let package = Package(
         // TranscriptionKit) and the memory-capped Share extension — so it must stay free of
         // heavy deps (no WhisperKit/CoreAI).
         .library(name: "ShareKit", targets: ["ShareKit"]),
+        // The lean, Foundation-only Background Assets kit: the WhisperKit model manifest schema
+        // and the HuggingFace-URL / App-Group-staging / download-base path math. Linked by BOTH
+        // the host app (via TranscriptionKit, for the launch-time install + foreground fallback)
+        // and the memory-capped Background Assets downloader extension — so, like ShareKit, it
+        // must stay free of heavy deps (no WhisperKit/CoreAI).
+        .library(name: "BackgroundAssetsKit", targets: ["BackgroundAssetsKit"]),
         // The macOS-only feature kit: yt-dlp/ffmpeg URL ingest, ScreenCaptureKit
         // meeting capture, and the Mac window shell.
         .library(name: "TranscriptionMacKit", targets: ["TranscriptionMacKit"]),
@@ -39,9 +45,16 @@ let package = Package(
             path: "Sources/ShareKit"
         ),
         .target(
+            name: "BackgroundAssetsKit",
+            dependencies: ["ShareKit"],
+            path: "Sources/BackgroundAssetsKit",
+            resources: [.process("Resources")]
+        ),
+        .target(
             name: "TranscriptionKit",
             dependencies: [
                 "ShareKit",
+                "BackgroundAssetsKit",
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
                 .product(name: "SpeakerKit", package: "argmax-oss-swift"),
                 .product(name: "FCTEntities", package: "FCTFoundation"),
@@ -70,6 +83,7 @@ let package = Package(
             dependencies: [
                 "TranscriptionKit",
                 "ShareKit",
+                "BackgroundAssetsKit",
                 .product(name: "FCTEntities", package: "FCTFoundation")
             ],
             path: "Tests/TranscriptionKitTests",
