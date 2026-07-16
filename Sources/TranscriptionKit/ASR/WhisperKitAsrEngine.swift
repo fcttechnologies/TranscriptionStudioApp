@@ -264,11 +264,31 @@ public actor WhisperKitAsrEngine: AsrEngine {
     /// `application(_:handleEventsForBackgroundURLSession:completionHandler:)` and hand the
     /// stored completion handler to a session reconstructed with WhisperKit's fixed background
     /// identifier (`"swift-transformers.hub.downloader"`) — that hook lives in the iOS app
-    /// target (`Sources/iOSApp`), outside this package, and isn't wired here. In practice this
-    /// app's launch-time `prewarmDefaultEngine()` call already re-invokes `download` (and so
-    /// reattaches to the same background session) the next time the app runs, so a
-    /// terminated-mid-download model still resumes/completes on next launch — just not via the
-    /// dedicated relaunch-while-backgrounded path a full implementation would add.
+    /// target (`Sources/iOSApp`), outside this package, and isn't wired here.
+    ///
+    /// Investigated and deliberately left unwired (2026-07-15): the identifier is owned by
+    /// `Downloader`, an `internal` (non-public) class inside the vendored `ArgmaxCore` module
+    /// (`External/Hub/Downloader.swift` in the `argmax-oss-swift` package) — WhisperKit exposes
+    /// no delegate-injection or session-reconnect API on `WhisperKit.download(...)`. Two
+    /// concrete problems follow from that module boundary, not from missing effort:
+    /// 1. `Downloader.download(from:)` constructs a **fresh** `URLSession` with this exact
+    ///    identifier + its own private delegate on every call (not just at launch). Apple's own
+    ///    guidance is that only one session object should own a given background identifier at
+    ///    a time; if our app delegate also holds a session on that identifier (to survive a
+    ///    terminate-relaunch), the next ordinary transcription's `download` call collides with
+    ///    it — undefined behavior per Apple's docs, not a hypothetical.
+    /// 2. Even receiving the terminate-relaunch event ourselves buys nothing: finishing a
+    ///    download means moving the temp file to the right destination, updating the Hub
+    ///    snapshot/resume bookkeeping, and clearing `Downloader`'s own resume state — all of
+    ///    that lives in `Downloader`'s private methods and fields. We'd be reimplementing
+    ///    ArgmaxCore's downloader, not hooking it.
+    /// Doing this properly needs an upstream WhisperKit/ArgmaxCore API (a public delegate hook
+    /// or a documented reconnect path) — i.e. it requires forking WhisperKit, which is out of
+    /// scope here. In practice this app's launch-time `prewarmDefaultEngine()` call already
+    /// re-invokes `download` (and so reattaches to the same background session) the next time
+    /// the app runs, so a terminated-mid-download model still resumes/completes on next
+    /// launch — just not via the dedicated relaunch-while-backgrounded path a full
+    /// implementation would add.
     private static func buildWhisperKit(modelName: String, downloadBase: URL, useBackgroundDownloadSession: Bool,
                                         onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws -> WhisperKit {
         try FileManager.default.createDirectory(at: downloadBase, withIntermediateDirectories: true)

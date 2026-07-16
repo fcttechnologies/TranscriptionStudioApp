@@ -112,6 +112,7 @@ public final class AppModel {
         Task { [weak self] in
             guard let self else { return }
             if let id = await self.recording.stop() {
+                await TranscriptionIntentDonations.donateStopRecording()
                 self.openSession(id: id)
             } else if self.activeSheet == .liveRecording {
                 self.activeSheet = nil

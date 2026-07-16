@@ -39,6 +39,7 @@ public struct RenameTranscriptIntent: AppIntent {
 
         session.title = trimmed
         try? context.save()
+        TranscriptSpotlightIndex.index(session)
         return .result(dialog: "Renamed to \"\(trimmed)\".")
     }
 }

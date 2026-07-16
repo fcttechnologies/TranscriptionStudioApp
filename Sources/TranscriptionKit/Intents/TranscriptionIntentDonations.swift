@@ -71,11 +71,6 @@ enum TranscriptionIntentDonations {
         _ = try? await intent.donate()
     }
 
-    static func donateOpenLibrary() async {
-        guard donationsEnabled else { return }
-        _ = try? await OpenLibraryIntent().donate()
-    }
-
     static func donateTranscribeLink(urlString: String) async {
         guard donationsEnabled, !urlString.isEmpty else { return }
         let intent = TranscribeLinkIntent()

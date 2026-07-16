@@ -59,8 +59,12 @@ public struct SessionDetailView: View {
             #endif
             .toolbar {
                 ToolbarItem {
-                    Button("Intelligence", systemImage: "sparkles") { showingIntelligence = true }
-                        .accessibilityIdentifier("session.intelligence")
+                    Button("Intelligence", systemImage: "sparkles") {
+                        showingIntelligence = true
+                        let entity = TranscriptSessionEntity(session)
+                        Task { await TranscriptionIntentDonations.donateSummarizeTranscript(entity) }
+                    }
+                    .accessibilityIdentifier("session.intelligence")
                 }
                 ToolbarItem {
                     Menu {
@@ -88,7 +92,11 @@ public struct SessionDetailView: View {
         .fileExporter(isPresented: exportBinding,
                       document: exportDocument,
                       contentType: exportFormat.map(TranscriptExportDocument.contentType(for:)) ?? .plainText,
-                      defaultFilename: exportFileName) { _ in
+                      defaultFilename: exportFileName) { result in
+            if case .success = result, let format = exportFormat {
+                let entity = TranscriptSessionEntity(session)
+                Task { await TranscriptionIntentDonations.donateExportTranscript(entity, format: format) }
+            }
             exportFormat = nil
         }
         .sheet(isPresented: $showingIntelligence) {
@@ -164,6 +172,7 @@ public struct SessionDetailView: View {
         guard !trimmed.isEmpty else { return }
         session.title = trimmed
         try? modelContext.save()
+        TranscriptSpotlightIndex.index(session)
         let entity = TranscriptSessionEntity(session)
         Task { await TranscriptionIntentDonations.donateRenameTranscript(entity, newTitle: trimmed) }
     }

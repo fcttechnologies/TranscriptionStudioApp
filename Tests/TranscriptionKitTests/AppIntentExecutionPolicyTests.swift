@@ -12,6 +12,7 @@ struct AppIntentExecutionPolicyTests {
             StopRecordingIntent.allowedExecutionTargets,
             TranscribeFileIntent.allowedExecutionTargets,
             DeleteTranscriptIntent.allowedExecutionTargets,
+            OpenSettingsIntent.allowedExecutionTargets,
             OpenInspectorIntent.allowedExecutionTargets,
             TranscribeLinkIntent.allowedExecutionTargets,
             RenameTranscriptIntent.allowedExecutionTargets,

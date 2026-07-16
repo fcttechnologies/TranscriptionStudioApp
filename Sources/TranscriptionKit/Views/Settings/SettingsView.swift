@@ -21,7 +21,7 @@ public struct SettingsView: View {
             }
             Section("Diarization") {
                 Picker("Backend", selection: $settings.diarizerBackend) {
-                    ForEach(AppSettings.DiarizerBackend.allCases) { backend in
+                    ForEach(diarizerBackendOptions) { backend in
                         Text(backend.displayName).tag(backend)
                     }
                 }
@@ -42,5 +42,17 @@ public struct SettingsView: View {
         }
         .formStyle(.grouped)
         .navigationTitle("Settings")
+    }
+
+    /// iOS can never provision the Sortformer model — `DiarizationBackend.makeEngine`'s guard
+    /// always falls back to SpeakerKit there (no locally re-exported model) — so the picker
+    /// only offers backends that actually run on this platform, instead of listing a choice
+    /// that silently becomes something else.
+    private var diarizerBackendOptions: [AppSettings.DiarizerBackend] {
+        #if os(iOS)
+        AppSettings.DiarizerBackend.allCases.filter { $0 != .sortformer }
+        #else
+        AppSettings.DiarizerBackend.allCases
+        #endif
     }
 }

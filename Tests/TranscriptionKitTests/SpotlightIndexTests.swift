@@ -31,4 +31,22 @@ struct SpotlightIndexTests {
         TranscriptSpotlightIndex.deindex(id: session.id)
         TranscriptSpotlightIndex.reindexAll(in: container)
     }
+
+    @Test func reindexAfterRenameIsANoOpUnderTests() throws {
+        // Mirrors the two rename call sites (SessionDetailView.commitRename,
+        // RenameTranscriptIntent.perform()): both save a new title, then re-index the
+        // session so Spotlight's copy stops showing the stale one. Under tests this must
+        // stay silent, exactly like a fresh `index(_:)` call.
+        let container = try ModelContainer(
+            for: AppModelContainer.schema,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+        let session = TranscriptSession(title: "Standup", kind: .roomRecording)
+        context.insert(session)
+        try context.save()
+
+        session.title = "Renamed Standup"
+        try context.save()
+        TranscriptSpotlightIndex.index(session)
+    }
 }

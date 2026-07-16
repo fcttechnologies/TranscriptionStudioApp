@@ -221,6 +221,7 @@ public struct StudioHomeView: View {
     private func startFile(_ url: URL) {
         let name = url.deletingPathExtension().lastPathComponent
         app.startTranscription(title: name.isEmpty ? "Audio file" : name, source: .file(url))
+        Task { await TranscriptionIntentDonations.donateTranscribeFile(fileURL: url) }
     }
 
     #if os(iOS)
