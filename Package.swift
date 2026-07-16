@@ -58,7 +58,11 @@ let package = Package(
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
                 .product(name: "SpeakerKit", package: "argmax-oss-swift"),
                 .product(name: "FCTEntities", package: "FCTFoundation"),
-                .product(name: "FCTComponentsUI", package: "FCTFoundation")
+                .product(name: "FCTComponentsUI", package: "FCTFoundation"),
+                // CloudKit sync-status monitor + the first-launch import bootstrap gate (the
+                // companion UX depends on the user seeing sync state, not a jarring empty feed).
+                .product(name: "FCTCloudKit", package: "FCTFoundation"),
+                .product(name: "FCTSync", package: "FCTFoundation")
             ],
             path: "Sources/TranscriptionKit",
             linkerSettings: [

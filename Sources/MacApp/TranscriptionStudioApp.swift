@@ -1,11 +1,14 @@
 import SwiftUI
 import SwiftData
+import FCTCloudKit
 import TranscriptionKit
 import TranscriptionMacKit
 
 @main
 struct TranscriptionStudioApp: App {
     @State private var app: AppModel
+    @State private var cloudKitSync = CloudKitSyncMonitor()
+    @State private var bootstrap: LibraryBootstrap
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -23,12 +26,18 @@ struct TranscriptionStudioApp: App {
         // Register the live model so App Intents (Siri/Shortcuts) resolve it via @Dependency.
         TranscriptionAppIntents.registerDependencies(appModel: model)
         _app = State(initialValue: model)
+        let context = model.modelContext
+        _bootstrap = State(initialValue: LibraryBootstrap(sessionCount: {
+            (try? context.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
+        }))
     }
 
     var body: some Scene {
         WindowGroup {
             MacRootView()
                 .environment(app)
+                .environment(cloudKitSync)
+                .environment(bootstrap)
                 // A shared link arrives via the Share extension's URL-scheme ping; drain the
                 // App Group drop-box and enqueue it as a job.
                 .onOpenURL { url in app.handleIngestURL(url) }
@@ -43,6 +52,9 @@ struct TranscriptionStudioApp: App {
                     TranscriptSpotlightIndex.reindexAll()
                     // Drain anything the Share extension staged while the app wasn't running.
                     app.ingestPendingShares()
+                    // The Mac is the companion processor: watch for links queued on iOS and
+                    // publish a presence heartbeat the phone reads.
+                    app.startMacCompanionServices()
                     // Warm the speech model up front so the first job isn't blocked by the
                     // one-time model compile (see AppModel.prewarmDefaultEngine).
                     app.prewarmDefaultEngine()

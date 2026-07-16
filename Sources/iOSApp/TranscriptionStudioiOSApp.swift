@@ -1,10 +1,13 @@
 import SwiftUI
 import SwiftData
+import FCTCloudKit
 import TranscriptionKit
 
 @main
 struct TranscriptionStudioiOSApp: App {
     @State private var app: AppModel
+    @State private var cloudKitSync = CloudKitSyncMonitor()
+    @State private var bootstrap: LibraryBootstrap
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -18,14 +21,20 @@ struct TranscriptionStudioiOSApp: App {
         // Register the live model so App Intents (Siri/Shortcuts) resolve it via @Dependency.
         TranscriptionAppIntents.registerDependencies(appModel: model)
         _app = State(initialValue: model)
+        let context = model.modelContext
+        _bootstrap = State(initialValue: LibraryBootstrap(sessionCount: {
+            (try? context.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
+        }))
     }
 
     var body: some Scene {
         WindowGroup {
-            // The single-view home, iPhone-native: no URL ingest and no meeting mode (both
-            // are Mac-only capabilities).
+            // The single-view home, iPhone-native: meeting mode is Mac-only, but a link can now be
+            // queued here for the Mac to transcribe (see AppModel.submitLink).
             StudioHomeView()
                 .environment(app)
+                .environment(cloudKitSync)
+                .environment(bootstrap)
                 // A shared media file arrives via the Share extension's URL-scheme ping; drain
                 // the App Group drop-box and enqueue it as a job.
                 .onOpenURL { url in app.handleIngestURL(url) }
