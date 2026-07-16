@@ -12,6 +12,11 @@ let package = Package(
         // capture, jobs, diagnostics, persistence, and the platform-agnostic UI.
         // Both the macOS app and the iOS app depend on this.
         .library(name: "TranscriptionKit", targets: ["TranscriptionKit"]),
+        // The lean, Foundation-only sharing kit: the App Group drop-box, the ingest URL
+        // scheme, and the shared-item classifier. Linked by BOTH the host app (via
+        // TranscriptionKit) and the memory-capped Share extension — so it must stay free of
+        // heavy deps (no WhisperKit/CoreAI).
+        .library(name: "ShareKit", targets: ["ShareKit"]),
         // The macOS-only feature kit: yt-dlp/ffmpeg URL ingest, ScreenCaptureKit
         // meeting capture, and the Mac window shell.
         .library(name: "TranscriptionMacKit", targets: ["TranscriptionMacKit"]),
@@ -30,8 +35,13 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "ShareKit",
+            path: "Sources/ShareKit"
+        ),
+        .target(
             name: "TranscriptionKit",
             dependencies: [
+                "ShareKit",
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
                 .product(name: "SpeakerKit", package: "argmax-oss-swift"),
                 .product(name: "FCTEntities", package: "FCTFoundation"),
@@ -59,6 +69,7 @@ let package = Package(
             name: "TranscriptionKitTests",
             dependencies: [
                 "TranscriptionKit",
+                "ShareKit",
                 .product(name: "FCTEntities", package: "FCTFoundation")
             ],
             path: "Tests/TranscriptionKitTests",
