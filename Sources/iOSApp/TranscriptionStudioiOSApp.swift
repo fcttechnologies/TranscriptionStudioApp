@@ -44,6 +44,11 @@ struct TranscriptionStudioiOSApp: App {
                     if phase == .active { app.ingestPendingShares() }
                 }
                 .task {
+                    #if DEBUG
+                    // Simulator screenshots / agent E2E: `-TSSeedDemoLibrary` fills an empty
+                    // library with two playable demo sessions.
+                    DemoLibrarySeeder.seedIfRequested(context: app.modelContext)
+                    #endif
                     // Relocate any speech model the Background Assets downloader extension
                     // pre-fetched (before first launch) from the App Group into WhisperKit's
                     // download base, so the warmup below finds it on disk and skips the network.

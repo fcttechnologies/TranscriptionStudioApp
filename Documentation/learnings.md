@@ -122,3 +122,38 @@ Full write-up: `Documentation/COMPANION.md`. The traps worth flagging here:
 - **Shell views read the new environment objects *optionally*.** `@Environment(CloudKitSyncMonitor
   .self) private var x: CloudKitSyncMonitor?` — declaring them optional keeps
   previews/tests that host `StudioHomeView` without the app-root injection from crashing.
+
+## Live Activities + widget extension (Phase 1)
+
+- **`ActivityAttributes` is compile-time unavailable on macOS** even though `canImport(ActivityKit)`
+  is true there — guard attribute types with `#if os(iOS) && canImport(ActivityKit)`, not
+  `canImport` alone. (Pure helpers like the clock/level math stay unguarded so macOS tests run them.)
+- **App Intents in an SPM library DO extract into a widget extension's metadata.** GlanceKit's
+  `LiveActivityIntent`s land in `WidgetExtensioniOS.appex/Metadata.appintents/extract.actionsdata`
+  (verify with a JSON grep after a build) — no dual-target source compilation needed. The intents
+  perform in the *app's* process, so they trampoline through `StudioActivityActions` closures the
+  app model registers at init; the extension never links TranscriptionKit.
+- **`LM_SKIP_METADATA_EXTRACTION: YES`** on extension targets that carry no App Intents
+  (Share ×2, BackgroundAssets) silences the `appintentsmetadataprocessor` "no AppIntents.framework
+  dependency" build notice at its cause.
+- **The recording activity's clock costs zero updates**: the content state carries a wall-clock
+  `timerAnchor` placed so `now − anchor == elapsed`; `Text(_, style: .timer)` ticks natively.
+  Same trick for playback: position/rate anchors → `PlaybackClock.wallClockSpan` → self-advancing
+  `ProgressView(timerInterval:)`/`Text(timerInterval:)`; updates happen only on transport
+  discontinuities (play/pause/seek/rate), which is also what keeps the activity inside its budget.
+- **The beta simulator runs the activity but doesn't render it** (Dynamic Island / Lock Screen
+  stay blank; `notifyutil -p com.apple.springboard.lockdevice` no longer locks iOS 27 sims).
+  Verify lifecycle via `log show --predicate 'subsystem CONTAINS "glanceables"'` + chronod's
+  descriptor registration; the visual is a device check (VERIFICATION.md).
+- **Multiple worktrees ⇒ multiple `TranscriptionStudio-*` DerivedData dirs.** When installing a
+  built app onto a sim, take the DerivedData path from *your own build log* (`grep -m1 -o
+  "DerivedData/TranscriptionStudio-[a-z]*" <log>`), never `ls | head -1` — that installed another
+  lane's stale app and burned a debugging cycle.
+- **`-TSSeedDemoLibrary`** (DEBUG, iOS shell) seeds two playable demo sessions (multi-speaker
+  meeting → grouped layout; single-voice memo → flat) with synthesized WAV audio — the sim
+  path for exercising the detail view, transport, karaoke and both Live Activities without models.
+- **`MPNowPlayingInfoCenter` wiring lives in FCTGlanceables** (`NowPlayingCoordinator` +
+  `NowPlayingItem`/`NowPlayingInfoMapper`, tests in FCTGlanceablesTests): publish on
+  discontinuities only (the system extrapolates from elapsed + rate; rate 0 = paused), and
+  `deactivate()` must both clear the info dictionary and remove every registered command target —
+  a leaked target keeps ghost transport controls alive after unload.

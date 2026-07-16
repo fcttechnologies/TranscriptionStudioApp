@@ -54,6 +54,12 @@ public enum DesignMetrics {
     public static let speakerChipHPadding: CGFloat = 8
     /// Provisional (still-revisable) transcript opacity floor.
     public static let provisionalOpacity: Double = 0.55
+    /// Karaoke playback: how far non-playing lines recede while a line is lit.
+    public static let karaokeRecededOpacity: Double = 0.45
+    /// The detail playback bar's central play/pause control.
+    public static let playControlSize: CGFloat = 52
+    /// How long after a manual scroll the karaoke auto-follow stays out of the way.
+    public static let karaokeFollowResumeDelay: TimeInterval = 4
     public static let shimmerDuration: Double = 1.3
     public static let shimmerHighlightOpacity: Double = 0.85
     public static let shimmerMinBandWidth: CGFloat = 40

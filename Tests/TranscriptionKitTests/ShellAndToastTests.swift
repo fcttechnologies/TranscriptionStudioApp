@@ -17,8 +17,13 @@ struct ToastCenterTests {
         center.show(Toast(title: "Second", systemImage: "checkmark"))
         #expect(center.current?.title == "First")
         center.dismiss()
-        // The queue advances after a short gap so out/in transitions read as distinct.
-        try await Task.sleep(for: .milliseconds(350))
+        // The queue advances after a short gap (an unstructured ~220ms task) so out/in
+        // transitions read as distinct. Poll with a deadline rather than racing that task
+        // against one fixed sleep — on a loaded machine the single sleep loses.
+        let deadline = ContinuousClock.now + .seconds(3)
+        while center.current == nil, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(25))
+        }
         #expect(center.current?.title == "Second")
     }
 

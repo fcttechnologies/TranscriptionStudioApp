@@ -23,7 +23,12 @@ is new in the 27 OSes. Swift 6, strict concurrency.
 Thin app shells (`Sources/MacApp`, `Sources/iOSApp`, xcodegen targets) over one local
 package: `TranscriptionKit` (shared: engines, capture, jobs, diagnostics, persistence,
 shared UI) + `TranscriptionMacKit` (mac-only: URL ingest, ScreenCaptureKit capture, Mac
-shell). Regenerate the project with `xcodegen generate` — the `.xcodeproj` is gitignored.
+shell). Lean extension-safe libraries sit beside them: `ShareKit` (Share-extension
+drop-box), `BackgroundAssetsKit` (model pre-download), and `GlanceKit` (Live Activity
+attributes + button intents + pure clock/level math, linked by the app and by
+`WidgetExtensioniOS` — the widget extension rendering the recording/playback Live
+Activities). Regenerate the project with `xcodegen generate` — the `.xcodeproj` is
+gitignored.
 
 ## The seams (contract files — coordinate before changing)
 

@@ -106,6 +106,25 @@ The share-sheet tap itself can't be scripted headlessly. Verify once per platfor
 with `-allowProvisioningUpdates` (already how `package-mac.sh` builds). First run may need the
 app foregrounded once so the extension is registered with the system.
 
+### Manual device check — Live Activities + system media player (iOS)
+
+The activity *lifecycle* is verifiable on a simulator (unified log: `subsystem CONTAINS
+"glanceables"` shows started/active/ended; `chronod` registers the widget extension's two
+activity descriptors), and `-TSSeedDemoLibrary` (DEBUG launch argument) seeds two playable
+sessions to drive it. What the beta simulator does NOT render is the Dynamic Island / Lock
+Screen presentation itself — verify on a device:
+
+1. Play a session's audio → the **playback Live Activity** appears (Dynamic Island compact:
+   waveform + remaining countdown; Lock Screen: kind tile, title, self-advancing progress,
+   play/pause button) AND the Lock Screen / Control Center shows the app as a real media
+   player (title, kind, scrubber, ±15s, speed — AirPods controls included). Pause from the
+   Lock Screen player and from the activity's button; both must reflect in-app.
+2. Start a recording → the **recording Live Activity** (red state dot, running elapsed clock,
+   live level trace, pause + stop buttons). Pause/resume from the island; Stop must end the
+   run, persist the session, and dismiss the activity.
+3. Let playback run out on its own → the activity ends by itself; closing the mini-player
+   clears the Lock Screen player (no stale now-playing info or dead commands).
+
 ## Deferred (forge-able later)
 
 - NeMo golden-tensor byte gate: the zoo's capture scripts can regenerate reference

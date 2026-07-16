@@ -189,6 +189,9 @@ targets:
         SWIFT_STRICT_CONCURRENCY: complete
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        # No App Intents in this target — skip metadata extraction (silences the processor's
+        # "no AppIntents.framework dependency" build notice at its cause).
+        LM_SKIP_METADATA_EXTRACTION: YES
         CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/macOS/ShareExtensionMac.entitlements
 
   ShareExtensioniOS:
@@ -216,6 +219,8 @@ targets:
         SWIFT_STRICT_CONCURRENCY: complete
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        # No App Intents in this target — skip metadata extraction (see ShareExtensionMac).
+        LM_SKIP_METADATA_EXTRACTION: YES
         CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements
 
   # The widget extension (iOS only) — hosts the recording + playback Live Activities (Dynamic
@@ -279,6 +284,8 @@ targets:
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        # No App Intents in this target — skip metadata extraction (see ShareExtensionMac).
+        LM_SKIP_METADATA_EXTRACTION: YES
         CODE_SIGN_ENTITLEMENTS: Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements
 
 schemes:
