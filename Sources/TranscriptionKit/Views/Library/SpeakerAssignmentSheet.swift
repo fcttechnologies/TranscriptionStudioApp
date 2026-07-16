@@ -17,6 +17,7 @@ struct SpeakerAssignmentSheet: View {
 
     @State private var slots: [Int] = []
     @State private var names: [Int: String] = [:]
+    @State private var mentions: [ResolvedMention] = []
     @State private var picking: SlotBox?
 
     /// `Identifiable` wrapper so a slot can drive `.sheet(item:)`.
@@ -35,6 +36,23 @@ struct SpeakerAssignmentSheet: View {
                         }
                     } footer: {
                         Text("Naming a speaker makes “what did they say” searchable by name. Choosing a contact never grants access to your contacts.")
+                    }
+                }
+                if !mentions.isEmpty {
+                    Section("Mentioned in this transcript") {
+                        ForEach(mentions, id: \.name) { mention in
+                            HStack {
+                                Text(mention.name)
+                                Spacer()
+                                if let contact = mention.contact {
+                                    Label(contact.displayName, systemImage: "checkmark.circle.fill")
+                                        .labelStyle(.titleAndIcon)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text("Not in contacts").foregroundStyle(.tertiary)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -78,6 +96,19 @@ struct SpeakerAssignmentSheet: View {
         guard let session = session() else { dismiss(); return }
         slots = SpeakerLabels.assignableSlots(in: session)
         names = SpeakerAssignmentStore.nameBySlot(for: session)
+        resolveMentions(for: session)
+    }
+
+    /// Surface which extracted mentions are already in the user's contacts — only when read access is
+    /// *already* granted, so opening this sheet never triggers a contacts-permission prompt.
+    private func resolveMentions(for session: TranscriptSession) {
+        let resolver = MentionResolver()
+        guard resolver.canResolve else { return }
+        let peopleNames = (session.people ?? []).map(\.name)
+        guard !peopleNames.isEmpty else { return }
+        Task {
+            mentions = await resolver.resolve(names: peopleNames)
+        }
     }
 
     private func assign(slot: Int, contact: SelectedContact) {
