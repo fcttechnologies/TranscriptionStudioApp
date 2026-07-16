@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// App settings — model choices, transcript behavior, and the capture permissions. The
-/// engines self-configure for now, so the model pickers are real UI over a real settings
-/// object (the chosen model rides into the pipeline events) rather than a dead stub.
+/// App settings — the speech model (fixed at large-v3-turbo), the diarizer backend, transcript
+/// behavior, capture permissions, and model storage.
 /// Presented as a sheet on both platforms (the shell's top-right control).
 public struct SettingsView: View {
     @Environment(AppModel.self) private var app
@@ -13,19 +12,12 @@ public struct SettingsView: View {
         @Bindable var settings = app.settings
         Form {
             Section {
-                Picker("Whisper model", selection: $settings.whisperModel) {
-                    ForEach(AppSettings.WhisperModel.allCases) { model in
-                        Text(model.displayName).tag(model)
-                    }
-                }
-                .onChange(of: settings.whisperModel) { _, _ in app.prewarmSelectedModel() }
-                Text(settings.whisperModel.detail)
-                    .font(.caption).foregroundStyle(.secondary)
+                LabeledContent("Speech model", value: settings.whisperModel.displayName)
                 Toggle("Capture word-level timestamps", isOn: $settings.wordTimestamps)
             } header: {
                 Text("Speech recognition")
             } footer: {
-                Text("Applies to new transcription jobs immediately. Recording uses the model loaded at launch — a change takes effect next launch.")
+                Text("On-device Whisper large-v3-turbo — the speed/accuracy sweet spot.")
             }
             Section("Diarization") {
                 Picker("Backend", selection: $settings.diarizerBackend) {
