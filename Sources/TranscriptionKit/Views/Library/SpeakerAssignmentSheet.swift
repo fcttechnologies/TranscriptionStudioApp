@@ -1,0 +1,142 @@
+#if os(iOS)
+import SwiftUI
+import SwiftData
+import Contacts
+import ContactsUI
+
+/// **Speaker → contact mapping (functional entry point).** Lists a session's diarized speakers and
+/// lets the user bind each to a real contact through the system contact picker — which runs
+/// out-of-process and needs *no* Contacts permission. A bound name is denormalized onto the session
+/// (so labels + the Spotlight index need no re-fetch) and makes "what did they say" searchable by
+/// name. This is a plain review list, not the proactive-chip surface (a later taste pass); the detail
+/// view is deliberately left untouched.
+struct SpeakerAssignmentSheet: View {
+    let sessionID: UUID
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var slots: [Int] = []
+    @State private var names: [Int: String] = [:]
+    @State private var picking: SlotBox?
+
+    /// `Identifiable` wrapper so a slot can drive `.sheet(item:)`.
+    private struct SlotBox: Identifiable { let id: Int }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if slots.isEmpty {
+                    ContentUnavailableView("No speakers to name", systemImage: "person.2",
+                        description: Text("This transcript has no diarized speakers yet."))
+                } else {
+                    Section {
+                        ForEach(slots, id: \.self) { slot in
+                            row(for: slot)
+                        }
+                    } footer: {
+                        Text("Naming a speaker makes “what did they say” searchable by name. Choosing a contact never grants access to your contacts.")
+                    }
+                }
+            }
+            .navigationTitle("Name speakers")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { SheetCloseToolbar { dismiss() } }
+        }
+        .sheet(item: $picking) { box in
+            ContactPickerView(
+                onSelect: { assign(slot: box.id, contact: $0) },
+                onCancel: { picking = nil })
+            .ignoresSafeArea()
+        }
+        .onAppear(perform: load)
+    }
+
+    @ViewBuilder
+    private func row(for slot: Int) -> some View {
+        HStack {
+            Label(SpeakerLabels.name(forSlot: slot), systemImage: "person.crop.circle")
+            Spacer()
+            if let name = names[slot] {
+                Text(name).foregroundStyle(.secondary)
+                Button("Clear", role: .destructive) { clear(slot) }
+                    .buttonStyle(.borderless)
+            } else {
+                Button("Choose contact") { picking = SlotBox(id: slot) }
+                    .buttonStyle(.borderless)
+            }
+        }
+    }
+
+    private func session() -> TranscriptSession? {
+        let id = sessionID
+        var descriptor = FetchDescriptor<TranscriptSession>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
+    }
+
+    private func load() {
+        guard let session = session() else { dismiss(); return }
+        slots = SpeakerLabels.assignableSlots(in: session)
+        names = SpeakerAssignmentStore.nameBySlot(for: session)
+    }
+
+    private func assign(slot: Int, contact: SelectedContact) {
+        picking = nil
+        guard let session = session() else { return }
+        SpeakerAssignmentStore.assign(slot: slot, contactIdentifier: contact.identifier,
+                                      displayName: contact.displayName, to: session, in: modelContext)
+        names = SpeakerAssignmentStore.nameBySlot(for: session)
+    }
+
+    private func clear(_ slot: Int) {
+        guard let session = session() else { return }
+        SpeakerAssignmentStore.clear(slot: slot, from: session, in: modelContext)
+        names = SpeakerAssignmentStore.nameBySlot(for: session)
+    }
+}
+
+/// A contact chosen from the system picker, reduced to what a binding needs.
+struct SelectedContact: Sendable {
+    let identifier: String
+    let displayName: String
+}
+
+/// SwiftUI bridge to `CNContactPickerViewController` — the system picker needs no Contacts
+/// permission (it runs out of process and hands back only the contact the user taps).
+private struct ContactPickerView: UIViewControllerRepresentable {
+    let onSelect: (SelectedContact) -> Void
+    let onCancel: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onSelect: onSelect, onCancel: onCancel) }
+
+    func makeUIViewController(context: Context) -> CNContactPickerViewController {
+        let picker = CNContactPickerViewController()
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ controller: CNContactPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, CNContactPickerDelegate {
+        let onSelect: (SelectedContact) -> Void
+        let onCancel: () -> Void
+
+        init(onSelect: @escaping (SelectedContact) -> Void, onCancel: @escaping () -> Void) {
+            self.onSelect = onSelect
+            self.onCancel = onCancel
+        }
+
+        func contactPicker(_ picker: CNContactPickerViewController, didSelect contact: CNContact) {
+            let formatter = CNContactFormatter()
+            formatter.style = .fullName
+            let name = formatter.string(from: contact)
+                ?? [contact.givenName, contact.familyName].filter { !$0.isEmpty }.joined(separator: " ")
+            onSelect(SelectedContact(identifier: contact.identifier, displayName: name))
+        }
+
+        func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
+            onCancel()
+        }
+    }
+}
+#endif

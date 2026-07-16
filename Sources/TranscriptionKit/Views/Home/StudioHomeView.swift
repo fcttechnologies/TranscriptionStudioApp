@@ -275,6 +275,10 @@ public struct StudioHomeView: View {
             CalendarDraftConfirmView(eventID: id)
         case .confirmReminder(let id):
             ReminderDraftConfirmView(actionItemID: id)
+        #if os(iOS)
+        case .assignSpeakers(let id):
+            SpeakerAssignmentSheet(sessionID: id)
+        #endif
         }
     }
 

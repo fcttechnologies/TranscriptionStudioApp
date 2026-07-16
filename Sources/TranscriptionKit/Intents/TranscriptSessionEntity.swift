@@ -38,14 +38,21 @@ public struct TranscriptSessionEntity: IndexedEntity {
     @Property(title: "Transcript", indexingKey: \.contentDescription)
     public var textPreview: String
 
+    /// Person names associated with the session — bound speaker contacts + extracted mentions —
+    /// indexed as Spotlight `keywords` so a name query resolves to this session even when the raw
+    /// transcript only labeled a "Speaker N" (Siri name resolution). See `SessionPeople`.
+    @Property(title: "People", indexingKey: \.keywords)
+    public var people: [String]
+
     public init(id: String, title: String, date: Date, kindLabel: String,
-                duration: TimeInterval, textPreview: String) {
+                duration: TimeInterval, textPreview: String, people: [String] = []) {
         self.id = id
         self.title = title
         self.date = date
         self.kindLabel = kindLabel
         self.duration = duration
         self.textPreview = textPreview
+        self.people = people
     }
 
     public var displayRepresentation: DisplayRepresentation {
@@ -71,7 +78,8 @@ extension TranscriptSessionEntity {
                   date: session.createdAt,
                   kindLabel: SessionKindStyle.label(session.kind),
                   duration: session.duration,
-                  textPreview: String(session.fullText.prefix(280)))
+                  textPreview: String(session.fullText.prefix(280)),
+                  people: SessionPeople.names(for: session))
     }
 }
 

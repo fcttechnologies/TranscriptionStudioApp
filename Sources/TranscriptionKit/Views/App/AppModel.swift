@@ -429,6 +429,10 @@ public enum StudioSheet: Equatable, Identifiable, Sendable {
     case confirmCalendarEvent(UUID)
     /// Draft-then-confirm: review an extracted `TranscriptActionItem` before adding it to Reminders.
     case confirmReminder(UUID)
+    #if os(iOS)
+    /// Map a session's diarized speakers to contacts (the system contact picker is iOS-only).
+    case assignSpeakers(UUID)
+    #endif
 
     public var id: String {
         switch self {
@@ -440,6 +444,9 @@ public enum StudioSheet: Equatable, Identifiable, Sendable {
         case .session(let id): "session-\(id.uuidString)"
         case .confirmCalendarEvent(let id): "confirmEvent-\(id.uuidString)"
         case .confirmReminder(let id): "confirmReminder-\(id.uuidString)"
+        #if os(iOS)
+        case .assignSpeakers(let id): "assignSpeakers-\(id.uuidString)"
+        #endif
         }
     }
 }

@@ -12,6 +12,7 @@ public enum AppModelContainer {
         TranscriptSession.self, StoredSegment.self, MacPresence.self,
         TranscriptDecision.self, TranscriptActionItem.self, TranscriptEvent.self,
         TranscriptPerson.self, TranscriptPlace.self,
+        SpeakerAssignment.self,
     ])
 
     public static let shared: ModelContainer = {

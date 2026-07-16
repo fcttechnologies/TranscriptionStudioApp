@@ -73,6 +73,11 @@ public final class TranscriptSession {
     @Relationship(deleteRule: .cascade, inverse: \TranscriptPlace.session)
     public var places: [TranscriptPlace]? = []
 
+    // MARK: Speaker → contact bindings (Phase 3 — speaker mapping)
+
+    @Relationship(deleteRule: .cascade, inverse: \SpeakerAssignment.session)
+    public var speakerAssignments: [SpeakerAssignment]? = []
+
     public var highlightsStatus: HighlightsStatus {
         get { HighlightsStatus(rawValue: highlightsStatusRaw) ?? .pending }
         set { highlightsStatusRaw = newValue.rawValue }
