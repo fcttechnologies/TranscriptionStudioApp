@@ -251,41 +251,51 @@ public struct GetLatestTranscriptIntent: AppIntent {
 
 // MARK: - Ask (Foundation Models Q&A)
 
-/// Ask a question about a transcript, answered on-device by Apple Intelligence. Defaults to
-/// the latest recording, so "ask my last recording what they said about the budget" works.
-/// Degrades gracefully to a spoken explanation when Apple Intelligence isn't available.
+/// Ask a question about your transcripts, answered on-device by Apple Intelligence. With **no**
+/// transcript given, it searches the **whole library** — "what did Sergio and I decide at the last
+/// meeting?" resolves to the right session and answers from it (Flagship A, Siri semantic Q&A). Give
+/// a specific transcript and it answers grounded in just that one. Degrades gracefully to a spoken
+/// explanation when Apple Intelligence isn't available.
 public struct AskTranscriptIntent: AppIntent {
     public static let title: LocalizedStringResource = "Ask a Transcript"
     public static let description = IntentDescription(
-        "Ask a question about a transcript. Apple Intelligence answers on-device from the transcript.")
+        "Ask a question about your transcripts. With no transcript chosen, Apple Intelligence searches your whole library on-device; choose one to ask about just that transcript.")
 
-    @Parameter(title: "Question", description: "What you want to know about the transcript.")
+    @Parameter(title: "Question", description: "What you want to know about your transcripts.")
     public var question: String
 
-    @Parameter(title: "Transcript", description: "Which transcript to ask about. Defaults to your latest.")
+    @Parameter(title: "Transcript", description: "Which transcript to ask about. Leave empty to search your whole library.")
     public var session: TranscriptSessionEntity?
 
     public init() {}
 
     public func perform() async throws
         -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        let target: (entity: TranscriptSessionEntity, fullText: String)?
+        // A specific transcript → grounded single-session Q&A (the existing behavior).
         if let session, let id = UUID(uuidString: session.id) {
-            target = await TranscriptSessionStore.entityAndText(forID: id)
-        } else {
-            target = await TranscriptSessionStore.latestEntityAndText()
+            guard let target = await TranscriptSessionStore.entityAndText(forID: id) else {
+                throw TranscriptionIntentError.noTranscripts
+            }
+            let intelligence = SessionIntelligence()
+            guard intelligence.status.isAvailable else {
+                return .result(value: "", dialog: "\(intelligence.status.message)")
+            }
+            do {
+                let answer = try await intelligence.answer(question: question, transcript: target.fullText)
+                return .result(value: answer, dialog: "\(answer)")
+            } catch {
+                return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
+            }
         }
-        guard let target else { throw TranscriptionIntentError.noTranscripts }
 
-        let intelligence = SessionIntelligence()
-        guard intelligence.status.isAvailable else {
-            return .result(value: "", dialog: "\(intelligence.status.message)")
-        }
-        do {
-            let answer = try await intelligence.answer(question: question, transcript: target.fullText)
+        // No transcript chosen → library-wide semantic RAG over the named Spotlight index.
+        switch await TranscriptLibraryAssistant.ask(question) {
+        case .success(let answer):
             return .result(value: answer, dialog: "\(answer)")
-        } catch {
-            return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
+        case .failure(.unavailable):
+            return .result(value: "", dialog: "\(SessionIntelligence.currentStatus().message)")
+        case .failure(.failed):
+            return .result(value: "", dialog: "Something went wrong. Please try again.")
         }
     }
 }

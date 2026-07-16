@@ -198,7 +198,7 @@ public enum TranscriptSessionStore {
 public enum TranscriptSpotlightIndex {
     /// The stable, app-owned named index. Never rename without a migration plan for whatever
     /// this index already holds on-device (see `Docs/Migration/TranscriptionStudio.md`).
-    public static let indexName = "TranscriptionStudioSessions"
+    public nonisolated static let indexName = "TranscriptionStudioSessions"
     private static let donator = EntityDonator(indexName: indexName)
 
     /// Index (or refresh) one session.

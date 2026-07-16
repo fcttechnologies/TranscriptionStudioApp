@@ -145,6 +145,7 @@ public struct StudioHomeView: View {
     private var homeToolbar: some ToolbarContent {
         #if os(iOS)
         ToolbarItem(placement: .topBarLeading) { inspectorButton }
+        ToolbarItem(placement: .topBarTrailing) { askButton }
         ToolbarItem(placement: .topBarTrailing) { syncIndicator }
         ToolbarItem(placement: .topBarTrailing) { settingsButton }
         DefaultToolbarItem(kind: .search, placement: .bottomBar)
@@ -152,10 +153,19 @@ public struct StudioHomeView: View {
         ToolbarItem(placement: .bottomBar) { composeControl }
         #else
         ToolbarItem(placement: .navigation) { inspectorButton }
+        ToolbarItem { askButton }
         ToolbarItem { syncIndicator }
         ToolbarItem { settingsButton }
         ToolbarItem(placement: .primaryAction) { composeControl }
         #endif
+    }
+
+    /// Opens library-wide semantic Q&A (Flagship A).
+    private var askButton: some View {
+        Button("Ask your library", systemImage: "sparkles.magnifyingglass") {
+            app.activeSheet = .askLibrary
+        }
+        .accessibilityIdentifier("toolbar.askLibrary")
     }
 
     /// A quiet CloudKit sync-status glyph (syncing/error; invisible when idle).
@@ -252,6 +262,8 @@ public struct StudioHomeView: View {
             LiveRecordingSheet()
         case .insertLink:
             InsertLinkSheet()
+        case .askLibrary:
+            AskLibraryView()
         case .session(let id):
             if let session = sessions.first(where: { $0.id == id }) {
                 SessionDetailView(session: session)

@@ -48,8 +48,35 @@ public final class TranscriptSession {
     /// The stable identifier of the device that claimed this remote job; `nil` until claimed.
     public var claimedBy: String?
 
+    /// Where this session stands in the Foundation Models extraction pass. Drives whether the
+    /// detail view shows extracted highlights; degrades to `.unavailable` (quiet, not an error)
+    /// when Apple Intelligence can't run. See `HighlightsExtractor`.
+    public var highlightsStatusRaw: String = HighlightsStatus.pending.rawValue
+
     @Relationship(deleteRule: .cascade, inverse: \StoredSegment.session)
     public var segments: [StoredSegment]? = []
+
+    // MARK: Extracted highlights (the FM extraction substrate — real queryable models, not blobs)
+
+    @Relationship(deleteRule: .cascade, inverse: \TranscriptDecision.session)
+    public var decisions: [TranscriptDecision]? = []
+
+    @Relationship(deleteRule: .cascade, inverse: \TranscriptActionItem.session)
+    public var actionItems: [TranscriptActionItem]? = []
+
+    @Relationship(deleteRule: .cascade, inverse: \TranscriptEvent.session)
+    public var events: [TranscriptEvent]? = []
+
+    @Relationship(deleteRule: .cascade, inverse: \TranscriptPerson.session)
+    public var people: [TranscriptPerson]? = []
+
+    @Relationship(deleteRule: .cascade, inverse: \TranscriptPlace.session)
+    public var places: [TranscriptPlace]? = []
+
+    public var highlightsStatus: HighlightsStatus {
+        get { HighlightsStatus(rawValue: highlightsStatusRaw) ?? .pending }
+        set { highlightsStatusRaw = newValue.rawValue }
+    }
 
     public var kind: SessionKind {
         get { SessionKind(rawValue: kindRaw) ?? .fileTranscription }

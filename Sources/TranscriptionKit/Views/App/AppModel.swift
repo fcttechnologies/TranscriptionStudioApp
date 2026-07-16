@@ -421,6 +421,8 @@ public enum StudioSheet: Equatable, Identifiable, Sendable {
     case liveRecording
     /// The macOS "Insert link" prompt (URL ingest is Mac-only).
     case insertLink
+    /// Library-wide semantic Q&A (Flagship A) — ask across every saved transcript.
+    case askLibrary
     /// A saved session's transcript.
     case session(UUID)
 
@@ -430,6 +432,7 @@ public enum StudioSheet: Equatable, Identifiable, Sendable {
         case .inspector: "inspector"
         case .liveRecording: "liveRecording"
         case .insertLink: "insertLink"
+        case .askLibrary: "askLibrary"
         case .session(let id): "session-\(id.uuidString)"
         }
     }

@@ -12,6 +12,7 @@ final class RecordingArchiver {
     private let modelContext: ModelContext
     private let recorder: PipelineRecorder
     private let titleGenerator: TitleGenerator
+    private let highlightsExtractor: HighlightsExtractor
 
     /// The full mixed archive so far — every track summed at its session-clock offset. The
     /// inspector's diarizer A/B cross-check runs its pass on these real samples.
@@ -19,10 +20,13 @@ final class RecordingArchiver {
     /// The diar track's raw samples, buffered for a non-streaming diarizer's one full-buffer pass.
     private(set) var diarBuffer: [Float] = []
 
-    init(modelContext: ModelContext, recorder: PipelineRecorder, titleGenerator: TitleGenerator = TitleGenerator()) {
+    init(modelContext: ModelContext, recorder: PipelineRecorder,
+         titleGenerator: TitleGenerator = TitleGenerator(),
+         highlightsExtractor: HighlightsExtractor = HighlightsExtractor()) {
         self.modelContext = modelContext
         self.recorder = recorder
         self.titleGenerator = titleGenerator
+        self.highlightsExtractor = highlightsExtractor
     }
 
     /// Clear both buffers for a new run.
@@ -87,6 +91,8 @@ final class RecordingArchiver {
         try? modelContext.save()
         TranscriptSpotlightIndex.index(session)
         titleGenerator.applyGeneratedTitle(to: session, modelContext: modelContext)
+        // The FM extraction substrate — off the critical path, after the session is saved.
+        highlightsExtractor.schedule(for: session, modelContext: modelContext)
         return sessionID
     }
 

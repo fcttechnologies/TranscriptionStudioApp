@@ -27,6 +27,7 @@ public final class TranscriptionService {
     private let wordTimestamps: Bool
     private let modelName: String
     private let titleGenerator: TitleGenerator
+    private let highlightsExtractor: HighlightsExtractor
 
     /// Set by `prepareEngines`; false means the diarizer couldn't load and the job proceeds
     /// with speakers unknown rather than failing.
@@ -39,7 +40,8 @@ public final class TranscriptionService {
                 inspector: InspectorStore,
                 wordTimestamps: Bool = false,
                 modelName: String = "",
-                titleGenerator: TitleGenerator = TitleGenerator()) {
+                titleGenerator: TitleGenerator = TitleGenerator(),
+                highlightsExtractor: HighlightsExtractor = HighlightsExtractor()) {
         self.asrEngine = asrEngine
         self.diarizer = diarizer
         self.modelContext = modelContext
@@ -48,6 +50,7 @@ public final class TranscriptionService {
         self.wordTimestamps = wordTimestamps
         self.modelName = modelName
         self.titleGenerator = titleGenerator
+        self.highlightsExtractor = highlightsExtractor
     }
 
     /// `PipelineRecorder.time` is `nonisolated` and runs its operation off the main
@@ -237,6 +240,8 @@ public final class TranscriptionService {
         try await persist(session: session, attributed: attributed, sessionID: sessionID,
                           isNewSession: isNewSession)
         titleGenerator.applyGeneratedTitle(to: session, modelContext: modelContext)
+        // The FM extraction substrate — off the critical path, after the transcript is saved.
+        highlightsExtractor.schedule(for: session, modelContext: modelContext)
     }
 
     /// Diarize the buffer through the app's diarizer, pushing raw frames to the inspector.
