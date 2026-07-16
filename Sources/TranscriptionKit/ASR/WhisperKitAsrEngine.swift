@@ -47,6 +47,9 @@ public actor WhisperKitAsrEngine: AsrEngine {
     private let downloadBase: URL
     /// Force a spoken language (ISO code, e.g. "en"/"es") instead of Whisper's auto-detect.
     private let forcedLanguage: String?
+    /// Download the model over a background `URLSession` (see `platformDefaultUseBackgroundDownloadSession`
+    /// and the note on `buildWhisperKit` for exactly what this does and doesn't cover).
+    private let useBackgroundDownloadSession: Bool
     private var whisperKit: WhisperKit?
     /// In-flight preparation, shared by any concurrent `prepare()` callers so the model
     /// is downloaded/loaded exactly once. Void-returning by design: `WhisperKit` isn't
@@ -58,12 +61,26 @@ public actor WhisperKitAsrEngine: AsrEngine {
                 downloadBase: URL? = nil,
                 forcedLanguage: String? = nil,
                 minimumNewAudioSeconds: TimeInterval = 1.0,
-                requiredSegmentsForConfirmation: Int = 2) {
+                requiredSegmentsForConfirmation: Int = 2,
+                useBackgroundDownloadSession: Bool = WhisperKitAsrEngine.platformDefaultUseBackgroundDownloadSession) {
         self.modelName = modelName
         self.downloadBase = downloadBase ?? Self.defaultDownloadBase()
         self.forcedLanguage = forcedLanguage
         self.minimumNewAudioSeconds = minimumNewAudioSeconds
         self.requiredSegmentsForConfirmation = requiredSegmentsForConfirmation
+        self.useBackgroundDownloadSession = useBackgroundDownloadSession
+    }
+
+    /// iOS apps suspend mid-download when backgrounded, so a model download started there
+    /// benefits from a background `URLSession` (the system keeps it running and delivers the
+    /// result later). A Mac app isn't suspended the same way, so it keeps the plain foreground
+    /// session WhisperKit uses by default.
+    public static var platformDefaultUseBackgroundDownloadSession: Bool {
+        #if os(iOS)
+        true
+        #else
+        false
+        #endif
     }
 
     /// `~/Library/Application Support/TranscriptionStudio/Models/whisperkit` — WhisperKit
@@ -91,7 +108,9 @@ public actor WhisperKitAsrEngine: AsrEngine {
     }
 
     private func doPrepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
-        whisperKit = try await Self.buildWhisperKit(modelName: modelName, downloadBase: downloadBase, onProgress: onProgress)
+        whisperKit = try await Self.buildWhisperKit(modelName: modelName, downloadBase: downloadBase,
+                                                    useBackgroundDownloadSession: useBackgroundDownloadSession,
+                                                    onProgress: onProgress)
     }
 
     public func transcribe(samples: [Float], track: AudioTrack, wordTimestamps: Bool) async throws -> [AsrSegment] {
@@ -231,7 +250,25 @@ public actor WhisperKitAsrEngine: AsrEngine {
 
     // MARK: - Model preparation
 
-    private static func buildWhisperKit(modelName: String, downloadBase: URL,
+    /// Background-download note (honesty over polish): `useBackgroundDownloadSession: true`
+    /// wires straight through to WhisperKit's own `URLSessionConfiguration.background(withIdentifier:)`
+    /// (a real background session, not a foreground one WhisperKit merely tolerates) — this is
+    /// the genuine "app starts it, the system finishes it" iOS pattern, and it's essentially
+    /// free to turn on since WhisperKit already exposes the hook. What it covers: the app is
+    /// backgrounded (not killed) mid-download — the daemon keeps downloading, and the delegate
+    /// callback (and this call's `progressCallback`) fires when the app returns to the
+    /// foreground. What it does NOT cover on its own: the app being fully terminated
+    /// mid-download and needing the OS to relaunch it. That relaunch path requires the app
+    /// target's `UIApplicationDelegate` to implement
+    /// `application(_:handleEventsForBackgroundURLSession:completionHandler:)` and hand the
+    /// stored completion handler to a session reconstructed with WhisperKit's fixed background
+    /// identifier (`"swift-transformers.hub.downloader"`) — that hook lives in the iOS app
+    /// target (`Sources/iOSApp`), outside this package, and isn't wired here. In practice this
+    /// app's launch-time `prewarmDefaultEngine()` call already re-invokes `download` (and so
+    /// reattaches to the same background session) the next time the app runs, so a
+    /// terminated-mid-download model still resumes/completes on next launch — just not via the
+    /// dedicated relaunch-while-backgrounded path a full implementation would add.
+    private static func buildWhisperKit(modelName: String, downloadBase: URL, useBackgroundDownloadSession: Bool,
                                         onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws -> WhisperKit {
         try FileManager.default.createDirectory(at: downloadBase, withIntermediateDirectories: true)
 
@@ -242,7 +279,8 @@ public actor WhisperKitAsrEngine: AsrEngine {
         do {
             modelFolder = try await WhisperKit.download(
                 variant: modelName,
-                downloadBase: downloadBase
+                downloadBase: downloadBase,
+                useBackgroundSession: useBackgroundDownloadSession
             ) { progress in
                 onProgress(EnginePreparationProgress(phase: "Downloading speech model",
                                                      fraction: progress.fractionCompleted))
