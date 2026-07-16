@@ -466,3 +466,19 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   behavior-preserving:** call-site `respond(options:)` overrides the profile (documented precedence:
   call-site > innermost profile > dynamic-profile default), so dropping the call-site options lets
   the profile's value apply unchanged.
+
+## Concurrent-lane build + sim mechanics (orchestrated passes)
+
+- **Concurrent lanes must build iOS via `-sdk iphonesimulator ONLY_ACTIVE_ARCH=YES ARCHS=arm64`,
+  not a `-destination 'platform=iOS Simulator,…'`.** The destination path routes through the
+  sim-pool gate and wedges (12–40 min observed) when several lanes contend; the `-sdk` path
+  compiles the identical arm64 slice (same warnings-as-errors) with no sim slot at all. Boot a
+  simulator only to actually run/see the app — and shut it down + delete it right after.
+- **The iOS app's bundle id is `com.fcttechnologies.TranscriptionStudioiOS`** (the Mac app owns
+  `com.fcttechnologies.TranscriptionStudio`). `simctl launch` with the Mac id fails with a bare
+  `FBSOpenApplicationServiceErrorDomain code=4` — check `simctl listapps` before suspecting the
+  install.
+- **Timing tests over detached `.utility` tasks need starvation-tolerant ceilings.** A 2s wait on
+  a 50ms-interval sampler false-failed under machine-wide build contention (the utility task got
+  starved); the assertion is "it samples", so a generous (15s) ceiling keeps the regression signal
+  without the false negative.

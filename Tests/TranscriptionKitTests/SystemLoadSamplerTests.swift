@@ -16,7 +16,10 @@ struct SystemLoadSamplerTests {
         let sampler = SystemLoadSampler(store: store, interval: 0.05)
 
         sampler.start()
-        try await waitUntil(timeout: 2) { store.loadSamples.count >= 2 }
+        // Generous ceiling: the sampler runs at .utility priority, so heavy machine-wide CPU
+        // contention (parallel build/test lanes) can starve its 50ms ticks far past their
+        // nominal schedule. A dead sampler still fails here; a starved one no longer false-fails.
+        try await waitUntil(timeout: 15) { store.loadSamples.count >= 2 }
         sampler.stop()
 
         #expect(store.loadSamples.count >= 2)
@@ -31,7 +34,8 @@ struct SystemLoadSamplerTests {
         let sampler = SystemLoadSampler(store: store, interval: 0.05)
 
         sampler.start()
-        try await waitUntil(timeout: 2) { !store.loadSamples.isEmpty }
+        // Same starvation-tolerant ceiling as above — the assertion below is what this test proves.
+        try await waitUntil(timeout: 15) { !store.loadSamples.isEmpty }
         sampler.stop()
         // Let any sample already mid-flight when stop() fired land before the baseline read.
         try await Task.sleep(for: .milliseconds(100))
