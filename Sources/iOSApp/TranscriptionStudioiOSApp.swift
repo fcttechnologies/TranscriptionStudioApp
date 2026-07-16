@@ -15,13 +15,15 @@ struct TranscriptionStudioiOSApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        let model = AppModel.live(captureFactory: { mode, sessionID, recorder in
-            // iOS records from the microphone in every mode (meeting capture is Mac-only and
-            // the surface doesn't exist here).
-            _ = mode
-            return [.init(source: MicCaptureSource(track: .mixed, sessionID: sessionID, recorder: recorder),
-                          tracks: [.mixed])]
-        })
+        #if DEBUG
+        // Simulator / agent E2E: `-TSMockRecording` composes the deterministic mock engine stack
+        // (no ML model, no mic) so a live recording streams seeded segments — used to verify the
+        // live-transcript and caption surfaces on the simulator.
+        let useMockRecording = ProcessInfo.processInfo.arguments.contains("-TSMockRecording")
+        let model = useMockRecording ? AppModel.mock() : AppModel.live(captureFactory: Self.micCaptureFactory)
+        #else
+        let model = AppModel.live(captureFactory: Self.micCaptureFactory)
+        #endif
         // Register the live model so App Intents (Siri/Shortcuts) resolve it via @Dependency.
         TranscriptionAppIntents.registerDependencies(appModel: model)
         _app = State(initialValue: model)
@@ -29,6 +31,13 @@ struct TranscriptionStudioiOSApp: App {
         _bootstrap = State(initialValue: LibraryBootstrap(sessionCount: {
             (try? context.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
         }))
+    }
+
+    /// iOS records from the microphone in every mode (meeting capture is Mac-only and the
+    /// surface doesn't exist here).
+    private static let micCaptureFactory: RecordingController.CaptureFactory = { _, sessionID, recorder in
+        [.init(source: MicCaptureSource(track: .mixed, sessionID: sessionID, recorder: recorder),
+               tracks: [.mixed])]
     }
 
     var body: some Scene {
@@ -52,6 +61,12 @@ struct TranscriptionStudioiOSApp: App {
                     // Simulator screenshots / agent E2E: `-TSSeedDemoLibrary` fills an empty
                     // library with two playable demo sessions.
                     DemoLibrarySeeder.seedIfRequested(context: app.modelContext)
+                    // `-TSMockRecording` auto-starts a room recording off the mock engines so the
+                    // live sheet opens streaming seeded captions with no model/mic (see init).
+                    if ProcessInfo.processInfo.arguments.contains("-TSMockRecording"),
+                       !app.recording.isActive {
+                        app.requestRecording(mode: .room)
+                    }
                     #endif
                     // Relocate any speech model the Background Assets downloader extension
                     // pre-fetched (before first launch) from the App Group into WhisperKit's

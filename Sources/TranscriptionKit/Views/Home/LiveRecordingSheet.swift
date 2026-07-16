@@ -8,6 +8,10 @@ struct LiveRecordingSheet: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss
 
+    /// Live-caption mode: the transcript region becomes a large, high-contrast caption stage for
+    /// reading at a distance. Off by default; toggled from the toolbar while a run is live.
+    @State private var captionMode = false
+
     var body: some View {
         NavigationStack {
             Group {
@@ -22,11 +26,14 @@ struct LiveRecordingSheet: View {
                     Color.clear.onAppear { dismiss() }
                 }
             }
-            .navigationTitle("Recording")
+            .navigationTitle(captionMode ? "Captions" : "Recording")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                if app.recording.isActive {
+                    captionToggle
+                }
                 SheetCloseToolbar { dismiss() }
             }
         }
@@ -41,11 +48,48 @@ struct LiveRecordingSheet: View {
             LiveHeader(recording: app.recording)
             NoticeBar(recording: app.recording)
             Divider()
-            LiveTranscriptRegion(recording: app.recording)
+            if captionMode {
+                LiveCaptionRegion(recording: app.recording)
+            } else {
+                LiveTranscriptRegion(recording: app.recording)
+            }
             Divider()
             LiveControls(recording: app.recording, app: app)
         }
         .background(.background)
+    }
+
+    /// Toolbar toggle between the standard transcript and the large caption stage.
+    private var captionToggle: some ToolbarContent {
+        ToolbarItem(placement: captionTogglePlacement) {
+            Button {
+                captionMode.toggle()
+            } label: {
+                Label(captionMode ? "Hide captions" : "Show captions",
+                      systemImage: captionMode ? "captions.bubble.fill" : "captions.bubble")
+            }
+            .accessibilityIdentifier("record.captionToggle")
+            .help(captionMode ? "Switch back to the transcript" : "Large captions for reading at a distance")
+        }
+    }
+
+    private var captionTogglePlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .automatic
+        #endif
+    }
+}
+
+/// The live-caption stage (isolated so it re-renders on segment changes only, like the
+/// transcript region — a level tick doesn't re-run it).
+private struct LiveCaptionRegion: View {
+    let recording: RecordingController
+
+    var body: some View {
+        LiveCaptionView(segments: recording.segments,
+                        showsSpeakers: !recording.diarizationUnavailable)
     }
 }
 

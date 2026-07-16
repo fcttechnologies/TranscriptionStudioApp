@@ -276,3 +276,10 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
   observer, only a relaunch (which runs `reindexAll`) refreshed the index. Runtime sanity for the
   sectioning + no-crash path is covered on the sim (`-TSSeedDemoLibrary`); the cross-device index
   freshness itself needs the two-device setup.
+- **iOS Release build on the simulator fails in FCTFoundation with `cannot find type
+  'SpotlightSearchTool'` unless you force arm64.** That type comes from the
+  `_CoreSpotlight_FoundationModels` cross-import overlay, which only resolves in the arm64 slice.
+  Release defaults `ONLY_ACTIVE_ARCH=NO`, so xcodebuild also builds the x86_64 sim slice where the
+  overlay is absent and the build fails — even with a concrete arm64 `-destination`. Pass
+  `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` for any Release-config simulator build (Debug is fine — it
+  defaults to active-arch only). Device archives are unaffected (device is arm64).
