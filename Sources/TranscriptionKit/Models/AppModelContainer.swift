@@ -15,6 +15,29 @@ public enum AppModelContainer {
         SpeakerAssignment.self,
     ])
 
+    /// The transaction author stamped on THIS device's own local writes, so the incremental
+    /// Spotlight observer can tell them apart from a change synced in from the other device and
+    /// skip re-indexing what its inline `TranscriptSpotlightIndex.index`/`deindex` calls already
+    /// handled. See `SpotlightIndexObserver` / `SpotlightReindexDecision`.
+    public static let localAuthorName = "TranscriptionStudio.local"
+
+    /// A fresh context stamped with ``localAuthorName``. Every app-owned background write path
+    /// goes through one so its transactions carry the local author. The SwiftUI
+    /// `@Environment(\.modelContext)` (main) context is stamped at launch via
+    /// ``stampMainContextAuthor()`` (it's main-actor isolated, so it can't be stamped here).
+    public static func localContext() -> ModelContext {
+        let context = ModelContext(shared)
+        context.author = localAuthorName
+        return context
+    }
+
+    /// Stamp the shared container's main context with ``localAuthorName`` so SwiftUI
+    /// `@Environment(\.modelContext)` writes (feed delete, detail rename/save) carry the local
+    /// author too — called once at app launch. Main-actor isolated (`mainContext` is).
+    @MainActor public static func stampMainContextAuthor() {
+        shared.mainContext.author = localAuthorName
+    }
+
     public static let shared: ModelContainer = {
         if isRunningTests {
             let config = ModelConfiguration(isStoredInMemoryOnly: true)

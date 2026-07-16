@@ -228,3 +228,51 @@ See `Documentation/BACKGROUND-TRANSCRIPTION.md` for the full design. Traps:
 - **`SimTap` by label on an element scrolled out of view can land on the wrong target** (it taps
   the stale coordinate — in our case an off-screen chip's tap hit the *previous* chip's dismiss ×).
   Scroll the element into view first, or tap by fresh on-screen coordinates from the settled map.
+## Cross-device data freshness + native sectioning (roadmap §6, §12)
+
+- **`@Query(sectionBy:)` needs a STORED key path — a computed one traps at runtime.** SDK-27
+  sectioned queries section at the store level; passing `sectionBy: \.someComputedVar` compiles
+  fine but fatally asserts on first render deep in `SwiftData`/`_SwiftData_SwiftUI`
+  (`EXC_BREAKPOINT`, `_assertionFailure`). The home feed's day sections use a stored
+  `TranscriptSession.daySectionKey` (`yyyy-MM-dd`, current calendar/TZ) derived from `createdAt`
+  at `init`. The human header ("Today"/date) is derived off each section's own sessions, so the
+  key only has to *group* (lexicographic `yyyy-MM-dd` order == chronological, so newest-first
+  `createdAt` sort ⇒ newest-day-first sections).
+- **`@Model` silently drops property observers — `didSet`/`willSet` never fire on assignment.**
+  Keeping `daySectionKey` in sync via a `didSet` on `createdAt` compiled but never ran (a unit
+  test that back-dated `createdAt` caught it — all keys stayed at "today"). The macro rewrites
+  stored props into `_$backingData` accessors and doesn't wire observers in. Derive-once in `init`
+  instead (via a defaulted `createdAt:` init param); `createdAt` is a creation stamp the app never
+  reassigns, so it stays correct. Don't reintroduce a `didSet` expecting it to fire.
+- **A bare `@Query` still misses remote CloudKit imports in SDK 27** — the reason the feed adds
+  freshness on top of `@Query`. `@Query` re-evaluates for local writes but not for an
+  `NSPersistentCloudKitContainer` remote import merged on the background context (Apple's own
+  remedy for observing remote changes is `HistoryObserver`, not `@Query`). The feed re-identifies
+  its `SessionFeed` (`@Query(sectionBy:)`) on `SessionStoreObserver.remoteGeneration` (the
+  `HistoryObserver.eventCounter`, which fires only on `remoteChange`) — a rare cross-device import
+  forces a fresh fetch, while frequent local writes update the list in place (scroll preserved).
+- **Incremental Spotlight reindex = a SEPARATE `HistoryObserver` from the feed's.**
+  `SpotlightIndexObserver` (wired in both app roots after `reindexAll`) keeps this device's named
+  Spotlight index fresh with sessions changed on the *other* device while the app runs — the gap
+  launch-only `reindexAll` leaves open. On each `eventCounter` bump it `fetchHistory`-s since its
+  last token, drops our own local writes (author filter), and incrementally
+  `index`/`deindex`-es the affected sessions. Insert/update → fetch by `persistentModelID` and
+  `index`; delete → recover the UUID from the history **tombstone** (why `TranscriptSession.id`
+  is `@Attribute(.preserveValueOnDeletion)` — the `PersistentIdentifier` is useless once the row
+  is gone). Pure filters (author + entity) live in `SpotlightReindexDecision` (unit-tested).
+- **Author filter = "skip our own writes, process everything else" (fail-open).** Local writes
+  carry `AppModelContainer.localAuthorName` (`ModelContext.author`, stamped on `mainContext` at
+  launch via `stampMainContextAuthor()` + on background contexts via `localContext()`); the
+  observer skips them (already indexed inline) and processes any other author — notably CloudKit's
+  import author. Unknown/absent author is processed, never skipped, so a real cross-device change
+  is never missed. `mainContext.author` can't be set in the `shared` factory (it's `@MainActor`,
+  the factory is nonisolated) — hence the launch-time stamp.
+- **Two-device Spotlight-freshness check (on-device, can't be automated — one sim can't do CloudKit
+  sync).** Sign both a Mac and an iPhone into the same iCloud account with the app installed and
+  synced. (1) On the Mac, create/rename a session; on the iPhone (app already foregrounded, NOT
+  relaunched) pull down Spotlight after sync lands (a few seconds) and search its title — it should
+  appear without relaunching. (2) Delete a session on the Mac; confirm it drops out of the
+  iPhone's Spotlight results, again without relaunch. (3) Repeat Mac↔iPhone reversed. Before this
+  observer, only a relaunch (which runs `reindexAll`) refreshed the index. Runtime sanity for the
+  sectioning + no-crash path is covered on the sim (`-TSSeedDemoLibrary`); the cross-device index
+  freshness itself needs the two-device setup.

@@ -221,7 +221,7 @@ public final class AppModel {
         let recorder = PipelineRecorder(store: inspector)
         let backend = DiarizationBackend.default
         let crossCheck: DiarizationBackend = backend == .sortformer ? .speakerKit : .sortformer
-        return AppModel(modelContext: ModelContext(AppModelContainer.shared),
+        return AppModel(modelContext: AppModelContainer.localContext(),
                         inspector: inspector,
                         recorder: recorder,
                         asr: WhisperKitAsrEngine(),
@@ -239,7 +239,7 @@ public final class AppModel {
 
     /// Mock-engine app model (previews, engine-less demos).
     public static func mock() -> AppModel {
-        AppModel(modelContext: ModelContext(AppModelContainer.shared))
+        AppModel(modelContext: AppModelContainer.localContext())
     }
 
     // MARK: Transcribe jobs (file / URL) — the real pipeline (ingest → diarize → ASR → fuse).

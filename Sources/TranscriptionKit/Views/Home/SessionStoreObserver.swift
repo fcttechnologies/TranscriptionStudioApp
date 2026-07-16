@@ -50,6 +50,13 @@ final class SessionStoreObserver {
     /// A single value the feed observes; it changes on any relevant remote import or local save.
     var changeToken: Int { saveGeneration &+ (historyObserver?.eventCounter ?? 0) }
 
+    /// Remote-import-only counter (the `HistoryObserver`'s `eventCounter`, which fires only on
+    /// `ModelContainer.remoteChange`, never on a local save). The home feed re-identifies its
+    /// native `@Query(sectionBy:)` list on this so a cross-device CloudKit change — which a bare
+    /// `@Query` doesn't observe — forces a fresh sectioned fetch, while frequent local writes
+    /// keep updating the list in place (scroll preserved) with no re-identify.
+    var remoteGeneration: Int { historyObserver?.eventCounter ?? 0 }
+
     @ObservationIgnored private var historyObserver: HistoryObserver?
     @ObservationIgnored private var didSaveToken: (any NSObjectProtocol)?
 

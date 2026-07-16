@@ -8,6 +8,10 @@ struct TranscriptionStudioiOSApp: App {
     @State private var app: AppModel
     @State private var cloudKitSync = CloudKitSyncMonitor()
     @State private var bootstrap: LibraryBootstrap
+    /// Keeps this device's Spotlight index fresh with sessions changed on the other device while
+    /// the app runs (launch's `reindexAll` only covers the gap at startup). Retained for the
+    /// app's lifetime; created in the launch task so it never spins up under tests.
+    @State private var spotlightObserver: SpotlightIndexObserver?
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -53,7 +57,12 @@ struct TranscriptionStudioiOSApp: App {
                     // pre-fetched (before first launch) from the App Group into WhisperKit's
                     // download base, so the warmup below finds it on disk and skips the network.
                     BackgroundAssetsModelInstaller.installStagedModel()
+                    AppModelContainer.stampMainContextAuthor()
                     TranscriptSpotlightIndex.reindexAll()
+                    // Keep the index fresh with cross-device changes for the rest of the session.
+                    if spotlightObserver == nil {
+                        spotlightObserver = SpotlightIndexObserver(container: AppModelContainer.shared)
+                    }
                     // Drain anything the Share extension staged while the app wasn't running.
                     app.ingestPendingShares()
                     // Warm the speech model up front so the first job isn't blocked by the

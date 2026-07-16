@@ -29,12 +29,15 @@ public struct StudioHomeView: View {
     // Optional so previews/tests that host this view without the app-root injection still resolve.
     @Environment(CloudKitSyncMonitor.self) private var cloudKitSync: CloudKitSyncMonitor?
     @Environment(LibraryBootstrap.self) private var bootstrap: LibraryBootstrap?
-    // Explicit fetch rather than @Query: @Query re-evaluates for local writes but not for a
-    // remote CloudKit import merged on the container's background context, which would leave the
-    // feed stale until relaunch. `storeObserver` bumps `changeToken` on both local saves and
-    // remote imports, and the feed re-fetches off it (see SessionStoreObserver).
-    @State private var sessions: [TranscriptSession] = []
+    // The feed itself is a native `@Query(sectionBy:)` in `SessionFeed` (live for local writes).
+    // `storeObserver` supplies the cross-device freshness a bare `@Query` misses: its
+    // `remoteGeneration` re-identifies the feed on a CloudKit import, and its `changeToken`
+    // (local + remote) drives the first-launch bootstrap gate below (which must also react to the
+    // remote import that first populates the library).
     @State private var storeObserver: SessionStoreObserver?
+    // Whether the library has any sessions — the bootstrap "Syncing…" gate reads this. Recomputed
+    // by a cheap count on every store change so it, too, reflects a remote import immediately.
+    @State private var isLibraryEmpty = true
 
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
@@ -53,10 +56,12 @@ public struct StudioHomeView: View {
     public var body: some View {
         @Bindable var app = app
         NavigationStack {
-            SessionFeed(sessions: sessions,
-                        searchText: debouncedSearchText,
+            SessionFeed(searchText: debouncedSearchText,
                         pendingDelete: $pendingDelete,
                         onOpen: { app.openSession(id: $0.id) })
+                // Re-identify on a remote CloudKit import (only) so the inner `@Query` re-fetches
+                // the synced rows; local writes update it in place with no rebuild.
+                .id(storeObserver?.remoteGeneration ?? 0)
                 .navigationTitle("Sessions")
                 .searchable(text: $searchText, prompt: "Search transcripts")
                 .toolbar { homeToolbar }
@@ -90,14 +95,14 @@ public struct StudioHomeView: View {
             if storeObserver == nil {
                 storeObserver = SessionStoreObserver(container: modelContext.container)
             }
-            refreshSessions()
+            refreshLibraryEmptiness()
             bootstrap?.beginIfNeeded()
         }
-        // Re-fetch when a local save or a remote CloudKit import lands. Replacing the `sessions`
-        // array (stable session identity) lets the feed's ForEach diff in place — scroll position
-        // and the day sections are preserved, no jarring rebuild.
-        .onChange(of: storeObserver?.changeToken) { _, _ in refreshSessions() }
-        .onChange(of: sessions.isEmpty) { _, isEmpty in
+        // A cheap count on every store change (local save or remote CloudKit import) keeps the
+        // bootstrap gate current; the feed itself refreshes via its own `@Query` + the remote
+        // re-identify above.
+        .onChange(of: storeObserver?.changeToken) { _, _ in refreshLibraryEmptiness() }
+        .onChange(of: isLibraryEmpty) { _, isEmpty in
             // The library arrived (or was never empty) — reveal the feed, don't sit behind the gate.
             if !isEmpty { bootstrap?.markReady() }
         }
@@ -238,7 +243,7 @@ public struct StudioHomeView: View {
     /// CloudKit import is still landing — so a fresh install doesn't read as "you have nothing".
     @ViewBuilder
     private var bootstrapOverlay: some View {
-        if bootstrap?.phase == .syncing, sessions.isEmpty {
+        if bootstrap?.phase == .syncing, isLibraryEmpty {
             ContentUnavailableView {
                 Label("Syncing your library…", systemImage: "arrow.triangle.2.circlepath")
             } description: {
@@ -265,7 +270,7 @@ public struct StudioHomeView: View {
         case .askLibrary:
             AskLibraryView()
         case .session(let id):
-            if let session = sessions.first(where: { $0.id == id }) {
+            if let session = fetchSession(id: id) {
                 SessionDetailView(session: session)
             } else {
                 // The session vanished (deleted elsewhere) — nothing to show.
@@ -284,12 +289,19 @@ public struct StudioHomeView: View {
 
     // MARK: Feed data
 
-    /// Fetch the feed newest-first from the view context. A fresh fetch reads the store's current
-    /// state — including rows a CloudKit import merged in — which is what a bare `@Query` misses.
-    private func refreshSessions() {
-        let descriptor = FetchDescriptor<TranscriptSession>(
-            sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
-        sessions = (try? modelContext.fetch(descriptor)) ?? []
+    /// Recompute whether the library is empty (a fresh count reads the store's current state,
+    /// including rows a CloudKit import merged in — which a bare `@Query` misses). Drives only the
+    /// bootstrap gate; the feed's own `@Query` renders the sessions.
+    private func refreshLibraryEmptiness() {
+        let count = (try? modelContext.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
+        isLibraryEmpty = count == 0
+    }
+
+    /// Resolve one session by id from the view context — for the open-transcript sheet.
+    private func fetchSession(id: UUID) -> TranscriptSession? {
+        var descriptor = FetchDescriptor<TranscriptSession>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? modelContext.fetch(descriptor).first
     }
 
     // MARK: Ingest actions

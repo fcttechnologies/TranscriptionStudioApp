@@ -108,9 +108,9 @@ struct SessionFeedShapingTests {
 
     private func makeSession(_ title: String, fullText: String = "",
                              daysAgo: Int = 0) -> TranscriptSession {
-        let session = TranscriptSession(title: title, kind: .roomRecording)
+        let createdAt = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+        let session = TranscriptSession(title: title, kind: .roomRecording, createdAt: createdAt)
         session.fullText = fullText
-        session.createdAt = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
         return session
     }
 
@@ -125,17 +125,23 @@ struct SessionFeedShapingTests {
         #expect(SessionFilter.filter(sessions, query: "nothing").isEmpty)
     }
 
-    // Day bucketing groups by calendar day, newest day first.
-    @Test func daySectionsGroupNewestFirst() {
-        let today = makeSession("Today A")
+    // The native `@Query(sectionBy:)` day key: same-day sessions share it (so they land in one
+    // section); different days differ; and it's lexicographically ordered like the calendar, so a
+    // newest-first `createdAt` sort yields newest-day-first sections.
+    @Test func daySectionKeyGroupsByCalendarDayAndOrders() {
+        let todayA = makeSession("Today A")
+        let todayB = makeSession("Today B")
         let yesterday = makeSession("Yesterday", daysAgo: 1)
         let older = makeSession("Older", daysAgo: 3)
-        let sections = SessionFilter.daySections([today, yesterday, older])
-        #expect(sections.count == 3)
-        #expect(sections[0].sessions.map(\.title) == ["Today A"])
-        #expect(sections[1].sessions.map(\.title) == ["Yesterday"])
-        #expect(sections[2].sessions.map(\.title) == ["Older"])
-        #expect(sections[0].day > sections[1].day)
+
+        // Same calendar day → identical key (one section); different days → distinct keys.
+        #expect(todayA.daySectionKey == todayB.daySectionKey)
+        #expect(todayA.daySectionKey != yesterday.daySectionKey)
+        #expect(Set([todayA, todayB, yesterday, older].map(\.daySectionKey)).count == 3)
+
+        // Newer day sorts lexicographically after an older one (yyyy-MM-dd), matching chronology.
+        #expect(todayA.daySectionKey > yesterday.daySectionKey)
+        #expect(yesterday.daySectionKey > older.daySectionKey)
     }
 }
 

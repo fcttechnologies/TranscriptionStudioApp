@@ -23,8 +23,21 @@ public enum SessionStatus: String, Sendable, Codable, CaseIterable {
 public final class TranscriptSession {
     #Index<TranscriptSession>([\.createdAt], [\.kindRaw, \.createdAt])
 
-    public var id: UUID = UUID()
+    // `.preserveValueOnDeletion` keeps the UUID in the SwiftData history tombstone after the row
+    // is gone, so the incremental Spotlight observer can recover a *synced* delete's stable id and
+    // deindex it (the Spotlight identifier is `id.uuidString`; the PersistentIdentifier alone is
+    // local-only and useless once the model is deleted). See `SpotlightIndexObserver`.
+    @Attribute(.preserveValueOnDeletion) public var id: UUID = UUID()
     public var createdAt: Date = Date()
+    /// Stored per-calendar-day key for native `@Query(sectionBy:)` (SDK 27) on the home feed,
+    /// derived from `createdAt` at creation (see `init`). It must be a *stored* property:
+    /// `@Query(sectionBy:)` sections at the store level and traps on a computed key path. An ISO
+    /// `yyyy-MM-dd` string (current calendar/time zone) so it groups a day's sessions and, ordered
+    /// like the calendar, keeps day sections newest-first under the `createdAt`-descending sort.
+    /// `createdAt` is a creation-time stamp the app never reassigns, so deriving once at `init`
+    /// keeps this correct; the feed reads the *human* header off each section's own sessions, so
+    /// this only has to group. Defaulted + non-unique → CloudKit-safe.
+    public private(set) var daySectionKey: String = ""
     public var title: String = ""
     public var kindRaw: String = SessionKind.fileTranscription.rawValue
     public var statusRaw: String = SessionStatus.inProgress.rawValue
@@ -99,10 +112,25 @@ public final class TranscriptSession {
         set { statusRaw = newValue.rawValue }
     }
 
-    public init(title: String, kind: SessionKind) {
+    public init(title: String, kind: SessionKind, createdAt: Date = Date()) {
         self.title = title
         self.kindRaw = kind.rawValue
+        self.createdAt = createdAt
+        self.daySectionKey = DaySectionKey.string(for: createdAt)
     }
+}
+
+/// The `yyyy-MM-dd` day-key formatter behind `TranscriptSession.daySectionKey`, cached because
+/// `DateFormatter` is expensive to build and this is evaluated per row while sectioning the feed.
+enum DaySectionKey {
+    private static let formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    static func string(for date: Date) -> String { formatter.string(from: date) }
 }
 
 /// One attributed transcript segment as persisted. Mirrors `AttributedSegment` flattened

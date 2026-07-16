@@ -4,8 +4,16 @@ import SwiftData
 /// The sessions feed — the app's one view. Saved sessions as quiet cards grouped by day,
 /// newest first, filtered live by the shell's search text. Swipe-to-delete (with confirm)
 /// and a delete context menu ride on each card; tapping one opens its transcript sheet.
+///
+/// The day grouping is native SwiftData sectioning (`@Query(sectionBy:)`, SDK 27) keyed on
+/// ``TranscriptSession/daySectionKey``; `@Query` also keeps the feed live for *local* writes.
+/// Cross-device (CloudKit) freshness — which a bare `@Query` misses — is driven by the host
+/// re-identifying this view on a remote import (see `StudioHomeView`/`SessionStoreObserver`).
 struct SessionFeed: View {
-    let sessions: [TranscriptSession]
+    @Query(sort: \TranscriptSession.createdAt, order: .reverse, animation: .default,
+           sectionBy: \.daySectionKey)
+    private var sessions: [TranscriptSession]
+
     let searchText: String
     @Binding var pendingDelete: TranscriptSession?
     let onOpen: (TranscriptSession) -> Void
@@ -13,22 +21,31 @@ struct SessionFeed: View {
     @Environment(AppModel.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// The native day sections, newest first, with each section's sessions filtered by the live
+    /// search text; sections no session matches are dropped. `@Query` provides the day buckets;
+    /// the in-memory ``SessionFilter/filter(_:query:)`` keeps search identical to before.
+    private var visibleSections: [(key: String, sessions: [TranscriptSession])] {
+        _sessions.sections.compactMap { section in
+            let matches = SessionFilter.filter(Array(section), query: searchText)
+            return matches.isEmpty ? nil : (key: section.id, sessions: matches)
+        }
+    }
+
     var body: some View {
-        let filtered = SessionFilter.filter(sessions, query: searchText)
         ScrollView {
             LazyVStack(alignment: .leading, spacing: DesignMetrics.feedSectionSpacing) {
                 ActiveWorkSection()
 
                 if sessions.isEmpty {
                     emptyFeed
-                } else if filtered.isEmpty {
+                } else if visibleSections.isEmpty {
                     ContentUnavailableView.search(text: searchText)
                         .frame(maxWidth: .infinity)
                         .padding(.top, DesignMetrics.spacingXXL)
                 } else {
-                    ForEach(SessionFilter.daySections(filtered), id: \.day) { section in
+                    ForEach(visibleSections, id: \.key) { section in
                         VStack(alignment: .leading, spacing: DesignMetrics.feedRowSpacing) {
-                            SectionLabel(LocalizedStringKey(DayFormat.header(section.day)))
+                            SectionLabel(LocalizedStringKey(DayFormat.header(sectionDay(section.sessions))))
                                 .padding(.leading, DesignMetrics.spacingXS)
                             ForEach(section.sessions) { session in
                                 SessionCard(session: session) { onOpen(session) }
@@ -51,13 +68,19 @@ struct SessionFeed: View {
             .frame(maxWidth: DesignMetrics.feedMaxWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
             .animation(reduceMotion ? nil : DesignMetrics.standardSpring,
-                       value: filtered.map(\.id))
+                       value: visibleSections.map { $0.sessions.map(\.id) })
         }
         .swipeActionsContainer()
         .contentMargins(.vertical, DesignMetrics.spacingM, for: .scrollContent)
         .scrollDismissesKeyboard(.interactively)
         .background(.feedCanvas)
         .accessibilityIdentifier("home.feed")
+    }
+
+    /// The calendar day a section represents, taken from its (newest-first) sessions — used only
+    /// for the human header ("Today"/"Yesterday"/date); the grouping key itself is `section.key`.
+    private func sectionDay(_ sessions: [TranscriptSession]) -> Date {
+        Calendar.current.startOfDay(for: sessions.first?.createdAt ?? .now)
     }
 
     private var emptyFeed: some View {
@@ -135,7 +158,8 @@ struct SessionRow: View {
     }
 }
 
-/// Pure feed shaping — filtering and day bucketing, kept view-free so it's directly tested.
+/// Pure feed shaping — the live search filter, kept view-free so it's directly tested. (Day
+/// bucketing is now native `@Query` sectioning; see ``SessionFeed`` / `TranscriptSession.daySectionKey`.)
 enum SessionFilter {
     /// Case-insensitive match over title + full text; an empty query passes everything through.
     static func filter(_ sessions: [TranscriptSession], query: String) -> [TranscriptSession] {
@@ -144,13 +168,6 @@ enum SessionFilter {
         return sessions.filter {
             $0.title.lowercased().contains(needle) || $0.fullText.lowercased().contains(needle)
         }
-    }
-
-    /// Sessions bucketed by calendar day, newest day first (input order kept within a day).
-    static func daySections(_ sessions: [TranscriptSession])
-        -> [(day: Date, sessions: [TranscriptSession])] {
-        let groups = Dictionary(grouping: sessions) { Calendar.current.startOfDay(for: $0.createdAt) }
-        return groups.sorted { $0.key > $1.key }.map { (day: $0.key, sessions: $0.value) }
     }
 }
 
