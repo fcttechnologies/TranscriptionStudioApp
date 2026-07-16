@@ -29,3 +29,28 @@ extension DeleteTranscriptIntent {
 extension OpenSettingsIntent {
     public static var allowedExecutionTargets: IntentExecutionTargets { .main }
 }
+
+@available(iOS 27.0, *)
+extension OpenInspectorIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}
+
+@available(iOS 27.0, *)
+extension TranscribeLinkIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}
+
+@available(iOS 27.0, *)
+extension RenameTranscriptIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}
+
+@available(iOS 27.0, *)
+extension PlayTranscriptIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}
+
+@available(iOS 27.0, *)
+extension PausePlaybackIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}

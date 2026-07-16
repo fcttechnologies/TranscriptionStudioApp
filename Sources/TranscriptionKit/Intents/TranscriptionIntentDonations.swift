@@ -75,4 +75,31 @@ enum TranscriptionIntentDonations {
         guard donationsEnabled else { return }
         _ = try? await OpenLibraryIntent().donate()
     }
+
+    static func donateTranscribeLink(urlString: String) async {
+        guard donationsEnabled, !urlString.isEmpty else { return }
+        let intent = TranscribeLinkIntent()
+        intent.url = urlString
+        _ = try? await intent.donate()
+    }
+
+    static func donateRenameTranscript(_ session: TranscriptSessionEntity, newTitle: String) async {
+        guard donationsEnabled else { return }
+        let intent = RenameTranscriptIntent()
+        intent.target = session
+        intent.newTitle = newTitle
+        _ = try? await intent.donate()
+    }
+
+    static func donatePlayTranscript(_ session: TranscriptSessionEntity) async {
+        guard donationsEnabled else { return }
+        let intent = PlayTranscriptIntent()
+        intent.target = session
+        _ = try? await intent.donate()
+    }
+
+    static func donatePausePlayback() async {
+        guard donationsEnabled else { return }
+        _ = try? await PausePlaybackIntent().donate()
+    }
 }

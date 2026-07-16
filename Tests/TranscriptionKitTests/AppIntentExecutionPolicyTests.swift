@@ -12,6 +12,11 @@ struct AppIntentExecutionPolicyTests {
             StopRecordingIntent.allowedExecutionTargets,
             TranscribeFileIntent.allowedExecutionTargets,
             DeleteTranscriptIntent.allowedExecutionTargets,
+            OpenInspectorIntent.allowedExecutionTargets,
+            TranscribeLinkIntent.allowedExecutionTargets,
+            RenameTranscriptIntent.allowedExecutionTargets,
+            PlayTranscriptIntent.allowedExecutionTargets,
+            PausePlaybackIntent.allowedExecutionTargets,
         ]
 
         #expect(targets.allSatisfy { $0 == .main })

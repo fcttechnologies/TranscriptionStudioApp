@@ -132,7 +132,11 @@ struct SiriIntelligenceTests {
     @Test func shortcutCountWithinSystemLimit() {
         let contract = AppShortcutContract(declaredCount: TranscriptionShortcuts.appShortcuts.count)
         #expect(contract.isWithinLimit)
+        #if os(macOS)
         #expect(contract.declaredCount == 10)   // pin the exact count so a regression is loud
+        #else
+        #expect(contract.declaredCount == 9)   // no Mac-only TranscribeLinkIntent on this platform
+        #endif
     }
 
     // MARK: Intelligence availability gate

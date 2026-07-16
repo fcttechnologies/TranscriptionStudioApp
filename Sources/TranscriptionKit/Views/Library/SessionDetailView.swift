@@ -164,6 +164,8 @@ public struct SessionDetailView: View {
         guard !trimmed.isEmpty else { return }
         session.title = trimmed
         try? modelContext.save()
+        let entity = TranscriptSessionEntity(session)
+        Task { await TranscriptionIntentDonations.donateRenameTranscript(entity, newTitle: trimmed) }
     }
 
     private func copyTranscript() {

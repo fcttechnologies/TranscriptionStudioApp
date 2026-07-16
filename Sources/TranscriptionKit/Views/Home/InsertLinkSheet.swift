@@ -55,6 +55,7 @@ struct InsertLinkSheet: View {
         let trimmed = urlText.trimmingCharacters(in: .whitespaces)
         app.startTranscription(title: URLValidation.suggestedTitle(for: trimmed),
                                source: .url(trimmed))
+        Task { await TranscriptionIntentDonations.donateTranscribeLink(urlString: trimmed) }
         dismiss()
     }
 }

@@ -118,7 +118,21 @@ private struct PlaybackMiniPlayer: View {
                 }
                 Spacer(minLength: 0)
                 Button {
+                    let wasPlaying = playback.isPlaying
                     playback.togglePlayPause()
+                    Task {
+                        if wasPlaying {
+                            await TranscriptionIntentDonations.donatePausePlayback()
+                        } else {
+                            let entity = TranscriptSessionEntity(id: nowPlaying.sessionID.uuidString,
+                                                                 title: nowPlaying.title,
+                                                                 date: Date(),
+                                                                 kindLabel: SessionKindStyle.label(nowPlaying.kind),
+                                                                 duration: playback.duration,
+                                                                 textPreview: "")
+                            await TranscriptionIntentDonations.donatePlayTranscript(entity)
+                        }
+                    }
                 } label: {
                     Image(systemName: playback.isPlaying ? "pause.fill" : "play.fill")
                         .font(.body.weight(.semibold))

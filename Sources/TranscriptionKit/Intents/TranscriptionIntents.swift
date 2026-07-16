@@ -417,10 +417,12 @@ public struct OpenLibraryIntent: AppIntent {
 // MARK: - App Shortcuts
 
 /// Zero-setup Siri phrases. `\(.applicationName)` binds each phrase to the app. Apple caps a
-/// provider at 10 promoted shortcuts (`AppShortcutContract.systemLimit`); `DeleteTranscriptIntent`
-/// and `ExportTranscriptIntent` stay reachable via the Shortcuts app / Spotlight without a
-/// canned phrase so the promoted set stays at exactly 10 — see `AppIntentExecutionPolicyTests`-
-/// adjacent `shortcutCountWithinSystemLimit` for the pinned count.
+/// provider at 10 promoted shortcuts (`AppShortcutContract.systemLimit`); `DeleteTranscriptIntent`,
+/// `ExportTranscriptIntent`, `OpenLibraryIntent`, and `GetRecordingStatusIntent` stay reachable
+/// via the Shortcuts app / Spotlight without a canned phrase — freeing room for the
+/// higher-value `OpenInspectorIntent` (every platform) and `TranscribeLinkIntent` (macOS only,
+/// since URL ingest doesn't exist on iOS) — so the promoted set stays at exactly 10 on macOS
+/// (9 on iOS, no Link) — see `shortcutCountWithinSystemLimit` for the pinned per-platform count.
 public struct TranscriptionShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -496,22 +498,24 @@ public struct TranscriptionShortcuts: AppShortcutsProvider {
             systemImageName: "text.redaction")
 
         AppShortcut(
-            intent: OpenLibraryIntent(),
+            intent: OpenInspectorIntent(),
             phrases: [
-                "Open my \(.applicationName) library",
-                "Open the library in \(.applicationName)"
+                "Open the inspector in \(.applicationName)",
+                "Show my \(.applicationName) inspector"
             ],
-            shortTitle: "Open Library",
-            systemImageName: "books.vertical")
+            shortTitle: "Open Inspector",
+            systemImageName: "gauge.with.dots.needle.bottom.50percent")
 
+        #if os(macOS)
         AppShortcut(
-            intent: GetRecordingStatusIntent(),
+            intent: TranscribeLinkIntent(),
             phrases: [
-                "Am I recording in \(.applicationName)",
-                "Check my \(.applicationName) recording status"
+                "Transcribe a link with \(.applicationName)",
+                "Transcribe a link in \(.applicationName)"
             ],
-            shortTitle: "Recording Status",
-            systemImageName: "dot.radiowaves.left.and.right")
+            shortTitle: "Transcribe Link",
+            systemImageName: "link")
+        #endif
     }
 }
 
