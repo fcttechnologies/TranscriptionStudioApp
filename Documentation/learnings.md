@@ -18,9 +18,11 @@ Non-obvious traps and decisions a fresh agent on this project should know.
   plist via `INFOPLIST_FILE` (with `GENERATE_INFOPLIST_FILE: NO`) so xcodegen never regenerates
   the delicate iOS activation predicate.
 - **Activation rules:** macOS uses the dictionary form `NSExtensionActivationSupportsWebURLWithMaxCount = 1`
-  (one web link). iOS has **no** audio-with-max-count key, so movie **or** audio is a predicate
-  *string* (`SUBQUERY … UTI-CONFORMS-TO "public.movie" || … "public.audio" …`). iOS deliberately
-  does **not** accept URLs — `AppModel.startTranscription(.url)` is Mac-only (needs `urlDownloader`).
+  (one web link). iOS has **no** audio-with-max-count key, so movie/audio/URL is a predicate
+  *string* (`SUBQUERY … UTI-CONFORMS-TO "public.movie" || … "public.audio" || … "public.url" …`).
+  iOS **does** accept URLs now: a shared link becomes a `.pendingRemote` job (the companion
+  feature) — see the companion section below — routed through `AppModel.submitLink`, not
+  `startTranscription(.url)` (which is still Mac-only, needs `urlDownloader`).
 - **iOS Share extensions can't reliably open their host.** `NSExtensionContext.open` is only
   supported for Today/iMessage points (per Apple docs), and `UIApplication.shared` is
   extension-unavailable. The opener walks the responder chain to a `UIApplication` and calls
@@ -87,3 +89,36 @@ Non-obvious traps and decisions a fresh agent on this project should know.
 - **`BADownloadDomainAllowList` must cover the HuggingFace LFS CDN, not just `huggingface.co`.**
   `resolve/main/...weight.bin` 302-redirects to a CDN host — allow-list it (verify the exact host
   at ship time; HF's CDN domain can change).
+
+## iOS ↔ Mac companion (link transcription over CloudKit)
+
+Full write-up: `Documentation/COMPANION.md`. The traps worth flagging here:
+
+- **A claimed remote job is processed into the *existing* session, not a new one.** iOS creates the
+  `.pendingRemote` session; the Mac must fill *that* row so the result syncs back under the same
+  identity. `TranscriptionService.runURLJob(on:isNewSession:false)` is the companion path — it does
+  **not** `modelContext.insert` (the row is already in the store) and, on failure, persists
+  `.failed` + `errorMessage` (the local `runURLJob(urlString:)` path never persisted a failure,
+  because its session isn't in the store until it completes).
+- **A Mac's own local URL job and a claimed remote job are both `.inProgress` — the claim marker is
+  what separates them.** `claimedAt == nil` ⇒ local (skip); `claimedAt` set ⇒ remote work. This is
+  why the claim decision keys on the marker, not just the status. (Also: a local URL job's session
+  isn't inserted into the store until it *completes*, so the watcher never even sees it mid-flight.)
+- **The `process` closure handed to `RemoteJobWatcher` must be `@MainActor`.** A `@Model` isn't
+  `Sendable`; a plain `async` closure is treated as `@concurrent`, so passing the fetched session
+  into it is a "sending risks data races" error. Type it `@escaping @MainActor (TranscriptSession)
+  async -> Void`.
+- **Scans are serialized by an `isScanning` flag.** Launch scan + `NSPersistentStoreRemoteChange` +
+  the 45 s poll all call `scan()`; the flag makes overlapping triggers drop, so at most one job
+  runs at once. Don't remove it thinking the poll is the only caller.
+- **Presence upserts by a plain `deviceIDString` attribute, never a `#Unique`.** CloudKit forbids
+  unique constraints; the per-device row is found by a predicate fetch on `deviceIDString` and
+  updated in place (insert if absent).
+- **FCTFoundation is a dependency, not copied.** `FCTCloudKit` (no deps) + `FCTSync` (→ `FCTCore`)
+  are lean, and the package already path-depends on `../FCTFoundation`. `CloudKitSyncMonitor`'s
+  `NSPersistentCloudKitContainer.eventChangedNotification` and `CloudKitImportMonitor`'s remote-
+  change stream both fire for a SwiftData-backed CloudKit store (SwiftData wraps
+  `NSPersistentCloudKitContainer`), so they wire straight in.
+- **Shell views read the new environment objects *optionally*.** `@Environment(CloudKitSyncMonitor
+  .self) private var x: CloudKitSyncMonitor?` — declaring them optional keeps
+  previews/tests that host `StudioHomeView` without the app-root injection from crashing.
