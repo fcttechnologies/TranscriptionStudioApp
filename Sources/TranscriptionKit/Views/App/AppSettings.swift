@@ -41,15 +41,10 @@ public final class AppSettings {
             }
         }
 
-        /// Mac has the RAM/ANE headroom for the large-v3 turbo variant; iOS defaults to
-        /// the small, always-resident `base` model.
-        public static var platformDefault: WhisperModel {
-            #if os(macOS)
-            .largeTurbo
-            #else
-            .base
-            #endif
-        }
+        /// large-v3-turbo is the default on both platforms — the speed/accuracy sweet spot,
+        /// verified great on recent iPhones. (The smaller variants stay user-selectable in
+        /// Settings for older/low-storage devices.)
+        public static var platformDefault: WhisperModel { .largeTurbo }
     }
 
     public enum DiarizerBackend: String, CaseIterable, Identifiable, Sendable {
