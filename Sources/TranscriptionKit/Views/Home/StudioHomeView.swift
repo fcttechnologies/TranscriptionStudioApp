@@ -167,7 +167,7 @@ public struct StudioHomeView: View {
 
     /// Opens library-wide semantic Q&A (Flagship A).
     private var askButton: some View {
-        Button("Ask your library", systemImage: "sparkles.magnifyingglass") {
+        Button("Ask your library", systemImage: "sparkle.magnifyingglass") {
             app.activeSheet = .askLibrary
         }
         .accessibilityIdentifier("toolbar.askLibrary")
