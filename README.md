@@ -3,8 +3,8 @@
 Native, universal (Mac-first) on-device transcription + live speaker diarization.
 FCT Technologies. Not for sale (yet) — a daily-driver capability and a craft showcase.
 
-- `BUILD-SPEC.md` — the mandate.
-- `PLAN.md` — grounded architecture + lane plan.
+- `Documentation/BUILD-SPEC.md` — the mandate.
+- `Documentation/PLAN.md` — grounded architecture + lane plan.
 - `Documentation/PROJECT_GUIDE.md` — structure, contracts, conventions.
 - `Documentation/VERIFICATION.md` — how "who said what" is verified.
 
