@@ -194,30 +194,31 @@ public final class ForegroundDownloadSession: NSObject, BADownloadManagerDelegat
 
         let manager = BADownloadManager.shared
         manager.delegate = self
-        manager.withExclusiveControl { [weak self] _, error in
+        // iOS 27 deprecated the completion-handler `withExclusiveControl`; the async overload holds
+        // exclusive control for the duration of `body` and surfaces both an acquisition failure and
+        // a scheduling failure by throwing (no more in-parameter `error`). Same behavior as before:
+        // schedule every pending download under exclusive control, finish(.failure) on the first error.
+        Task { [weak self] in
             guard let self else { return }
-            if let error {
-                self.finish(.failure(error))
-                return
-            }
-            for asset in pending {
-                let installPath = WhisperKitModelLayout.installRelativePath(
-                    repo: self.manifest.repo, variant: self.manifest.variant, relativePath: asset.path)
-                guard let url = WhisperKitModelLayout.downloadURL(
-                    repo: self.manifest.repo, variant: self.manifest.variant, relativePath: asset.path) else { continue }
-                let download = BAURLDownload(
-                    identifier: installPath,
-                    request: URLRequest(url: url),
-                    essential: false,
-                    fileSize: asset.size,
-                    applicationGroupIdentifier: AppGroup.identifier,
-                    priority: .default)
-                do {
-                    try BADownloadManager.shared.startForegroundDownload(download)
-                } catch {
-                    self.finish(.failure(error))
-                    return
+            do {
+                try await BADownloadManager.shared.withExclusiveControl {
+                    for asset in pending {
+                        let installPath = WhisperKitModelLayout.installRelativePath(
+                            repo: self.manifest.repo, variant: self.manifest.variant, relativePath: asset.path)
+                        guard let url = WhisperKitModelLayout.downloadURL(
+                            repo: self.manifest.repo, variant: self.manifest.variant, relativePath: asset.path) else { continue }
+                        let download = BAURLDownload(
+                            identifier: installPath,
+                            request: URLRequest(url: url),
+                            essential: false,
+                            fileSize: asset.size,
+                            applicationGroupIdentifier: AppGroup.identifier,
+                            priority: .default)
+                        try BADownloadManager.shared.startForegroundDownload(download)
+                    }
                 }
+            } catch {
+                self.finish(.failure(error))
             }
         }
     }
