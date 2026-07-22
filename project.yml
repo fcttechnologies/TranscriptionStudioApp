@@ -78,7 +78,7 @@ targets:
               - transcriptionstudio
     settings:
       base:
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: X26SC78YDG
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio
         MARKETING_VERSION: "0.1.0"
@@ -193,7 +193,7 @@ targets:
               - transcriptionstudio
     settings:
       base:
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: X26SC78YDG
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS
         MARKETING_VERSION: "0.1.0"
@@ -242,7 +242,7 @@ targets:
         product: ShareKit
     settings:
       base:
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: X26SC78YDG
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.ShareExtension
         MARKETING_VERSION: "0.1.0"
@@ -272,7 +272,7 @@ targets:
         product: ShareKit
     settings:
       base:
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: X26SC78YDG
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.ShareExtension
         MARKETING_VERSION: "0.1.0"
@@ -306,7 +306,7 @@ targets:
         product: GlanceKit
     settings:
       base:
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: X26SC78YDG
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.WidgetExtension
         MARKETING_VERSION: "0.1.0"
@@ -338,7 +338,7 @@ targets:
         product: BackgroundAssetsKit
     settings:
       base:
-        DEVELOPMENT_TEAM: ""
+        DEVELOPMENT_TEAM: X26SC78YDG
         CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension
         MARKETING_VERSION: "0.1.0"
