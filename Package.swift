@@ -111,7 +111,8 @@ let package = Package(
                 "GlanceKit",
                 .product(name: "FCTEntities", package: "FCTFoundation"),
                 .product(name: "FCTIntelligence", package: "FCTFoundation"),
-                .product(name: "FCTContacts", package: "FCTFoundation")
+                .product(name: "FCTContacts", package: "FCTFoundation"),
+                .product(name: "FCTComponentsUI", package: "FCTFoundation")
             ],
             path: "Tests/TranscriptionKitTests",
             resources: [.process("Resources")]

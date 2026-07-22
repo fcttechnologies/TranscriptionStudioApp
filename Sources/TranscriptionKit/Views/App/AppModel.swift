@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import SwiftData
 import GlanceKit
+import FCTComponentsUI
 
 /// The top-level app model — the one object every surface reads. It owns the injected
 /// engines (behind their protocols, so the real WhisperKit / Sortformer engines drop in

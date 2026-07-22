@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import FCTComponentsUI
 
 /// **Draft-then-confirm — Calendar.** Reviews an extracted `TranscriptEvent` as an editable draft and,
 /// only on an explicit tap, commits it through the generalized `ConfirmableWrite` boundary
@@ -55,6 +56,9 @@ struct CalendarDraftConfirmView: View {
             #endif
             .toolbar { SheetCloseToolbar { dismiss() } }
         }
+        // A confirm failure surfaces an error toast while THIS sheet stays presented; the shared
+        // overlay lives on the app root (occluded by the sheet), so install one on the sheet too.
+        .withToast()
         #if os(macOS)
         .frame(width: DesignMetrics.macSheetSize.width, height: DesignMetrics.macSheetSize.height)
         #endif
@@ -86,14 +90,14 @@ struct CalendarDraftConfirmView: View {
         Task {
             do {
                 try await CalendarWriteAction(draft: draft).prepare().confirm()
-                ToastCenter.shared.show(Toast(
+                ToastCenter.shared.show(FCTToast(
                     title: "Added to Calendar", message: draft.title,
                     systemImage: "calendar.badge.checkmark", style: .success))
                 onConfirmed?()
                 dismiss()
             } catch {
                 saving = false
-                ToastCenter.shared.show(Toast(
+                ToastCenter.shared.show(FCTToast(
                     title: "Couldn't add to Calendar",
                     message: EcosystemActionFeedback.message(for: error),
                     systemImage: "calendar.badge.exclamationmark", style: .error))
@@ -155,6 +159,9 @@ struct ReminderDraftConfirmView: View {
             #endif
             .toolbar { SheetCloseToolbar { dismiss() } }
         }
+        // A confirm failure surfaces an error toast while THIS sheet stays presented; the shared
+        // overlay lives on the app root (occluded by the sheet), so install one on the sheet too.
+        .withToast()
         #if os(macOS)
         .frame(width: DesignMetrics.macSheetSize.width, height: DesignMetrics.macSheetSize.height)
         #endif
@@ -187,14 +194,14 @@ struct ReminderDraftConfirmView: View {
         Task {
             do {
                 try await ReminderWriteAction(draft: draft).prepare().confirm()
-                ToastCenter.shared.show(Toast(
+                ToastCenter.shared.show(FCTToast(
                     title: "Added Reminder", message: draft.title,
                     systemImage: "checklist.checked", style: .success))
                 onConfirmed?()
                 dismiss()
             } catch {
                 saving = false
-                ToastCenter.shared.show(Toast(
+                ToastCenter.shared.show(FCTToast(
                     title: "Couldn't add Reminder",
                     message: EcosystemActionFeedback.message(for: error),
                     systemImage: "exclamationmark.triangle", style: .error))

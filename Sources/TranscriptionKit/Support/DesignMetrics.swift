@@ -124,10 +124,6 @@ public enum DesignMetrics {
     public static let macSheetSize = CGSize(width: 520, height: 620)
     public static let macDetailSheetSize = CGSize(width: 760, height: 680)
 
-    // MARK: Toasts
-    public static let toastCorner: CGFloat = 16
-    public static let toastMaxWidth: CGFloat = 460
-
     // MARK: Inspector
     public static let inspectorWidth: CGFloat = 340
     public static let inspectorMinWidth: CGFloat = 280

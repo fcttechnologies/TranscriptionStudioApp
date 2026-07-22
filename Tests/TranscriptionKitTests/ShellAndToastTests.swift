@@ -1,5 +1,7 @@
 import Foundation
+import SwiftUI
 import Testing
+import FCTComponentsUI
 @testable import TranscriptionKit
 
 // The single-view shell's pure logic: toast queueing/dedup/sticky updates, the engine-
@@ -13,8 +15,8 @@ struct ToastCenterTests {
     // One toast shows at a time; a burst queues in order and advances on dismiss.
     @Test func showsOneAndQueuesTheRest() async throws {
         let center = ToastCenter()
-        center.show(Toast(title: "First", systemImage: "checkmark"))
-        center.show(Toast(title: "Second", systemImage: "checkmark"))
+        center.show(FCTToast(title: "First", systemImage: "checkmark"))
+        center.show(FCTToast(title: "Second", systemImage: "checkmark"))
         #expect(center.current?.title == "First")
         center.dismiss()
         // The queue advances after a short gap (an unstructured ~220ms task) so out/in
@@ -30,8 +32,8 @@ struct ToastCenterTests {
     // A dedup-keyed re-raise is dropped while its twin is showing or queued.
     @Test func dedupKeyCollapsesRepeats() {
         let center = ToastCenter()
-        center.show(Toast(title: "Once", systemImage: "checkmark", dedupKey: "same"))
-        center.show(Toast(title: "Again", systemImage: "checkmark", dedupKey: "same"))
+        center.show(FCTToast(title: "Once", systemImage: "checkmark", dedupKey: "same"))
+        center.show(FCTToast(title: "Again", systemImage: "checkmark", dedupKey: "same"))
         #expect(center.current?.title == "Once")
         center.dismiss()
         #expect(center.current == nil)
@@ -41,9 +43,9 @@ struct ToastCenterTests {
     // progress-notice update path.
     @Test func showOrUpdateReplacesInPlace() {
         let center = ToastCenter()
-        center.showOrUpdate(Toast(title: "Downloading… 10%", systemImage: "waveform",
+        center.showOrUpdate(FCTToast(title: "Downloading… 10%", systemImage: "waveform",
                                   duration: nil, dedupKey: "progress"))
-        center.showOrUpdate(Toast(title: "Downloading… 60%", systemImage: "waveform",
+        center.showOrUpdate(FCTToast(title: "Downloading… 60%", systemImage: "waveform",
                                   duration: nil, dedupKey: "progress"))
         #expect(center.current?.title == "Downloading… 60%")
     }
@@ -52,8 +54,8 @@ struct ToastCenterTests {
     // still sitting in the queue.
     @Test func dismissByDedupKeyResolvesShowingAndQueued() {
         let center = ToastCenter()
-        center.show(Toast(title: "Busy", systemImage: "waveform", duration: nil, dedupKey: "work"))
-        center.show(Toast(title: "Later", systemImage: "checkmark", dedupKey: "later"))
+        center.show(FCTToast(title: "Busy", systemImage: "waveform", duration: nil, dedupKey: "work"))
+        center.show(FCTToast(title: "Later", systemImage: "checkmark", dedupKey: "later"))
         center.dismiss(dedupKey: "later")   // removes the queued one
         center.dismiss(dedupKey: "work")    // resolves the showing one
         #expect(center.current == nil)
@@ -81,7 +83,7 @@ struct EnginePrewarmToastTests {
         let center = ToastCenter()
         center.handlePrewarm(from: .idle, to: .preparing(phase: "Preparing…", fraction: nil))
         center.handlePrewarm(from: .preparing(phase: "Preparing…", fraction: nil), to: .ready)
-        #expect(center.current?.style == .success)
+        #expect(center.current?.tint == .green)   // .success style → green tint
     }
 
     // An instantly-ready engine (mocks, previews) never toasts.
@@ -97,7 +99,7 @@ struct EnginePrewarmToastTests {
         center.handlePrewarm(from: .idle, to: .preparing(phase: "Preparing…", fraction: nil))
         center.handlePrewarm(from: .preparing(phase: "Preparing…", fraction: nil),
                              to: .failed("no network"))
-        #expect(center.current?.style == .error)
+        #expect(center.current?.tint == .red)   // .error style → red tint
         #expect(center.current?.message == "no network")
     }
 }

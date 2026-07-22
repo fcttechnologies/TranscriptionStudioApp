@@ -5,7 +5,9 @@
 // (BackgroundExecution's bridge + macOS passthrough live in BackgroundExecutionTests.swift.)
 
 import Foundation
+import SwiftUI
 import Testing
+import FCTComponentsUI
 @testable import TranscriptionKit
 
 @MainActor
@@ -24,7 +26,7 @@ struct ToastCenterInteractionTests {
     @Test func runActionDismissesAndInvokesTheClosure() {
         let center = ToastCenter()
         var invoked = false
-        let toast = Toast(title: "Tap me", systemImage: "circle",
+        let toast = FCTToast(title: "Tap me", systemImage: "circle",
                           actionLabel: "Go", action: { invoked = true })
         center.show(toast)
         center.runAction(for: toast)
@@ -35,7 +37,7 @@ struct ToastCenterInteractionTests {
     // An informational toast (no action) is a safe no-op to run.
     @Test func runActionOnAnInformationalToastJustDismisses() {
         let center = ToastCenter()
-        let toast = Toast(title: "FYI", systemImage: "circle")
+        let toast = FCTToast(title: "FYI", systemImage: "circle")
         center.show(toast)
         center.runAction(for: toast)
         #expect(center.current == nil)
@@ -43,7 +45,7 @@ struct ToastCenterInteractionTests {
 
     @Test func dismissIgnoresAMismatchedID() {
         let center = ToastCenter()
-        center.show(Toast(title: "A", systemImage: "circle"))
+        center.show(FCTToast(title: "A", systemImage: "circle"))
         center.dismiss(id: UUID())
         #expect(center.current?.title == "A")
     }
@@ -52,7 +54,7 @@ struct ToastCenterInteractionTests {
     // well past its original duration while suspended.
     @Test func suspendPausesAutoDismissPastItsOriginalDuration() async throws {
         let center = ToastCenter()
-        let toast = Toast(title: "Timed", systemImage: "circle", duration: .milliseconds(150))
+        let toast = FCTToast(title: "Timed", systemImage: "circle", duration: .milliseconds(150))
         center.show(toast)
         center.suspendAutoDismiss(for: toast.id)
         try await Task.sleep(for: .milliseconds(800))
@@ -62,7 +64,7 @@ struct ToastCenterInteractionTests {
     // Resuming reschedules the dismiss after a short dwell rather than never again.
     @Test func resumeSchedulesADismissAfterTheDwell() async throws {
         let center = ToastCenter()
-        let toast = Toast(title: "Timed", systemImage: "circle", duration: nil)   // sticky
+        let toast = FCTToast(title: "Timed", systemImage: "circle", duration: nil)   // sticky
         center.show(toast)
         center.suspendAutoDismiss(for: toast.id)
         center.resumeAutoDismiss(for: toast.id)
@@ -76,7 +78,7 @@ struct ToastCenterInteractionTests {
     // suspend/resume targeting a stale id (not the one currently showing) are no-ops.
     @Test func suspendAndResumeIgnoreAStaleID() {
         let center = ToastCenter()
-        center.show(Toast(title: "A", systemImage: "circle", duration: .seconds(5)))
+        center.show(FCTToast(title: "A", systemImage: "circle", duration: .seconds(5)))
         let staleID = UUID()
         center.suspendAutoDismiss(for: staleID)
         center.resumeAutoDismiss(for: staleID)
@@ -87,9 +89,9 @@ struct ToastCenterInteractionTests {
     // oldest queued entry rather than growing unbounded.
     @Test func queueDropsTheOldestQueuedEntryPastTheCap() async throws {
         let center = ToastCenter()
-        center.show(Toast(title: "0", systemImage: "circle"))
+        center.show(FCTToast(title: "0", systemImage: "circle"))
         for index in 1...5 {
-            center.show(Toast(title: "\(index)", systemImage: "circle"))
+            center.show(FCTToast(title: "\(index)", systemImage: "circle"))
         }
         var seen: [String] = [try #require(center.current?.title)]
         for _ in 0..<4 {
@@ -132,8 +134,8 @@ struct EngineToastsIdleTests {
 struct ToastBuildersTests {
     @Test func microphoneDeniedCarriesATapThroughToSettings() {
         var tapped = false
-        let toast = Toast.microphoneDenied { tapped = true }
-        #expect(toast.style == .warning)
+        let toast = FCTToast.microphoneDenied { tapped = true }
+        #expect(toast.tint == .orange)   // .warning style → orange tint
         #expect(toast.dedupKey == "mic-denied")
         #expect(toast.actionLabel == "Settings")
         toast.action?()
@@ -142,30 +144,30 @@ struct ToastBuildersTests {
 
     @Test func screenRecordingNeededCarriesATapThroughToSettings() {
         var tapped = false
-        let toast = Toast.screenRecordingNeeded { tapped = true }
-        #expect(toast.style == .warning)
+        let toast = FCTToast.screenRecordingNeeded { tapped = true }
+        #expect(toast.tint == .orange)   // .warning style → orange tint
         #expect(toast.dedupKey == "screen-recording")
         toast.action?()
         #expect(tapped)
     }
 
     @Test func screenRecordingNeedsRestartIsInformationalWithNoAction() {
-        let toast = Toast.screenRecordingNeedsRestart()
-        #expect(toast.style == .warning)
+        let toast = FCTToast.screenRecordingNeedsRestart()
+        #expect(toast.tint == .orange)   // .warning style → orange tint
         #expect(toast.dedupKey == "screen-recording-restart")
         #expect(toast.action == nil)
     }
 
     @Test func recordingFailedCarriesTheMessageAsAnError() {
-        let toast = Toast.recordingFailed("mic disconnected")
-        #expect(toast.style == .error)
+        let toast = FCTToast.recordingFailed("mic disconnected")
+        #expect(toast.tint == .red)   // .error style → red tint
         #expect(toast.message == "mic disconnected")
         #expect(toast.dedupKey == "recording-failed")
     }
 
     @Test func importFailedCarriesTheMessageAsAnError() {
-        let toast = Toast.importFailed("unsupported container")
-        #expect(toast.style == .error)
+        let toast = FCTToast.importFailed("unsupported container")
+        #expect(toast.tint == .red)   // .error style → red tint
         #expect(toast.message == "unsupported container")
         #expect(toast.dedupKey == "import-failed")
     }

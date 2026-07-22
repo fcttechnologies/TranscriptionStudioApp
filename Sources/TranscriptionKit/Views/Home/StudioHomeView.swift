@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 import FCTCloudKit
+import FCTComponentsUI
 #if os(iOS)
 import PhotosUI
 #endif
@@ -89,7 +90,7 @@ public struct StudioHomeView: View {
             sheetContent(sheet)
                 .environment(app)
         }
-        .toastOverlay()
+        .withToast()
         .overlay { bootstrapOverlay }
         .task {
             if storeObserver == nil {
