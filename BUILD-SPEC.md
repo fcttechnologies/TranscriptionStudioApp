@@ -80,3 +80,4 @@ A new **native, universal SwiftUI app**, **Mac-first**, iPhone-capable (shared c
 
 - Work **only in this repo** (`~/Projects/TranscriptionStudioApp`). Do not touch `~/Jarvis`, `~/Projects/JarvisAwake`, or `~/Projects/TranscriptionStudio` (read-only grounding for the last).
 - Don't half-ass anything. A strong model thinking carefully and delegating to careful subagents is exactly the standard — this is a showcase of how FCT builds.
+- Simulator builds are **arm64-only**: the x86_64 sim slice can't resolve cross-import overlays (`_CoreSpotlight_FoundationModels`), which breaks Release-config sim builds. `project.yml` excludes x86_64 for the app targets; SPM package targets don't inherit that, so a Release-config sim build passes `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES` on the command line.

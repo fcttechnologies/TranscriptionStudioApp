@@ -3,6 +3,13 @@ options:
   bundleIdPrefix: com.fcttechnologies
   createIntermediateGroups: true
 
+# Simulator builds are arm64-only: the x86_64 sim slice can't resolve cross-import overlays
+# (`_CoreSpotlight_FoundationModels` in TranscriptLibraryAssistant), which breaks Release
+# builds (Debug hides it via ONLY_ACTIVE_ARCH=YES). No Intel-Mac simulator is in use anywhere.
+settings:
+  base:
+    "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
+
 # Suppress Xcode's "Update to recommended settings" nag durably (it fires when these are below
 # the current Xcode version, and the .xcodeproj is regenerated every build so a manual "Perform
 # Changes" click would never stick).
