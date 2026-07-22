@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TranscriptionStudio",
+    defaultLocalization: "en",
     platforms: [
         .macOS(.v27),
         .iOS(.v27)
@@ -85,6 +86,7 @@ let package = Package(
                 .product(name: "FCTGlanceables", package: "FCTFoundation")
             ],
             path: "Sources/TranscriptionKit",
+            resources: [.process("Localizable.xcstrings")],
             linkerSettings: [
                 // The Sortformer diarizer runs on the raw Core AI system framework (macOS 27).
                 // iOS-device linking is added by the app target (Lane C); the code is

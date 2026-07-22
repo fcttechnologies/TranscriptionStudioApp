@@ -1,0 +1,978 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ is your currently selected model. Deleting it frees %@ and it will re-download automatically the next time it's needed." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is your currently selected model. Deleting it frees %2$@ and it will re-download automatically the next time it's needed."
+          }
+        }
+      }
+    },
+    "%@ used on this device. Deleting a model frees the space — it downloads again automatically the next time it's needed." : {
+
+    },
+    "%@ — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@, %@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@%3$@"
+          }
+        }
+      }
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld percent" : {
+
+    },
+    "%lld segments" : {
+
+    },
+    "%lld transcripts" : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "%lld%% frame agreement" : {
+
+    },
+    "A TikTok, YouTube, or media URL to download and transcribe." : {
+
+    },
+    "A recording is already in progress." : {
+
+    },
+    "ASR confidence" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add Action Item to Reminders" : {
+
+    },
+    "Add Meeting to Calendar" : {
+
+    },
+    "Add Reminder" : {
+
+    },
+    "Add an action item from ${session} to Reminders" : {
+
+    },
+    "Add an event from ${session} to Calendar" : {
+
+    },
+    "Add to Calendar" : {
+
+    },
+    "All stages" : {
+
+    },
+    "Also open the Library to browse results." : {
+
+    },
+    "Answers come only from what was said in this recording." : {
+
+    },
+    "Answers come only from your own saved transcripts, on-device." : {
+
+    },
+    "Apple Intelligence unavailable" : {
+
+    },
+    "Ask" : {
+
+    },
+    "Ask a Transcript" : {
+
+    },
+    "Ask a question about your transcripts. With no transcript chosen, Apple Intelligence searches your whole library on-device; choose one to ask about just that transcript." : {
+
+    },
+    "Ask across every transcript" : {
+
+    },
+    "Ask this transcript" : {
+
+    },
+    "Ask your library" : {
+
+    },
+    "Auto-follow the live transcript" : {
+
+    },
+    "Back 15 seconds" : {
+
+    },
+    "Backend" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Captions" : {
+
+    },
+    "Capture word-level timestamps" : {
+
+    },
+    "Check whether Transcription Studio is currently recording." : {
+
+    },
+    "Choose a File…" : {
+
+    },
+    "Choose contact" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Close player" : {
+
+    },
+    "Committed %lld · provisional %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Committed %1$lld · provisional %2$lld"
+          }
+        }
+      }
+    },
+    "Copy Transcript" : {
+
+    },
+    "Couldn't delete model" : {
+
+    },
+    "Date" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete \"%@\"? This action cannot be undone." : {
+
+    },
+    "Delete ${target}" : {
+
+    },
+    "Delete %@" : {
+
+    },
+    "Delete Transcript" : {
+
+    },
+    "Delete a saved transcript from Transcription Studio." : {
+
+    },
+    "Delete canceled." : {
+
+    },
+    "Delete this model?" : {
+
+    },
+    "Delete this session?" : {
+
+    },
+    "Diarization" : {
+
+    },
+    "Diarization unavailable — transcribing without speakers." : {
+
+    },
+    "Diarizer A/B" : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Dismiss suggestion: %@" : {
+
+    },
+    "Drop to transcribe" : {
+
+    },
+    "Due" : {
+
+    },
+    "Due date" : {
+
+    },
+    "Duration" : {
+
+    },
+    "Enable in System Settings…" : {
+
+    },
+    "Ends" : {
+
+    },
+    "Event" : {
+
+    },
+    "Export" : {
+
+    },
+    "Export Transcript" : {
+
+    },
+    "Export a transcript as a file. Defaults to your latest transcript." : {
+
+    },
+    "Exported %@." : {
+
+    },
+    "Exported Transcript" : {
+      "comment" : "The AppEntity type name for a transcript exported to a file"
+    },
+    "File" : {
+
+    },
+    "Finishing transcript…" : {
+
+    },
+    "Format" : {
+
+    },
+    "Forward 15 seconds" : {
+
+    },
+    "Found %lld transcript%@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Found %1$lld transcript%2$@."
+          }
+        }
+      }
+    },
+    "Frees %@. It will download again automatically if you use it." : {
+
+    },
+    "Get Latest Transcript" : {
+
+    },
+    "Get Recording Status" : {
+
+    },
+    "Getting your transcripts from iCloud." : {
+
+    },
+    "Grant Screen Recording…" : {
+
+    },
+    "Granted — quit and reopen Transcription Studio before starting a meeting." : {
+
+    },
+    "Hide captions" : {
+
+    },
+    "Highlight Confidence" : {
+
+    },
+    "In progress" : {
+
+    },
+    "Input level" : {
+
+    },
+    "Insert Link" : {
+
+    },
+    "Insert Link…" : {
+
+    },
+    "Inspector" : {
+
+    },
+    "Inspector view" : {
+
+    },
+    "Intelligence" : {
+
+    },
+    "Jump to live" : {
+
+    },
+    "Keywords" : {
+
+    },
+    "Kind" : {
+
+    },
+    "Large captions for reading at a distance" : {
+
+    },
+    "Larger captions" : {
+
+    },
+    "Latest Transcript" : {
+
+    },
+    "Link" : {
+
+    },
+    "Link transcription isn't available on this device." : {
+
+    },
+    "Listening. Captions appear here as you speak." : {
+
+    },
+    "Listening…" : {
+
+    },
+    "Lock with Face ID" : {
+
+    },
+    "Locked" : {
+
+    },
+    "Low confidence attribution" : {
+
+    },
+    "Markdown" : {
+
+    },
+    "Meeting" : {
+
+    },
+    "Mentioned in this transcript" : {
+
+    },
+    "Microphone" : {
+
+    },
+    "Mode" : {
+
+    },
+    "More" : {
+
+    },
+    "Name Transcript Speakers" : {
+
+    },
+    "Name speakers" : {
+
+    },
+    "Name the speakers in ${session}" : {
+
+    },
+    "Naming a speaker makes “what did they say” searchable by name. Choosing a contact never grants access to your contacts." : {
+
+    },
+    "New Title" : {
+
+    },
+    "No diarizer frames yet — record or transcribe to populate." : {
+
+    },
+    "No events yet — run a recording or a transcription." : {
+
+    },
+    "No load samples — sampling runs during a recording." : {
+
+    },
+    "No sessions yet" : {
+
+    },
+    "No speakers to name" : {
+
+    },
+    "No speech models downloaded yet." : {
+
+    },
+    "No timed stages yet." : {
+
+    },
+    "No transcript segments yet." : {
+
+    },
+    "No transcripts match “%@”." : {
+
+    },
+    "Not in contacts" : {
+
+    },
+    "Not recording." : {
+
+    },
+    "Notes" : {
+
+    },
+    "Nothing is added until you tap Add." : {
+
+    },
+    "Nothing is added until you tap Add. Transcription Studio only asks for permission to add — never to read your calendar." : {
+
+    },
+    "Nothing is playing right now." : {
+
+    },
+    "Nothing is recording right now." : {
+
+    },
+    "Now playing %@. Opens the transcript." : {
+
+    },
+    "OK" : {
+
+    },
+    "On-device" : {
+
+    },
+    "On-device Whisper large-v3-turbo — the speed/accuracy sweet spot." : {
+
+    },
+    "Open %@ in Maps" : {
+
+    },
+    "Open Inspector" : {
+
+    },
+    "Open Library" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Open Transcript" : {
+
+    },
+    "Open Transcription Studio" : {
+
+    },
+    "Open Transcription Studio's diagnostics inspector." : {
+
+    },
+    "Open Transcription Studio's settings." : {
+
+    },
+    "Open a transcript in Transcription Studio." : {
+
+    },
+    "Open a transcript to name its speakers by matching them to your contacts." : {
+
+    },
+    "Open in Library" : {
+
+    },
+    "Open the Library in Transcription Studio." : {
+
+    },
+    "Paste a TikTok, YouTube, or media URL" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Pause Playback" : {
+
+    },
+    "Pause a transcript's playback in Transcription Studio." : {
+
+    },
+    "Permissions" : {
+
+    },
+    "Pipeline events" : {
+
+    },
+    "Plain Text" : {
+
+    },
+    "Plain text" : {
+
+    },
+    "Play" : {
+
+    },
+    "Play Transcript" : {
+
+    },
+    "Play a transcript's archived audio in Transcription Studio. Defaults to your latest transcript." : {
+
+    },
+    "Play from %@" : {
+
+    },
+    "Playback Speed" : {
+
+    },
+    "Playback paused." : {
+
+    },
+    "Playback speed, %@" : {
+
+    },
+    "Playing \"%@\"." : {
+
+    },
+    "Question" : {
+
+    },
+    "Re-run cross-check" : {
+
+    },
+    "Read back the full text of your most recent transcript." : {
+
+    },
+    "Record Meeting" : {
+
+    },
+    "Record or run a session to compare backends." : {
+
+    },
+    "Record, or import audio with the + button — everything lands here." : {
+
+    },
+    "Recording" : {
+
+    },
+    "Recording Mode" : {
+
+    },
+    "Recording saved." : {
+
+    },
+    "Recording saved. %@" : {
+
+    },
+    "Recording started." : {
+
+    },
+    "Recording uses the microphone. Location tagging is off unless you turn it on. Everything stays on this device." : {
+
+    },
+    "Recording — %@ elapsed." : {
+
+    },
+    "Recording, %@ elapsed. Opens the live recording." : {
+
+    },
+    "Regenerate" : {
+
+    },
+    "Reminder" : {
+
+    },
+    "Rename" : {
+
+    },
+    "Rename ${target} to ${newTitle}" : {
+
+    },
+    "Rename Session" : {
+
+    },
+    "Rename Transcript" : {
+
+    },
+    "Rename a saved transcript in Transcription Studio." : {
+
+    },
+    "Renamed to \"%@\"." : {
+
+    },
+    "Resume" : {
+
+    },
+    "Review a meeting or event found in a transcript and add it to your calendar." : {
+
+    },
+    "Review an action item found in a transcript and add it to Reminders." : {
+
+    },
+    "Review “%@” before adding it to Reminders." : {
+
+    },
+    "Review “%@” before adding it to your calendar." : {
+
+    },
+    "Room" : {
+
+    },
+    "Room (your mic) or Meeting (system audio + mic, Mac only)." : {
+
+    },
+    "Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Location tagging is off unless you turn it on. Everything stays on this device." : {
+
+    },
+    "Run cross-check" : {
+
+    },
+    "Save" : {
+
+    },
+    "Screen Recording" : {
+
+    },
+    "Search Transcripts" : {
+
+    },
+    "Search text" : {
+
+    },
+    "Search transcripts" : {
+
+    },
+    "Search your saved transcripts by title or spoken content." : {
+
+    },
+    "Searching your library…" : {
+
+    },
+    "Selected" : {
+
+    },
+    "Send to Your Mac" : {
+
+    },
+    "Sessions" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Show captions" : {
+
+    },
+    "Smaller captions" : {
+
+    },
+    "Something went wrong. Please try again." : {
+
+    },
+    "Speaker activity" : {
+
+    },
+    "Speaker activity heatmap, %lld frames" : {
+
+    },
+    "Speaker-attributed transcript will appear here as you speak." : {
+
+    },
+    "Speech and diarization models download automatically the first time they're used." : {
+
+    },
+    "Speech model" : {
+
+    },
+    "Speech recognition" : {
+
+    },
+    "Stage latency" : {
+
+    },
+    "Start Recording" : {
+
+    },
+    "Start a new room or meeting recording and live transcription in Transcription Studio." : {
+
+    },
+    "Starts" : {
+
+    },
+    "Stop" : {
+
+    },
+    "Stop Recording" : {
+
+    },
+    "Stop the current recording in Transcription Studio and save the transcript." : {
+
+    },
+    "Storage" : {
+
+    },
+    "SubRip (.srt)" : {
+
+    },
+    "Suggested" : {
+
+    },
+    "Summarize Transcript" : {
+
+    },
+    "Summarize a transcript. Apple Intelligence summarizes on-device from the transcript." : {
+
+    },
+    "Summarizing on-device…" : {
+
+    },
+    "Summary" : {
+
+    },
+    "Switch back to the transcript" : {
+
+    },
+    "Sync error" : {
+
+    },
+    "Syncing" : {
+
+    },
+    "Syncing your library…" : {
+
+    },
+    "System load" : {
+
+    },
+    "Tag recordings with location" : {
+
+    },
+    "That doesn't look like a valid link." : {
+
+    },
+    "That transcript has no action items to add." : {
+
+    },
+    "That transcript has no archived audio to play." : {
+
+    },
+    "That transcript has no meetings or events to add." : {
+
+    },
+    "That transcript is no longer available." : {
+
+    },
+    "The audio is downloaded and transcribed entirely on this Mac." : {
+
+    },
+    "The audio or video file to transcribe." : {
+
+    },
+    "The export file format." : {
+
+    },
+    "The new title can't be empty." : {
+
+    },
+    "Thermal: %@" : {
+
+    },
+    "Thinking…" : {
+
+    },
+    "This link is queued. Open Transcription Studio on your Mac to transcribe it — the result syncs back here." : {
+
+    },
+    "This transcript has no diarized speakers yet." : {
+
+    },
+    "Title" : {
+
+    },
+    "Transcribe File" : {
+
+    },
+    "Transcribe Link" : {
+
+    },
+    "Transcribe a File" : {
+
+    },
+    "Transcribe a Link" : {
+
+    },
+    "Transcribe a TikTok, YouTube, or media link with Transcription Studio. Mac only." : {
+
+    },
+    "Transcribe an audio or video file with Transcription Studio." : {
+
+    },
+    "Transcribed %@." : {
+
+    },
+    "Transcribing on your Mac" : {
+
+    },
+    "Transcript" : {
+      "comment" : "The AppEntity type name for a saved session"
+    },
+    "Transcript Export Format" : {
+
+    },
+    "Transcript deleted." : {
+
+    },
+    "Transcription Studio runs entirely on this device. Nothing is uploaded." : {
+
+    },
+    "Try asking" : {
+
+    },
+    "Upload from Photos" : {
+
+    },
+    "Version" : {
+
+    },
+    "Waiting for your Mac" : {
+
+    },
+    "WebVTT (.vtt)" : {
+
+    },
+    "What to look for in your transcripts." : {
+
+    },
+    "What would you like to rename it to?" : {
+
+    },
+    "What you want to know about your transcripts." : {
+
+    },
+    "Which action item would you like to add?" : {
+
+    },
+    "Which event would you like to add?" : {
+
+    },
+    "Which transcript to ask about. Leave empty to search your whole library." : {
+
+    },
+    "Which transcript to export. Defaults to your latest." : {
+
+    },
+    "Which transcript to play. Defaults to your latest." : {
+
+    },
+    "Which transcript to summarize. Defaults to your latest." : {
+
+    },
+    "Which transcript would you like to delete?" : {
+
+    },
+    "Which transcript would you like to rename?" : {
+
+    },
+    "Which transcript's action item would you like to add?" : {
+
+    },
+    "Which transcript's event would you like to add?" : {
+
+    },
+    "Which transcript's speakers would you like to name?" : {
+
+    },
+    "Word (.docx)" : {
+
+    },
+    "You don't have any transcripts yet." : {
+
+    },
+    "Your Mac is downloading and transcribing this link. It'll appear here when it's done." : {
+
+    },
+    "Your latest transcript is empty." : {
+
+    },
+    "cmpr" : {
+
+    },
+    "e.g. What did we decide about the budget?" : {
+
+    },
+    "iOS can't download links itself — this is queued and transcribed on your Mac, then synced back here." : {
+
+    },
+    "logp" : {
+
+    },
+    "ms" : {
+
+    },
+    "n" : {
+
+    },
+    "noSp" : {
+
+    },
+    "score" : {
+
+    },
+    "t" : {
+
+    },
+    "time" : {
+
+    },
+    "·" : {
+
+    },
+    "· %@" : {
+
+    },
+    "“%@” and its transcript will be removed." : {
+
+    }
+  },
+  "version" : "1.0"
+}
