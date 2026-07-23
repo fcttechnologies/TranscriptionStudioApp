@@ -14,8 +14,8 @@ import Darwin
 ///
 /// Endpoints (matching the old app byte-for-byte where the tool reads):
 ///   POST /api/jobs/start        {url}            -> {job_id, message}   (async URL job)
-///   GET  /api/jobs/{job_id}                       -> job record         (poll to terminal)
-///   POST /api/transcribe/file   multipart file    -> {job_id, transcript, filename}
+///   GET  /api/jobs/{job_id}                       -> job record (transcript + timestamped segments)
+///   POST /api/transcribe/file   multipart file    -> {job_id, transcript, segments, filename}
 ///   GET  /            or /health                   -> 200 "ok"           (readiness)
 ///
 /// Blocking POSIX sockets, thread-per-connection: a local single-user service has trivial
@@ -52,13 +52,20 @@ actor WarmEngine {
         return e
     }
 
-    /// Transcribe a local media file with the warm engine.
-    func transcribeFile(at url: URL) async throws -> String {
+    /// Transcribe a local media file, returning the model's timestamped segments (start/end/text).
+    /// Keeping the segments — instead of flattening to one wall of text — is what lets the serve
+    /// API expose per-moment timestamps, so a caller can map a transcript to what's on screen at
+    /// each moment (the vidframes frame↔transcript fusion). Callers derive the flat transcript via
+    /// `[TranscriptSegment].flatText`.
+    func transcribeSegments(at url: URL) async throws -> [TranscriptSegment] {
         let samples = try FileIngestService.loadSamples(from: url)
         let e = try await ensureLoaded()
         lastUsed = Date()
         let segments = try await e.transcribe(samples: samples, track: .mixed, wordTimestamps: false)
-        return segments.map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        return segments.map {
+            TranscriptSegment(start: $0.start, end: $0.end,
+                              text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
     }
 
     /// Release the model if it's been idle past the timeout (the idle reaper calls this).
@@ -68,13 +75,38 @@ actor WarmEngine {
     }
 }
 
+// MARK: - Transcript segments
+
+/// One timestamped transcript segment (seconds). The serve API returns these alongside the flat
+/// `transcript` so a caller can line words up with a moment (frame↔transcript mapping); mirrors
+/// the one-shot CLI's `--json` `segments[]` shape.
+struct TranscriptSegment: Sendable {
+    let start: Double
+    let end: Double
+    let text: String
+}
+
+extension [TranscriptSegment] {
+    /// The flat transcript: trimmed segment texts joined by a single space (each segment is
+    /// already trimmed, so no double spaces the raw WhisperKit join would leave).
+    var flatText: String {
+        map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The JSON-serializable form for a response body.
+    var jsonArray: [[String: Any]] {
+        map { ["start": $0.start, "end": $0.end, "text": $0.text] }
+    }
+}
+
 // MARK: - Job store (async URL jobs)
 
 /// One async URL-transcription job's state, matching the fields the `transcribe` tool polls:
-/// `state` ("running"/"done"/"error"), `transcript`, `error`.
+/// `state` ("running"/"done"/"error"), `transcript`, `segments`, `error`.
 struct JobRecord: Sendable {
     var state: String
     var transcript: String?
+    var segments: [TranscriptSegment]?
     var error: String?
     let createdAt: Date
 }
@@ -85,12 +117,13 @@ actor JobStore {
     private var jobs: [String: JobRecord] = [:]
 
     func create(_ id: String) {
-        jobs[id] = JobRecord(state: "running", transcript: nil, error: nil, createdAt: Date())
+        jobs[id] = JobRecord(state: "running", transcript: nil, segments: nil, error: nil, createdAt: Date())
     }
 
-    func finish(_ id: String, transcript: String) {
+    func finish(_ id: String, transcript: String, segments: [TranscriptSegment]) {
         jobs[id]?.state = "done"
         jobs[id]?.transcript = transcript
+        jobs[id]?.segments = segments
     }
 
     func fail(_ id: String, error: String) {
@@ -206,12 +239,13 @@ final class TranscribeServer: @unchecked Sendable {
             let downloadJobID = UUID()
             do {
                 let audioURL = try await downloader.downloadAudio(url: url, jobID: downloadJobID) { _ in }
-                let text = try await warm.transcribeFile(at: audioURL)
+                let segments = try await warm.transcribeSegments(at: audioURL)
+                let text = segments.flatText
                 downloader.cleanup(jobID: downloadJobID)
                 if text.isEmpty {
                     await jobs.fail(jobID, error: "Transcription produced empty text")
                 } else {
-                    await jobs.finish(jobID, transcript: text)
+                    await jobs.finish(jobID, transcript: text, segments: segments)
                 }
             } catch {
                 downloader.cleanup(jobID: downloadJobID)
@@ -228,6 +262,7 @@ final class TranscribeServer: @unchecked Sendable {
         }
         var body: [String: Any] = ["job_id": jobID, "state": job.state]
         body["transcript"] = job.transcript ?? NSNull()
+        body["segments"] = job.segments?.jsonArray ?? NSNull()
         body["error"] = job.error ?? NSNull()
         sendJSON(fd, status: 200, body: body)
     }
@@ -245,9 +280,10 @@ final class TranscribeServer: @unchecked Sendable {
         do {
             try part.data.write(to: tempURL)
             defer { try? FileManager.default.removeItem(at: tempURL) }
-            let text = try runBlockingThrowing { try await self.warm.transcribeFile(at: tempURL) }
+            let segments = try runBlockingThrowing { try await self.warm.transcribeSegments(at: tempURL) }
             sendJSON(fd, status: 200, body: [
-                "job_id": jobID, "transcript": text, "filename": part.filename,
+                "job_id": jobID, "transcript": segments.flatText, "filename": part.filename,
+                "segments": segments.jsonArray,
             ])
         } catch {
             sendJSON(fd, status: 500, body: ["error": humanError(error), "job_id": jobID])
