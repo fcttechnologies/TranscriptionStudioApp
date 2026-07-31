@@ -19,7 +19,8 @@ attributes:
 
 # All real code lives in the local Swift package (Package.swift in this directory);
 # the app targets are thin shells. Regenerate the project with `xcodegen generate`
-# (the .xcodeproj is gitignored so worktree builds never conflict on pbxproj).
+# after an edit here. The .xcodeproj is tracked — commit the regenerated result
+# alongside this file.
 packages:
   TranscriptionStudioPackage:
     path: .

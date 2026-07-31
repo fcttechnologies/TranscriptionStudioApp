@@ -27,8 +27,8 @@ shell). Lean extension-safe libraries sit beside them: `ShareKit` (Share-extensi
 drop-box), `BackgroundAssetsKit` (model pre-download), and `GlanceKit` (Live Activity
 attributes + button intents + pure clock/level math, linked by the app and by
 `WidgetExtensioniOS` — the widget extension rendering the recording/playback Live
-Activities). Regenerate the project with `xcodegen generate` — the `.xcodeproj` is
-gitignored.
+Activities). Regenerate the project with `xcodegen generate` after an edit here — the
+`.xcodeproj` is tracked; commit the regenerated result alongside it.
 
 ## The seams (contract files — coordinate before changing)
 
