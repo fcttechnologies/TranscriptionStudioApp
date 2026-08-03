@@ -37,10 +37,14 @@ Activities). Regenerate the project with `xcodegen generate` after an edit here 
 - `TranscriptionKit/ASR/AsrEngine.swift` — `AsrEngine`, `AsrSegment` (Whisper confidence
   fields surfaced), `AsrUpdate` (confirmed/unconfirmed).
 - `TranscriptionKit/TTS/TtsEngine.swift` — `TtsEngine`, `SynthesizedSpeech` (mono float PCM
-  + its own rate, WAV on the way out), `TtsEngineError` (whose `isInvalidRequest` decides a
-  serve 400 from a 500). Voice and language are plain engine-specific strings, so a second
-  synthesis engine conforms here and nothing above it changes; `TTSKitTtsEngine` is the only
-  file that imports TTSKit.
+  + its own rate, WAV on the way out), `SynthesizedSpeechChunk` + `synthesizeStreaming`
+  (ordered incremental audio with latched cancellation; a non-streaming engine gets the
+  single-chunk default), `TtsEngineError` (whose `isInvalidRequest` decides a serve 400 from
+  a 500). `StreamingWav` is the streamed wire format (unknown-length WAV header + raw s16le).
+  Voice and language are plain engine-specific strings, so a second synthesis engine conforms
+  here and nothing above it changes; `TTSKitTtsEngine` is the only file that imports TTSKit.
+  Consumers: `POST /speak` (chunked streaming), the `speak` CLI subcommand, and the in-app
+  read-aloud (`ReadAloudController` + `SpeakTranscriptIntent`).
 - `TranscriptionKit/Diarization/DiarizationEngine.swift` — `DiarizationEngine`,
   `SpeakerTurn` (slot + confidence + committed/provisional), `DiarizationResult/Update`.
 - `TranscriptionKit/Fusion/TranscriptFuser.swift` — `SpeakerID`, `AttributedSegment`, the
