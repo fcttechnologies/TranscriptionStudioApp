@@ -27,7 +27,8 @@ struct TranscribeCLI {
 
     SERVE: run a warm on-device transcription service (drop-in for the old FastAPI app on
            the same :8000 API — POST /api/jobs/start, GET /api/jobs/{id}, POST /api/transcribe/file),
-           which also speaks: POST /speak {text, voice?, language?} -> audio/wav.
+           which also speaks: POST /speak {text, voice?, language?} -> audio/wav, streamed
+           (chunked transfer) as the audio is synthesized.
       --serve          Start the HTTP service (holds the models warm across requests).
       --port <n>       Listen port (default: 8000).
       --idle-timeout <s>  Release a model after this many seconds idle, reloading on demand

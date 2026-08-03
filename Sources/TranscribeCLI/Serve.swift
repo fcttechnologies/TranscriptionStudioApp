@@ -16,7 +16,8 @@ import Darwin
 ///   POST /api/jobs/start        {url}            -> {job_id, message}   (async URL job)
 ///   GET  /api/jobs/{job_id}                       -> job record (transcript + timestamped segments)
 ///   POST /api/transcribe/file   multipart file    -> {job_id, transcript, segments, filename}
-///   POST /speak                 {text, voice?, language?} -> audio/wav   (on-device synthesis)
+///   POST /speak                 {text, voice?, language?} -> audio/wav   (on-device synthesis,
+///                               chunked-streamed as it is produced; see `handleSpeak`)
 ///   GET  /            or /health                   -> 200 "ok"           (readiness)
 ///
 /// Blocking POSIX sockets, thread-per-connection: a local single-user service has trivial
@@ -124,6 +125,18 @@ actor WarmTTSEngine {
         let e = try await ensureLoaded()
         lastUsed = Date()
         return try await e.synthesize(text: text, voice: voice, language: language)
+    }
+
+    /// Streaming counterpart of `synthesize` — same validate-before-load discipline, chunks
+    /// forwarded as the engine produces them. The idle clock is refreshed again when the run
+    /// ends, so a synthesis longer than the idle timeout can't be reaped the moment it finishes.
+    func synthesizeStreaming(text: String, voice: String?, language: String?,
+                             onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
+        try (engine ?? makeEngine()).validate(text: text, voice: voice, language: language)
+        let e = try await ensureLoaded()
+        lastUsed = Date()
+        defer { lastUsed = Date() }
+        try await e.synthesizeStreaming(text: text, voice: voice, language: language, onChunk: onChunk)
     }
 
     /// Release the model if it's been idle past the timeout (the idle reaper calls this).
@@ -255,6 +268,11 @@ final class TranscribeServer: @unchecked Sendable {
 
     private func handleConnection(_ fd: Int32) {
         defer { close(fd) }
+        // A peer that disconnects mid-response must surface as a failed `send`, never a
+        // process-killing SIGPIPE — routine now that /speak streams and a client may stop
+        // listening as soon as it has heard enough.
+        var yes: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
         guard let request = readRequest(fd) else {
             sendJSON(fd, status: 400, body: ["error": "bad request"])
             return
@@ -353,9 +371,17 @@ final class TranscribeServer: @unchecked Sendable {
         }
     }
 
-    /// Synthesize speech from text, returning the audio itself — a 16-bit mono WAV body, which
-    /// carries its own sample rate so the client needs to know nothing about the model behind
-    /// it. Failures answer in the same `{"error": …}` JSON shape every other route uses.
+    /// Synthesize speech from text, streaming the audio as it is produced — a chunked
+    /// `audio/wav` body whose header carries the unknown-length sentinel (`StreamingWav`), so
+    /// a client can start playing before synthesis finishes while a client that just reads to
+    /// EOF still ends up with a playable 16-bit mono WAV.
+    ///
+    /// Nothing is sent until the first audio chunk exists: every failure up to that point —
+    /// bad JSON, invalid voice, a model that can't load, an engine that produced nothing —
+    /// still answers in the same `{"error": …}` JSON shape every other route uses. A failure
+    /// *after* audio has been sent can't change the status line anymore, so the connection is
+    /// closed without the terminal chunk and the truncated transfer is the client's error
+    /// signal. A client that disconnects mid-stream cancels the synthesis.
     private func handleSpeak(_ req: HTTPRequest, fd: Int32) {
         guard let obj = try? JSONSerialization.jsonObject(with: req.body) as? [String: Any] else {
             sendJSON(fd, status: 400, body: ["error": "expected a JSON body: {text, voice?, language?}"])
@@ -364,14 +390,112 @@ final class TranscribeServer: @unchecked Sendable {
         let text = obj["text"] as? String ?? ""
         let voice = obj["voice"] as? String
         let language = obj["language"] as? String
-        do {
-            let speech = try runBlockingThrowing {
-                try await self.speech.synthesize(text: text, voice: voice, language: language)
+
+        // Producer: the async synthesis, handing chunks across to this blocking connection
+        // thread. Buffering is unbounded, which is bounded in practice by the utterance's own
+        // total PCM size — exactly what the old complete-body path held in memory anyway.
+        let queue = SpeakStreamQueue()
+        Task { [speech] in
+            do {
+                try await speech.synthesizeStreaming(text: text, voice: voice, language: language) { chunk in
+                    queue.push(chunk)
+                }
+                queue.finish(error: nil)
+            } catch {
+                queue.finish(error: error)
             }
-            sendResponse(fd, status: 200, contentType: "audio/wav", body: try speech.wavData())
-        } catch {
-            sendJSON(fd, status: speakErrorStatus(error), body: ["error": humanError(error)])
         }
+
+        // Consumer: block for the first event, which decides the status line.
+        switch queue.next() {
+        case .failed(let error):
+            sendJSON(fd, status: speakErrorStatus(error), body: ["error": humanError(error)])
+        case .finished:
+            // The seam contract makes a no-audio success an engine error before this point;
+            // if it ever happens, it's the server's fault, not the caller's.
+            sendJSON(fd, status: 500, body: ["error": "synthesis produced no audio"])
+        case .chunk(let first):
+            guard sendChunkedHead(fd, contentType: "audio/wav"),
+                  sendBodyChunk(fd, StreamingWav.header(sampleRate: first.sampleRate)),
+                  sendBodyChunk(fd, StreamingWav.pcm16Data(first.samples)) else {
+                queue.consumerGone()
+                return
+            }
+            while true {
+                switch queue.next() {
+                case .chunk(let chunk):
+                    guard sendBodyChunk(fd, StreamingWav.pcm16Data(chunk.samples)) else {
+                        queue.consumerGone()
+                        return
+                    }
+                case .finished:
+                    sendChunkedEnd(fd)
+                    return
+                case .failed:
+                    return  // no terminal chunk: the truncated transfer is the error signal
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Speak stream hand-off
+
+/// Hands synthesis chunks from the async producer task to the blocking connection thread —
+/// a condition-variable queue, the one place the serve's async and blocking worlds meet with
+/// data flowing continuously. `consumerGone()` is the back-channel: once the client stops
+/// reading, `push` answers `false`, the engine's `onChunk` contract turns that into a
+/// cancelled synthesis, and the producer stops burning compute.
+final class SpeakStreamQueue: @unchecked Sendable {
+    enum Event {
+        case chunk(SynthesizedSpeechChunk)
+        case finished
+        case failed(Error)
+    }
+
+    private let condition = NSCondition()
+    private var chunks: [SynthesizedSpeechChunk] = []
+    private var terminal: Event?   // .finished or .failed, once the producer is done
+    private var cancelled = false
+
+    /// Producer side: enqueue a chunk; returns whether the consumer still wants more.
+    @discardableResult
+    func push(_ chunk: SynthesizedSpeechChunk) -> Bool {
+        condition.lock()
+        defer { condition.unlock() }
+        guard !cancelled else { return false }
+        chunks.append(chunk)
+        condition.signal()
+        return true
+    }
+
+    /// Producer side: no more chunks — completed, or failed with `error`.
+    func finish(error: Error?) {
+        condition.lock()
+        defer { condition.unlock() }
+        terminal = error.map { .failed($0) } ?? .finished
+        condition.signal()
+    }
+
+    /// Consumer side: block until the next event. Chunks drain in order before the terminal
+    /// event is reported, so a fast producer's tail is never dropped.
+    func next() -> Event {
+        condition.lock()
+        defer { condition.unlock() }
+        while true {
+            if !chunks.isEmpty { return .chunk(chunks.removeFirst()) }
+            if let terminal { return terminal }
+            condition.wait()
+        }
+    }
+
+    /// Consumer side: the client stopped reading — stop accepting chunks so the producer
+    /// cancels.
+    func consumerGone() {
+        condition.lock()
+        defer { condition.unlock() }
+        cancelled = true
+        chunks.removeAll()
     }
 }
 
@@ -547,14 +671,46 @@ private func sendResponse(_ fd: Int32, status: Int, contentType: String, body: D
         + "Connection: close\r\n\r\n"
     var out = Data(head.utf8)
     out.append(body)
-    out.withUnsafeBytes { raw in
+    _ = sendAll(fd, out)
+}
+
+// MARK: Chunked transfer (the streaming /speak body)
+
+/// The 200 head of a chunked response. Returns whether the peer took it.
+func sendChunkedHead(_ fd: Int32, contentType: String) -> Bool {
+    let head = "HTTP/1.1 200 OK\r\n"
+        + "Content-Type: \(contentType)\r\n"
+        + "Transfer-Encoding: chunked\r\n"
+        + "Connection: close\r\n\r\n"
+    return sendAll(fd, Data(head.utf8))
+}
+
+/// One chunked-encoding frame: hex size, CRLF, the bytes, CRLF. Empty data is skipped — a
+/// zero-length frame IS the terminator, so sending one mid-stream would truncate the body.
+func sendBodyChunk(_ fd: Int32, _ data: Data) -> Bool {
+    guard !data.isEmpty else { return true }
+    var out = Data("\(String(data.count, radix: 16))\r\n".utf8)
+    out.append(data)
+    out.append(contentsOf: Array("\r\n".utf8))
+    return sendAll(fd, out)
+}
+
+/// The terminal zero-length chunk that marks a chunked body complete.
+func sendChunkedEnd(_ fd: Int32) {
+    _ = sendAll(fd, Data("0\r\n\r\n".utf8))
+}
+
+/// Send every byte or report failure (the peer closed / stopped reading).
+private func sendAll(_ fd: Int32, _ data: Data) -> Bool {
+    data.withUnsafeBytes { raw in
         var sent = 0
         let base = raw.bindMemory(to: UInt8.self).baseAddress!
-        while sent < out.count {
-            let n = send(fd, base + sent, out.count - sent, 0)
-            if n <= 0 { break }
+        while sent < data.count {
+            let n = send(fd, base + sent, data.count - sent, 0)
+            if n <= 0 { return false }
             sent += n
         }
+        return true
     }
 }
 
