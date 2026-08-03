@@ -23,6 +23,20 @@ codesign -f -s - "$STAGED"
 mv -f "$STAGED" "$DEST_DIR/transcribe-cli"
 echo "› Installed $DEST_DIR/transcribe-cli"
 
+# The SPM resource bundles must travel with the binary: `Bundle.module` resolves them beside
+# the executable, so a bundle left behind in .build/ is a runtime FATAL the moment its code
+# path runs (FluidAudio's G2P lexicon dies this way on the first cloned /speak). Stage-and-
+# rename per bundle for the same no-torn-state reason as the binary.
+for bundle in .build/release/*.bundle; do
+  name="$(basename "$bundle")"
+  staged_bundle="$DEST_DIR/.$name.incoming"
+  rm -rf "$staged_bundle"
+  cp -R "$bundle" "$staged_bundle"
+  rm -rf "$DEST_DIR/$name"
+  mv "$staged_bundle" "$DEST_DIR/$name"
+  echo "› Installed $DEST_DIR/$name"
+done
+
 # (Re)load the serve LaunchAgent onto the fresh binary.
 launchctl kickstart -k "gui/$(id -u)/com.fcttechnologies.transcriptionstudio" 2>/dev/null \
   || echo "  (LaunchAgent not loaded yet — load setup/launch-agents/com.fcttechnologies.transcriptionstudio.plist)"

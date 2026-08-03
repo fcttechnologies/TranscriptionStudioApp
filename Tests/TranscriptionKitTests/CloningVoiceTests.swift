@@ -79,7 +79,7 @@ struct PromptTranscriptTests {
             word(" run", 0.6, 1.2),
             word(" Palladium", 5.4, 6.1),  // past the window entirely
         ]
-        #expect(PromptTranscript.matchedText(words: words) == "I have run simulations")
+        #expect(PromptTranscript.matched(words: words).text == "I have run simulations")
     }
 
     /// A word the 5.0 s cut clipped mid-way is transcribed as ending at the audio's end;
@@ -87,13 +87,79 @@ struct PromptTranscriptTests {
     /// drops anything ending inside the last 50 ms.
     @Test func dropsAWordEndingInsideTheCutGuardBand() {
         let words = [word("viable", 4.0, 4.6), word("replacement", 4.6, 4.98)]
-        #expect(PromptTranscript.matchedText(words: words) == "viable")
+        #expect(PromptTranscript.matched(words: words).text == "viable")
         // …while a word that genuinely finishes before the band survives.
-        #expect(PromptTranscript.matchedText(words: [word("done", 4.4, 4.94)]) == "done")
+        #expect(PromptTranscript.matched(words: [word("done", 4.4, 4.94)]).text == "done")
     }
 
-    @Test func emptyInputYieldsEmptyText() {
-        #expect(PromptTranscript.matchedText(words: []) == "")
+    /// The clip cut lands just past the last kept word — the audio must hold exactly the
+    /// transcribed words. A dangling half-word left in the clip is *completed by the model*
+    /// at the start of every generation (the live "a…" seam artifact).
+    @Test func clipCutSitsJustPastTheLastKeptWord() {
+        // Padded tail, capped at the window.
+        let padded = PromptTranscript.matched(words: [word("done", 4.0, 4.5)])
+        #expect(abs(padded.clipSeconds - 4.58) < 0.0001)
+        let atWindow = PromptTranscript.matched(words: [word("done", 4.0, 4.94)])
+        #expect(atWindow.clipSeconds == 5.0)
+    }
+
+    @Test func clipCutNeverPadsIntoADroppedWord() {
+        // "such" kept (ends 4.90), the clipped word starts at 4.93 — the cut must stop there.
+        let words = [word("such", 4.4, 4.90), word("succ-", 4.93, 5.0)]
+        let matched = PromptTranscript.matched(words: words)
+        #expect(matched.text == "such")
+        #expect(abs(matched.clipSeconds - 4.93) < 0.0001)
+    }
+
+    @Test func emptyInputYieldsEmptyPrompt() {
+        #expect(PromptTranscript.matched(words: []) == PromptTranscript.MatchedPrompt(text: "", clipSeconds: 0))
+    }
+
+    /// A transcript ending mid-phrase ("…They were such a") makes the model complete the
+    /// dangling phrase at the start of every generation — heard live as a stray "A." between
+    /// chunks. When a sentence boundary exists inside the window (past the minimum prompt
+    /// length), the prompt ends there instead: complete sentences, nothing to complete.
+    @Test func prefersEndingAtTheLastSentenceBoundary() {
+        let words = [
+            word("Welcome", 0.2, 0.6), word("home,", 0.6, 1.0), word("sir.", 1.0, 1.4),
+            word("Congratulations", 1.8, 2.6), word("on", 2.6, 2.7), word("the", 2.7, 2.8),
+            word("opening", 2.8, 3.2), word("ceremonies.", 3.2, 3.9),
+            word("They", 4.1, 4.3), word("were", 4.3, 4.5), word("such", 4.5, 4.7),
+            word("a", 4.7, 4.8),
+        ]
+        let matched = PromptTranscript.matched(words: words)
+        #expect(matched.text == "Welcome home, sir. Congratulations on the opening ceremonies.")
+        // Cut just past "ceremonies." (3.9 + pad), well before "They" starts.
+        #expect(abs(matched.clipSeconds - 3.98) < 0.0001)
+    }
+
+    /// One long sentence with no internal boundary (the operational clip's shape) keeps the
+    /// full matched window — the exact prompt the bench's decisive clips ran with.
+    @Test func aBoundarylessTranscriptKeepsTheFullWindow() {
+        let words = [
+            word("I", 0.1, 0.2), word("have", 0.2, 0.5), word("run", 0.5, 0.9),
+            word("simulations", 0.9, 1.8), word("on", 1.8, 1.9), word("every", 1.9, 2.3),
+            word("known", 2.3, 2.6), word("element,", 2.6, 3.2), word("and", 3.2, 3.4),
+            word("none", 3.4, 3.7), word("can", 3.7, 3.9), word("serve", 3.9, 4.2),
+            word("as", 4.2, 4.3), word("a", 4.3, 4.4), word("viable", 4.4, 4.8),
+            word("replacement", 4.8, 4.9),
+        ]
+        let matched = PromptTranscript.matched(words: words)
+        #expect(matched.text.hasSuffix("viable replacement"))
+        #expect(abs(matched.clipSeconds - 4.98) < 0.0001)
+    }
+
+    /// A sentence boundary too early in the clip would gut the voice conditioning — below the
+    /// minimum prompt length the full matched window wins over the clean ending.
+    @Test func anEarlySentenceBoundaryDoesNotShortenThePromptBelowTheMinimum() {
+        let words = [
+            word("Yes.", 0.2, 0.5),
+            word("The", 1.0, 1.2), word("results", 1.2, 1.8), word("look", 1.8, 2.2),
+            word("promising", 2.2, 2.9), word("so", 2.9, 3.1), word("far", 3.1, 3.4),
+        ]
+        let matched = PromptTranscript.matched(words: words)
+        #expect(matched.text == "Yes. The results look promising so far")
+        #expect(abs(matched.clipSeconds - 3.48) < 0.0001)
     }
 }
 

@@ -66,28 +66,87 @@ public struct CloningVoiceProfile: Sendable {
     }
 }
 
-/// Builds the prompt transcript matched to what is actually audible in the model's truncated
-/// prompt window. Pure — the ASR words come in, the matched text comes out — so the matching
-/// rules are unit-testable without a model.
+/// Builds the prompt the model actually gets: a transcript of the words fully audible inside
+/// the 5-second window, plus the moment to cut the clip so the audio contains *exactly* those
+/// words. Pure — ASR words in, text + cut point out — so the matching rules are unit-testable
+/// without a model.
+///
+/// Both halves matter. A transcript describing words past the cut makes the model speak them;
+/// and audio carrying a clipped word the transcript can't describe makes the model *complete*
+/// that dangling sound at the start of every generation (a stray "a…" on each chunk, heard
+/// live). So the clip is trimmed at the last kept word's end and the transcript stops there
+/// too — each describes the other exactly.
 public enum PromptTranscript {
-    /// The prompt window the model keeps (it truncates the clip here, mid-word if need be).
+    /// The most prompt the model keeps (it would truncate here itself, mid-word if need be).
     public static let promptWindowSeconds: TimeInterval = 5.0
-    /// Words ending inside this band before the cut are dropped too: a word the cut clipped
-    /// is transcribed by ASR as ending exactly at the audio's end, and a transcript claiming
-    /// a word the audio only half-contains makes the model speak the difference. Dropping a
-    /// genuinely complete final word costs nothing audible; keeping a half-word does.
+    /// Words ending inside this band before the window's edge are dropped: a word the window
+    /// clipped is transcribed by ASR as ending exactly at the audio's end, and dropping a
+    /// genuinely complete final word costs nothing audible where keeping a half-word bleeds.
     public static let cutGuardSeconds: TimeInterval = 0.05
+    /// Breathing room after the last kept word's ASR end — word-end timestamps run a shade
+    /// early, and cutting into the word's own tail would recreate the clipped-word problem
+    /// one word up.
+    public static let tailPadSeconds: TimeInterval = 0.08
+    /// A prompt shorter than this loses too much voice conditioning to be worth a cleaner
+    /// ending — below it, the full matched window wins over a sentence boundary.
+    public static let minSentenceCutSeconds: TimeInterval = 3.0
 
-    /// The transcript of the words fully audible before the cut, in spoken order.
-    public static func matchedText(words: [AsrWord],
-                                   window: TimeInterval = promptWindowSeconds,
-                                   guardBand: TimeInterval = cutGuardSeconds) -> String {
-        words
-            .filter { $0.end <= window - guardBand }
-            .sorted { $0.start < $1.start }
+    /// A derived prompt: the matched transcript and where to cut the clip so the audio holds
+    /// exactly those words. `clipSeconds` is 0 when nothing survived the window.
+    public struct MatchedPrompt: Sendable, Equatable {
+        public let text: String
+        public let clipSeconds: TimeInterval
+
+        public init(text: String, clipSeconds: TimeInterval) {
+            self.text = text
+            self.clipSeconds = clipSeconds
+        }
+    }
+
+    /// The words fully audible before the cut, in spoken order, with the clip cut placed just
+    /// past the last of them — never into a dropped word, never past the window.
+    ///
+    /// When the window's edge lands mid-sentence, the prompt is pulled back to the last
+    /// sentence boundary instead (if that keeps at least `minSentenceCut` of clip): a prompt
+    /// ending mid-phrase — "…They were such a" — makes the model *complete the phrase* at the
+    /// start of every generation, an audible stray syllable on every chunk. A clip with no
+    /// internal boundary keeps its full window unchanged.
+    public static func matched(words: [AsrWord],
+                               window: TimeInterval = promptWindowSeconds,
+                               guardBand: TimeInterval = cutGuardSeconds,
+                               tailPad: TimeInterval = tailPadSeconds,
+                               minSentenceCut: TimeInterval = minSentenceCutSeconds) -> MatchedPrompt {
+        let ordered = words.sorted { $0.start < $1.start }
+        var kept = ordered.filter { $0.end <= window - guardBand }
+        var firstExcluded = ordered.first { $0.end > window - guardBand }
+
+        if let lastKept = kept.last, !endsASentence(lastKept.word),
+           let boundary = kept.lastIndex(where: { endsASentence($0.word) }),
+           kept[boundary].end >= minSentenceCut {
+            firstExcluded = kept[boundary + 1]
+            kept = Array(kept[...boundary])
+        }
+
+        let text = kept
             .map { $0.word.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
             .joined(separator: " ")
+        guard let lastKept = kept.last else { return MatchedPrompt(text: text, clipSeconds: 0) }
+
+        var cut = min(lastKept.end + tailPad, window)
+        // Don't pad into an excluded word — that would re-admit the very sound the exclusion
+        // exists to keep out.
+        if let firstExcluded, firstExcluded.start > lastKept.end {
+            cut = min(cut, firstExcluded.start)
+        }
+        return MatchedPrompt(text: text, clipSeconds: cut)
+    }
+
+    /// Whether an ASR word carries sentence-final punctuation (Whisper attaches it to the
+    /// word's own token, e.g. "ceremonies.").
+    private static func endsASentence(_ word: String) -> Bool {
+        let trimmed = word.trimmingCharacters(in: .whitespaces)
+        return trimmed.hasSuffix(".") || trimmed.hasSuffix("!") || trimmed.hasSuffix("?")
     }
 }
 

@@ -1,3 +1,4 @@
+import AVFoundation
 import FluidAudio
 import Foundation
 import OSLog
@@ -17,10 +18,12 @@ import Synchronization
 ///
 /// - **The 5-second prompt contract.** The model truncates the prompt clip to 5.0 s but trusts
 ///   the transcript it's handed — a transcript describing words past the cut makes it *speak*
-///   them. So the prompt transcript is derived, not stored: the clip's first 5.0 s go through
-///   word-timestamped ASR (injected — the app owns an ASR engine already) and only words fully
-///   inside the window survive (`PromptTranscript`). Derived once per clip content and cached
-///   on disk keyed by the clip's mtime, exactly the old Python voicebox's prompt-cache design.
+///   them, and a clip carrying a half-word the transcript can't describe makes it *complete*
+///   the dangling sound at the start of every generation. So both are derived together: the
+///   clip's first 5.0 s go through word-timestamped ASR (injected — the app owns an ASR engine
+///   already), only words fully inside the window survive, and the clip itself is trimmed to
+///   end just past the last kept word (`PromptTranscript`). Derived once per clip content and
+///   cached on disk keyed by the clip's mtime, the old Python voicebox's prompt-cache design.
 /// - **The ~5.9 s per-call generation cap** (fixed vocoder buckets). Text is sentence-chunked
 ///   (`SentenceChunker`), one generation per sentence, concatenated; a single sentence that
 ///   still overflows is split at word boundaries and retried. Fernando rated the bench's
@@ -42,8 +45,8 @@ public actor LuxTtsCloningEngine: TtsEngine {
     /// In-flight preparation, shared by concurrent `prepare()` callers so the models are
     /// downloaded and loaded exactly once.
     private var preparationTask: Task<Void, Error>?
-    /// voice id → matched prompt transcript, resident so a warm engine derives each once.
-    private var promptTexts: [String: String] = [:]
+    /// voice id → prepared prompt, resident so a warm engine derives each once.
+    private var preparedPrompts: [String: PreparedPrompt] = [:]
 
     /// - Parameters:
     ///   - profile: the voice roster (already loaded — see `CloningVoiceProfile.load`).
@@ -144,15 +147,14 @@ public actor LuxTtsCloningEngine: TtsEngine {
         let reference = try resolvedReference(voice)
         guard let manager else { throw TtsEngineError.notPrepared }
 
-        let promptText = try await promptTranscript(for: reference)
+        let prompt = try await preparedPrompt(for: reference)
         let sentences = SentenceChunker.sentences(in: text)
         guard !sentences.isEmpty else { throw TtsEngineError.emptyText }
 
         let started = Date()
         var totalSamples = 0
         for sentence in sentences {
-            let samples = try await synthesizeChunk(sentence, reference: reference,
-                                                    promptText: promptText, manager: manager)
+            let samples = try await synthesizeChunk(sentence, prompt: prompt, manager: manager)
             totalSamples += samples.count
             guard onChunk(SynthesizedSpeechChunk(samples: samples,
                                                  sampleRate: LuxTtsConstants.outputSampleRate)) else {
@@ -174,18 +176,16 @@ public actor LuxTtsCloningEngine: TtsEngine {
     /// One generation call, split-and-retried when the sentence overflows the port's fixed
     /// shape buckets. Recursion bottoms out when a chunk can't be split further; the model's
     /// own too-long error then surfaces honestly.
-    private func synthesizeChunk(_ chunk: String, reference: CloningVoiceProfile.Reference,
-                                 promptText: String, manager: LuxTtsManager) async throws -> [Float] {
+    private func synthesizeChunk(_ chunk: String, prompt: PreparedPrompt,
+                                 manager: LuxTtsManager) async throws -> [Float] {
         do {
             let result = try await manager.synthesize(
-                text: chunk, promptAudio: reference.audioURL, promptText: promptText)
+                text: chunk, promptAudio: prompt.clipURL, promptText: prompt.text)
             return result.samples
         } catch let error as LuxTtsError {
             if case .inputTooLong = error, let (first, second) = SentenceChunker.halves(of: chunk) {
-                let firstSamples = try await synthesizeChunk(first, reference: reference,
-                                                             promptText: promptText, manager: manager)
-                let secondSamples = try await synthesizeChunk(second, reference: reference,
-                                                              promptText: promptText, manager: manager)
+                let firstSamples = try await synthesizeChunk(first, prompt: prompt, manager: manager)
+                let secondSamples = try await synthesizeChunk(second, prompt: prompt, manager: manager)
                 return firstSamples + secondSamples
             }
             throw TtsEngineError.synthesisFailed(humanReadable(error))
@@ -194,23 +194,35 @@ public actor LuxTtsCloningEngine: TtsEngine {
         }
     }
 
-    // MARK: - Prompt transcript (the 5-second contract)
+    // MARK: - Prompt preparation (the 5-second contract)
 
-    /// The transcript matched to the clip's audible 5.0 s window — resident cache, then the
-    /// disk cache, then derived by ASR. The disk cache is keyed on the clip's mtime, so
-    /// re-cutting a reference re-derives and an unchanged clip pays ASR exactly once ever.
-    private func promptTranscript(for reference: CloningVoiceProfile.Reference) async throws -> String {
-        if let cached = promptTexts[reference.id] { return cached }
+    /// A reference clip made model-ready: the transcript of its audible window and the
+    /// matching trimmed clip on disk. The two describe each other exactly — that is the whole
+    /// contract (see `PromptTranscript`).
+    private struct PreparedPrompt {
+        let text: String
+        let clipURL: URL
+    }
+
+    /// The prepared prompt for a reference — resident cache, then the disk cache, then derived
+    /// by ASR. The disk cache is keyed on the clip's mtime, so re-cutting a reference
+    /// re-derives and an unchanged clip pays ASR exactly once ever.
+    private func preparedPrompt(for reference: CloningVoiceProfile.Reference) async throws -> PreparedPrompt {
+        if let cached = preparedPrompts[reference.id] { return cached }
 
         let clipPath = reference.audioURL.path
         guard let mtime = try? FileManager.default.attributesOfItem(atPath: clipPath)[.modificationDate] as? Date else {
             throw TtsEngineError.synthesisFailed("reference clip missing: \(clipPath)")
         }
 
+        let trimmedURL = promptCacheFolder.appendingPathComponent("\(reference.id).wav")
         if let stored = readCachedTranscript(voiceID: reference.id),
-           stored.clipPath == clipPath, stored.clipMtime == mtime.timeIntervalSince1970 {
-            promptTexts[reference.id] = stored.transcript
-            return stored.transcript
+           stored.rulesVersion == CachedTranscript.currentRules,
+           stored.clipPath == clipPath, stored.clipMtime == mtime.timeIntervalSince1970,
+           FileManager.default.fileExists(atPath: trimmedURL.path) {
+            let prompt = PreparedPrompt(text: stored.transcript, clipURL: trimmedURL)
+            preparedPrompts[reference.id] = prompt
+            return prompt
         }
 
         let allSamples: [Float]
@@ -220,7 +232,7 @@ public actor LuxTtsCloningEngine: TtsEngine {
             throw TtsEngineError.synthesisFailed(
                 "couldn't load the reference clip \(clipPath): \(humanReadable(error))")
         }
-        // ASR sees exactly what the model will hear: the clip cut at the prompt window.
+        // ASR sees the same window the model could keep at most.
         let window = Array(allSamples.prefix(Int(PromptTranscript.promptWindowSeconds * AudioChunk.sampleRate)))
         let segments: [AsrSegment]
         do {
@@ -230,37 +242,67 @@ public actor LuxTtsCloningEngine: TtsEngine {
                 "couldn't transcribe the reference clip \(clipPath): \(humanReadable(error))")
         }
         let words = segments.compactMap(\.words).flatMap { $0 }
-        let transcript = PromptTranscript.matchedText(words: words)
-        guard !transcript.isEmpty else {
+        let matched = PromptTranscript.matched(words: words)
+        guard !matched.text.isEmpty else {
             throw TtsEngineError.synthesisFailed(
                 "no words recognized in the first \(Int(PromptTranscript.promptWindowSeconds))s "
                 + "of the reference clip \(clipPath)")
         }
 
+        try writeTrimmedClip(from: reference.audioURL, to: trimmedURL, seconds: matched.clipSeconds)
         writeCachedTranscript(CachedTranscript(clipPath: clipPath,
                                                clipMtime: mtime.timeIntervalSince1970,
-                                               transcript: transcript),
+                                               transcript: matched.text,
+                                               clipSeconds: matched.clipSeconds),
                               voiceID: reference.id)
-        promptTexts[reference.id] = transcript
+        let prompt = PreparedPrompt(text: matched.text, clipURL: trimmedURL)
+        preparedPrompts[reference.id] = prompt
+        let clipSeconds = matched.clipSeconds
         Logger.tts.info("""
-            Derived the 5s prompt transcript for \(reference.id, privacy: .public): \
-            "\(transcript, privacy: .public)"
+            Derived the prompt for \(reference.id, privacy: .public): \
+            \(clipSeconds, format: .fixed(precision: 2), privacy: .public)s of clip, \
+            "\(matched.text, privacy: .public)"
             """)
-        return transcript
+        return prompt
+    }
+
+    /// The trimmed prompt clip: the reference's first `seconds`, in its own format, so the
+    /// audio the model hears holds exactly the words the transcript claims.
+    private func writeTrimmedClip(from source: URL, to destination: URL, seconds: TimeInterval) throws {
+        do {
+            try FileManager.default.createDirectory(at: promptCacheFolder, withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: destination)
+            let input = try AVAudioFile(forReading: source)
+            let frames = AVAudioFrameCount(seconds * input.processingFormat.sampleRate)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: input.processingFormat, frameCapacity: frames) else {
+                throw TtsEngineError.synthesisFailed("couldn't allocate a prompt trim buffer")
+            }
+            try input.read(into: buffer, frameCount: frames)
+            let output = try AVAudioFile(forWriting: destination, settings: input.fileFormat.settings)
+            try output.write(from: buffer)
+        } catch {
+            throw TtsEngineError.synthesisFailed(
+                "couldn't trim the reference clip \(source.path): \(humanReadable(error))")
+        }
     }
 
     private struct CachedTranscript: Codable {
+        /// Bumped when the matching/trimming rules change — a stale cache would otherwise
+        /// outlive an algorithm fix, because the clip's mtime alone can't see one.
+        static let currentRules = 2
+        var rulesVersion: Int = currentRules
         let clipPath: String
         let clipMtime: TimeInterval
         let transcript: String
+        let clipSeconds: TimeInterval
     }
 
-    private var transcriptCacheFolder: URL {
+    private var promptCacheFolder: URL {
         downloadBase.appendingPathComponent("prompt-transcripts", isDirectory: true)
     }
 
     private func readCachedTranscript(voiceID: String) -> CachedTranscript? {
-        let url = transcriptCacheFolder.appendingPathComponent("\(voiceID).json")
+        let url = promptCacheFolder.appendingPathComponent("\(voiceID).json")
         guard let data = try? Data(contentsOf: url) else { return nil }
         return try? JSONDecoder().decode(CachedTranscript.self, from: data)
     }
@@ -268,9 +310,9 @@ public actor LuxTtsCloningEngine: TtsEngine {
     /// Best-effort: a failed cache write costs a re-derivation next cold start, never the note.
     private func writeCachedTranscript(_ cached: CachedTranscript, voiceID: String) {
         do {
-            try FileManager.default.createDirectory(at: transcriptCacheFolder, withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: promptCacheFolder, withIntermediateDirectories: true)
             let data = try JSONEncoder().encode(cached)
-            try data.write(to: transcriptCacheFolder.appendingPathComponent("\(voiceID).json"))
+            try data.write(to: promptCacheFolder.appendingPathComponent("\(voiceID).json"))
         } catch {
             Logger.tts.error("Couldn't cache the prompt transcript for \(voiceID, privacy: .public): \(error, privacy: .public)")
         }
