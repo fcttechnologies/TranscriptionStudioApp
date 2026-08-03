@@ -79,6 +79,14 @@ public extension FCTToast {
                  duration: .seconds(6), dedupKey: "recording-failed")
     }
 
+    /// Read-aloud couldn't synthesize or play — the model failed to load, or the audio
+    /// engine wouldn't start.
+    static func speakFailed(_ message: String) -> FCTToast {
+        FCTToast(title: "Couldn't speak the transcript", message: message,
+                 systemImage: "speaker.slash", style: .error,
+                 duration: .seconds(6), dedupKey: "speak-failed")
+    }
+
     /// A Photos/file import that couldn't produce a transcodable video.
     static func importFailed(_ message: String) -> FCTToast {
         FCTToast(title: "Couldn't import", message: message,

@@ -5,11 +5,15 @@ import SwiftData
 enum PlaybackIntentError: Error, CustomLocalizedStringResourceConvertible {
     case noAudioAvailable
     case notPlaying
+    case nothingToSpeak
+    case notSpeaking
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
         case .noAudioAvailable: "That transcript has no archived audio to play."
         case .notPlaying: "Nothing is playing right now."
+        case .nothingToSpeak: "That transcript has no text to speak."
+        case .notSpeaking: "Nothing is being spoken right now."
         }
     }
 }
@@ -58,6 +62,70 @@ public struct PlayTranscriptIntent: AppIntent {
         }
         appModel.openSession(id: session.id)
         return .result(opensIntent: OpenAppIntent(), dialog: "Playing \"\(session.title)\".")
+    }
+}
+
+/// Read a transcript aloud with the on-device synthesized voice — distinct from
+/// `PlayTranscriptIntent`, which plays the session's *archived recording*: this speaks the
+/// transcript's text, so it works for sessions with no archived audio at all. Defaults to
+/// the latest transcript, mirroring the rest of the family. Foreground: the voice plays
+/// from the app process, and the mini-player carries its transport.
+public struct SpeakTranscriptIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Speak Transcript"
+    public static let description = IntentDescription(
+        "Read a transcript aloud with the on-device voice in Transcription Studio. Defaults to your latest transcript.")
+    public static let supportedModes: IntentModes = .foreground(.dynamic)
+
+    @Parameter(title: "Transcript", description: "Which transcript to speak. Defaults to your latest.")
+    public var target: TranscriptSessionEntity?
+
+    @Dependency private var appModel: AppModel
+
+    public init() {}
+
+    @MainActor
+    public func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+        let id: UUID?
+        if let target {
+            id = UUID(uuidString: target.id)
+        } else {
+            id = TranscriptSessionStore.latestEntityAndText().flatMap { UUID(uuidString: $0.entity.id) }
+        }
+        guard let id else { throw TranscriptionIntentError.noTranscripts }
+
+        let context = appModel.modelContext
+        let predicate = #Predicate<TranscriptSession> { $0.id == id }
+        var descriptor = FetchDescriptor(predicate: predicate)
+        descriptor.fetchLimit = 1
+        guard let session = try context.fetch(descriptor).first,
+              // The entity read-path already withholds private sessions; belt-and-suspenders
+              // here because a locked transcript spoken aloud is the canonical privacy hole.
+              PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) else {
+            throw TranscriptionIntentError.noTranscripts
+        }
+        guard !(session.segments ?? []).isEmpty else { throw PlaybackIntentError.nothingToSpeak }
+
+        appModel.startReadAloud(session: session)
+        appModel.openSession(id: session.id)
+        return .result(opensIntent: OpenAppIntent(), dialog: "Speaking \"\(session.title)\".")
+    }
+}
+
+/// Stop the on-device voice — the symmetric exit for a reading Siri started.
+public struct StopSpeakingIntent: AppIntent {
+    public static let title: LocalizedStringResource = "Stop Speaking"
+    public static let description = IntentDescription(
+        "Stop Transcription Studio's on-device voice reading a transcript aloud.")
+
+    @Dependency private var appModel: AppModel
+
+    public init() {}
+
+    @MainActor
+    public func perform() async throws -> some IntentResult & ProvidesDialog {
+        guard appModel.readAloud.isActive else { throw PlaybackIntentError.notSpeaking }
+        appModel.readAloud.stop()
+        return .result(dialog: "Stopped speaking.")
     }
 }
 

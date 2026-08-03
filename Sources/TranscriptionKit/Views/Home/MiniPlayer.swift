@@ -14,6 +14,10 @@ struct MiniPlayerBar: View {
                 RecordingMiniPlayer(recording: app.recording) {
                     app.activeSheet = .liveRecording
                 }
+            } else if app.readAloud.isActive, let nowSpeaking = app.readAloud.nowSpeaking {
+                SpeakingMiniPlayer(readAloud: app.readAloud, nowSpeaking: nowSpeaking) {
+                    app.openSession(id: nowSpeaking.sessionID)
+                }
             } else if app.playback.hasLoadedAudio, let nowPlaying = app.playback.nowPlaying {
                 PlaybackMiniPlayer(playback: app.playback, nowPlaying: nowPlaying) {
                     app.openSession(id: nowPlaying.sessionID)
@@ -22,7 +26,7 @@ struct MiniPlayerBar: View {
         }
         .transition(.motionAware(.bottom, reduceMotion: reduceMotion))
         .animation(reduceMotion ? nil : DesignMetrics.standardSpring,
-                   value: app.recording.isActive || app.playback.hasLoadedAudio)
+                   value: app.recording.isActive || app.readAloud.isActive || app.playback.hasLoadedAudio)
     }
 }
 
@@ -87,6 +91,81 @@ private struct RecordingMiniPlayer: View {
     private func preparingLine(_ progress: EnginePreparationProgress) -> String {
         guard let fraction = progress.fraction else { return progress.phase }
         return "\(progress.phase) \(Int(fraction * 100))%"
+    }
+}
+
+/// The read-aloud pill — the on-device voice speaking a transcript. Shows model preparation
+/// as its own quiet state (the first use downloads the synthesis model), then the speaking
+/// title with pause/resume and a stop that puts the voice away. Expands to the transcript.
+private struct SpeakingMiniPlayer: View {
+    let readAloud: ReadAloudController
+    let nowSpeaking: ReadAloudController.NowSpeaking
+    let expand: () -> Void
+
+    var body: some View {
+        Button(action: expand) {
+            HStack(spacing: DesignMetrics.spacingM) {
+                switch readAloud.phase {
+                case .preparing(let phaseText, let fraction):
+                    ProgressView().controlSize(.small)
+                    Text(fraction.map { "\(phaseText) \(Int($0 * 100))%" } ?? phaseText)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .contentTransition(.numericText())
+                    Spacer(minLength: 0)
+                case .speaking, .paused, .idle:
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.body)
+                        .foregroundStyle(.tint)
+                        .frame(width: DesignMetrics.miniPlayerTileSize,
+                               height: DesignMetrics.miniPlayerTileSize)
+                        .background(Color.accentColor.opacity(0.12),
+                                    in: RoundedRectangle(cornerRadius: DesignMetrics.cornerS, style: .continuous))
+                        .symbolEffect(.variableColor.iterative,
+                                      isActive: readAloud.phase == .speaking)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(nowSpeaking.title)
+                            .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                        Text(readAloud.phase == .paused ? "Paused" : "Speaking")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    Button {
+                        readAloud.togglePause()
+                    } label: {
+                        Image(systemName: readAloud.phase == .paused ? "play.fill" : "pause.fill")
+                            .font(.body.weight(.semibold))
+                            .frame(width: 32, height: 32)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .accessibilityLabel(readAloud.phase == .paused ? "Resume speaking" : "Pause speaking")
+                }
+                Button {
+                    readAloud.stop()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(PressableButtonStyle())
+                .accessibilityLabel("Stop speaking")
+            }
+            .padding(.horizontal, DesignMetrics.spacingL)
+            .frame(height: DesignMetrics.miniPlayerHeight)
+            .frame(maxWidth: DesignMetrics.feedMaxWidth)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PressableButtonStyle())
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .padding(.horizontal, DesignMetrics.spacingL)
+        .accessibilityIdentifier("home.miniPlayer.speaking")
+        .accessibilityLabel("Speaking \(nowSpeaking.title). Opens the transcript.")
     }
 }
 

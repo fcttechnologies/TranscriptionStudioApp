@@ -18,6 +18,8 @@ struct AppIntentExecutionPolicyTests {
             RenameTranscriptIntent.allowedExecutionTargets,
             PlayTranscriptIntent.allowedExecutionTargets,
             PausePlaybackIntent.allowedExecutionTargets,
+            SpeakTranscriptIntent.allowedExecutionTargets,
+            StopSpeakingIntent.allowedExecutionTargets,
         ]
 
         #expect(targets.allSatisfy { $0 == .main })

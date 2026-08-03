@@ -63,6 +63,13 @@ enum TranscriptionIntentDonations {
         _ = try? await intent.donate()
     }
 
+    static func donateSpeakTranscript(_ session: TranscriptSessionEntity) async {
+        guard donationsEnabled else { return }
+        let intent = SpeakTranscriptIntent()
+        intent.target = session
+        _ = try? await intent.donate()
+    }
+
     static func donateExportTranscript(_ session: TranscriptSessionEntity, format: TranscriptExport.Format) async {
         guard donationsEnabled else { return }
         let intent = ExportTranscriptIntent()

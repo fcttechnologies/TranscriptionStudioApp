@@ -54,6 +54,7 @@ public final class AppModel {
     // Live controllers.
     public let recording: RecordingController
     public let playback: PlaybackController
+    public let readAloud: ReadAloudController
 
     // Shell state — the single-view home presents at most one sheet at a time.
     /// The sheet the shell is presenting (nil → the bare feed). Set by the toolbar
@@ -144,8 +145,18 @@ public final class AppModel {
             }
         }
         playback.unload()
+        readAloud.stop()
         recording.start(mode: mode)
         activeSheet = .liveRecording
+    }
+
+    /// Read a session's transcript aloud with the on-device voice — the "Speak Transcript"
+    /// action and `SpeakTranscriptIntent` both land here. One audio surface at a time: any
+    /// loaded playback is put away first (and starting playback stops the voice — see the
+    /// transport hook wired in `init`).
+    public func startReadAloud(session: TranscriptSession) {
+        playback.unload()
+        readAloud.speak(session: session)
     }
 
     /// Stop the live recording and open the saved session's transcript once the engines
@@ -177,7 +188,8 @@ public final class AppModel {
                 captureFactory: @escaping RecordingController.CaptureFactory,
                 asrEngineProvider: (@MainActor (String) -> any AsrEngine)? = nil,
                 diarizerProvider: (@MainActor (AppSettings.DiarizerBackend) -> any DiarizationEngine)? = nil,
-                urlDownloader: (any URLAudioDownloading)? = nil) {
+                urlDownloader: (any URLAudioDownloading)? = nil,
+                ttsEngineFactory: @escaping @Sendable () -> any TtsEngine = { TTSKitTtsEngine() }) {
         self.inspector = inspector
         self.recorder = recorder
         self.loadSampler = SystemLoadSampler(store: inspector)
@@ -191,6 +203,7 @@ public final class AppModel {
         self.diarizerProvider = diarizerProvider
         self.urlDownloader = urlDownloader
         self.playback = PlaybackController()
+        self.readAloud = ReadAloudController(makeEngine: ttsEngineFactory)
         self.recording = RecordingController(asr: asr,
                                              diarizer: diarizer,
                                              recorder: recorder,
@@ -199,6 +212,10 @@ public final class AppModel {
                                              modelContext: modelContext,
                                              settings: self.settings,
                                              captureFactory: captureFactory)
+        // One audio surface at a time, whichever direction the switch happens: starting
+        // archived-audio playback silences the read-aloud voice (the reverse is
+        // `startReadAloud`, and recording clears both in `requestRecording`).
+        playback.onTransportWillStart = { [weak self] in self?.readAloud.stop() }
         registerActivityActions()
     }
 
@@ -241,7 +258,8 @@ public final class AppModel {
                   asr: asr,
                   diarizer: diarizer,
                   crossCheckDiarizer: crossCheckDiarizer,
-                  captureFactory: captureFactory)
+                  captureFactory: captureFactory,
+                  ttsEngineFactory: { MockTtsEngine() })
     }
 
     /// Build the real app: WhisperKit ASR, the default diarization backend (the other

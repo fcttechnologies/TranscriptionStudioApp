@@ -36,6 +36,10 @@ public final class PlaybackController {
     /// The current playback speed (persists across sessions until changed).
     public private(set) var playbackRate: Float = 1
 
+    /// Fired just before playback starts (play or resume) — the hook `AppModel` uses to
+    /// silence the read-aloud voice, so two audio surfaces never speak over each other.
+    @ObservationIgnored public var onTransportWillStart: (() -> Void)?
+
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var ticker: Task<Void, Never>?
     @ObservationIgnored private let systemPlayer = NowPlayingCoordinator()
@@ -115,6 +119,7 @@ public final class PlaybackController {
     /// Seek to a time and start playing — used by tap-to-play on a segment.
     public func play(from time: TimeInterval) {
         guard let player else { return }
+        onTransportWillStart?()
         activatePlaybackSession()
         player.currentTime = min(max(time, 0), max(player.duration - 0.01, 0))
         player.play()
@@ -132,6 +137,7 @@ public final class PlaybackController {
             isPlaying = false
             ticker?.cancel()
         } else {
+            onTransportWillStart?()
             activatePlaybackSession()
             player.play()
             player.rate = playbackRate

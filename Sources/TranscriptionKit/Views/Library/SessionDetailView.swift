@@ -90,6 +90,14 @@ public struct SessionDetailView: View {
                     Menu {
                         Button("Rename", systemImage: "pencil") { beginRenaming() }
                         Button("Copy Transcript", systemImage: "doc.on.doc") { copyTranscript() }
+                        if !(session.segments ?? []).isEmpty {
+                            Button("Speak Transcript", systemImage: "speaker.wave.2") {
+                                app.startReadAloud(session: session)
+                                let entity = TranscriptSessionEntity(session)
+                                Task { await TranscriptionIntentDonations.donateSpeakTranscript(entity) }
+                            }
+                            .accessibilityIdentifier("session.speak")
+                        }
                         Toggle(isOn: confidenceBinding) {
                             Label("Highlight Confidence", systemImage: "text.magnifyingglass")
                         }

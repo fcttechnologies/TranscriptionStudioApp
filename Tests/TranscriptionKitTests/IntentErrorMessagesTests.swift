@@ -37,11 +37,10 @@ struct IntentErrorMessagesTests {
     }
 
     @Test func playbackErrorsHaveDistinctNonEmptyMessages() {
-        let noAudio = String(localized: PlaybackIntentError.noAudioAvailable.localizedStringResource)
-        let notPlaying = String(localized: PlaybackIntentError.notPlaying.localizedStringResource)
-        #expect(!noAudio.isEmpty)
-        #expect(!notPlaying.isEmpty)
-        #expect(noAudio != notPlaying)
+        let messages = [PlaybackIntentError.noAudioAvailable, .notPlaying, .nothingToSpeak, .notSpeaking]
+            .map { String(localized: $0.localizedStringResource) }
+        #expect(messages.allSatisfy { !$0.isEmpty })
+        #expect(Set(messages).count == messages.count)
     }
 }
 
@@ -52,7 +51,9 @@ struct StoredModelDetailTests {
     @Test func detailDistinguishesSpeechFromDiarization() {
         let whisper = StoredModel(kind: .whisper(.base), paths: [], bytes: 0)
         let diarizer = StoredModel(kind: .diarizer, paths: [], bytes: 0)
+        let synthesis = StoredModel(kind: .speechSynthesis, paths: [], bytes: 0)
         #expect(whisper.detail == "Speech recognition")
         #expect(diarizer.detail == "Speaker diarization")
+        #expect(synthesis.detail == "Speech synthesis")
     }
 }

@@ -91,6 +91,7 @@ public struct StartRecordingIntent: AppIntent {
         try await MainActor.run {
             guard !appModel.recording.isRecording else { throw TranscriptionIntentError.alreadyRecording }
             appModel.playback.unload()
+            appModel.readAloud.stop()
             appModel.recording.start(mode: mode.controllerMode)
             appModel.activeSheet = .liveRecording
         }

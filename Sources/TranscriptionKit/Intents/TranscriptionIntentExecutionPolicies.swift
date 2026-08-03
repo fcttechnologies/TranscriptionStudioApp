@@ -54,3 +54,13 @@ extension PlayTranscriptIntent {
 extension PausePlaybackIntent {
     public static var allowedExecutionTargets: IntentExecutionTargets { .main }
 }
+
+@available(iOS 27.0, *)
+extension SpeakTranscriptIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}
+
+@available(iOS 27.0, *)
+extension StopSpeakingIntent {
+    public static var allowedExecutionTargets: IntentExecutionTargets { .main }
+}
