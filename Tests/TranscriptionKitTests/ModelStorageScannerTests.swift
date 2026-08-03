@@ -89,7 +89,8 @@ struct ModelStorageScannerTests {
             try write(5_000, to: whisperVariantDir(in: base, variant: "openai_whisper-base").appendingPathComponent("a.bin"))
 
             let models = ModelStorageScanner.scan(whisperKitDownloadBase: base,
-                                                  sortformerRoot: base.appendingPathComponent("no-sortformer-here"))
+                                                  sortformerRoot: base.appendingPathComponent("no-sortformer-here"),
+                                                  speechSynthesisRoot: base.appendingPathComponent("no-ttskit-here"))
             #expect(models.map(\.kind) == [.whisper(.base), .whisper(.tiny)])
         }
     }
@@ -123,6 +124,63 @@ struct ModelStorageScannerTests {
         try withTempDir { root in
             let models = ModelStorageScanner.scanSortformerModel(root: root)
             #expect(models.isEmpty)
+        }
+    }
+
+    // MARK: - Speech synthesis (TTSKit) scanning
+
+    /// Mimics the engine's real layout: weights + tokenizer + Hub bookkeeping all under one
+    /// `ttskit` root that exists solely for synthesis.
+    @Test func findsTheSynthesisModelAndSumsTheWholeRoot() throws {
+        try withTempDir { base in
+            let root = base.appendingPathComponent("ttskit", isDirectory: true)
+            try write(3_000, to: root.appendingPathComponent("models/argmaxinc/ttskit-coreml/qwen3_tts/code_decoder.mlmodelc/weights.bin"))
+            try write(1_000, to: root.appendingPathComponent("models/Qwen/Qwen3-0.6B/tokenizer.json"))
+            try write(200, to: root.appendingPathComponent("models/argmaxinc/ttskit-coreml/.cache/huggingface/metadata"))
+
+            let models = ModelStorageScanner.scanSpeechSynthesisModel(root: root)
+            #expect(models.count == 1)
+            #expect(models[0].kind == .speechSynthesis)
+            // The whole root is the footprint — weights, tokenizer, AND the Hub bookkeeping.
+            #expect(models[0].bytes == 4_200)
+            #expect(models[0].paths == [root])
+        }
+    }
+
+    @Test func findsNoSynthesisModelWhenTheRootIsMissingOrEmpty() throws {
+        try withTempDir { base in
+            #expect(ModelStorageScanner.scanSpeechSynthesisModel(root: base.appendingPathComponent("never-created")).isEmpty)
+
+            let empty = base.appendingPathComponent("ttskit", isDirectory: true)
+            try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+            #expect(ModelStorageScanner.scanSpeechSynthesisModel(root: empty).isEmpty)
+        }
+    }
+
+    @Test func scanListsSynthesisBesideTheAsrModelsSortedBySize() throws {
+        try withTempDir { base in
+            try write(5_000, to: whisperVariantDir(in: base, variant: "openai_whisper-base").appendingPathComponent("a.bin"))
+            let ttsRoot = base.appendingPathComponent("ttskit", isDirectory: true)
+            try write(9_000, to: ttsRoot.appendingPathComponent("models/argmaxinc/ttskit-coreml/weights.bin"))
+
+            let models = ModelStorageScanner.scan(whisperKitDownloadBase: base,
+                                                  sortformerRoot: base.appendingPathComponent("no-sortformer-here"),
+                                                  speechSynthesisRoot: ttsRoot)
+            #expect(models.map(\.kind) == [.speechSynthesis, .whisper(.base)])
+        }
+    }
+
+    @Test func rescanAfterDeletingTheSynthesisModelNoLongerFindsIt() throws {
+        try withTempDir { base in
+            let root = base.appendingPathComponent("ttskit", isDirectory: true)
+            try write(500, to: root.appendingPathComponent("models/argmaxinc/ttskit-coreml/weights.bin"))
+            let found = ModelStorageScanner.scanSpeechSynthesisModel(root: root)
+            #expect(found.count == 1)
+
+            try ModelStorageScanner.delete(found[0])
+
+            #expect(!FileManager.default.fileExists(atPath: root.path))
+            #expect(ModelStorageScanner.scanSpeechSynthesisModel(root: root).isEmpty)
         }
     }
 

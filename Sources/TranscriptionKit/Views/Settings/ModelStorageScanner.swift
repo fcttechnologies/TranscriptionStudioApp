@@ -7,6 +7,7 @@ public struct StoredModel: Identifiable, Sendable, Equatable {
     public enum Kind: Sendable, Equatable {
         case whisper(AppSettings.WhisperModel)
         case diarizer
+        case speechSynthesis
     }
 
     public let kind: Kind
@@ -20,6 +21,7 @@ public struct StoredModel: Identifiable, Sendable, Equatable {
         switch kind {
         case .whisper(let model): "whisper.\(model.rawValue)"
         case .diarizer: "diarizer"
+        case .speechSynthesis: "tts"
         }
     }
 
@@ -27,6 +29,7 @@ public struct StoredModel: Identifiable, Sendable, Equatable {
         switch kind {
         case .whisper(let model): model.displayName
         case .diarizer: "Streaming Sortformer"
+        case .speechSynthesis: "Qwen3 TTS"
         }
     }
 
@@ -34,6 +37,7 @@ public struct StoredModel: Identifiable, Sendable, Equatable {
         switch kind {
         case .whisper: "Speech recognition"
         case .diarizer: "Speaker diarization"
+        case .speechSynthesis: "Speech synthesis"
         }
     }
 }
@@ -43,8 +47,11 @@ public struct StoredModel: Identifiable, Sendable, Equatable {
 public enum ModelStorageScanner {
     /// Every model variant present on disk right now, largest first.
     public static func scan(whisperKitDownloadBase: URL = WhisperKitAsrEngine.defaultDownloadBase(),
-                            sortformerRoot: URL = SortformerModelStore().root) -> [StoredModel] {
-        (scanWhisperKitModels(downloadBase: whisperKitDownloadBase) + scanSortformerModel(root: sortformerRoot))
+                            sortformerRoot: URL = SortformerModelStore().root,
+                            speechSynthesisRoot: URL = TTSKitTtsEngine.defaultDownloadBase()) -> [StoredModel] {
+        (scanWhisperKitModels(downloadBase: whisperKitDownloadBase)
+            + scanSortformerModel(root: sortformerRoot)
+            + scanSpeechSynthesisModel(root: speechSynthesisRoot))
             .sorted { $0.bytes > $1.bytes }
     }
 
@@ -97,6 +104,18 @@ public enum ModelStorageScanner {
         let bytes = paths.reduce(Int64(0)) { $0 + pathSize($1) }
         guard bytes > 0 else { return [] }
         return [StoredModel(kind: .diarizer, paths: paths, bytes: bytes)]
+    }
+
+    // MARK: - Speech synthesis (TTSKit)
+
+    /// The synthesis engine's download base (`…/Models/ttskit`) — the CoreML weights, the
+    /// tokenizer, and the Hub client's bookkeeping. Everything under this root exists solely
+    /// for synthesis (unlike the Sortformer store's root, which also holds shared metadata),
+    /// so the root itself is the model's exact footprint and deletion owns the whole directory.
+    static func scanSpeechSynthesisModel(root: URL) -> [StoredModel] {
+        let bytes = pathSize(root)
+        guard bytes > 0 else { return [] }
+        return [StoredModel(kind: .speechSynthesis, paths: [root], bytes: bytes)]
     }
 
     // MARK: - Sizing

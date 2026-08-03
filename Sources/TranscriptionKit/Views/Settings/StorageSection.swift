@@ -57,6 +57,8 @@ struct StorageSection: View {
         switch model.kind {
         case .whisper(let variant): variant == app.settings.whisperModel
         case .diarizer: app.settings.diarizerBackend == .sortformer
+        // Synthesis has one model and no picker, so no "Selected" badge to earn.
+        case .speechSynthesis: false
         }
     }
 
