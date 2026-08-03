@@ -70,6 +70,14 @@ actor WarmEngine {
         }
     }
 
+    /// Transcribe prepared 16 kHz mono samples with word timestamps — the cloning engine's
+    /// prompt-matching ASR, riding the same warm model (and idle clock) as every transcription.
+    func transcribeWithWordTimestamps(samples: [Float]) async throws -> [AsrSegment] {
+        let e = try await ensureLoaded()
+        lastUsed = Date()
+        return try await e.transcribe(samples: samples, track: .mixed, wordTimestamps: true)
+    }
+
     /// Release the model if it's been idle past the timeout (the idle reaper calls this).
     func reapIfIdle() {
         guard idleTimeout > 0, engine != nil else { return }

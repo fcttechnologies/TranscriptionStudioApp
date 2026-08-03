@@ -16,7 +16,9 @@ struct TranscribeCLI {
                           [--language <code>]
            transcribe-cli --serve [--port <n>] [--idle-timeout <s>] [--preload]
                           [--model <whisperkit-variant>] [--language <code>]
+                          [--voice-profile <path>]
            transcribe-cli speak <text> --out <path> [--voice <name>] [--language <name>]
+                          [--voice-profile <path>]
 
     ONE-SHOT (default): transcribe a single URL or file and exit.
       <url-or-file>    An http(s) URL (any yt-dlp-supported source) or a local
@@ -42,6 +44,7 @@ struct TranscribeCLI {
       --out <path>     Where to write the audio — 16-bit mono WAV (required).
       --voice <name>   Preset voice (default: \(TTSKitTtsEngine.defaultVoice)).
                        One of: \(TTSKitTtsEngine.supportedVoices.joined(separator: ", ")).
+                       With --voice-profile, also any of the profile's cloned voice ids.
       --language <n>   Spoken language (default: \(TTSKitTtsEngine.defaultLanguage)).
                        One of: \(TTSKitTtsEngine.supportedLanguages.joined(separator: ", ")).
                        The synthesis model downloads on first use (progress on stderr).
@@ -49,6 +52,11 @@ struct TranscribeCLI {
     Shared:
       --model <name>   WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
                        Downloaded on first use if missing (progress on stderr).
+      --voice-profile <path>  A voice-profile.json naming reference clips for zero-shot
+                       voice CLONING (CoreML LuxTTS). Each reference id becomes a voice
+                       beside the presets — ask for one by name; no voice still means the
+                       preset default. The cloning model (~346 MB) downloads on the first
+                       cloned request.
     """
 
     static func main() async {
@@ -67,6 +75,7 @@ struct TranscribeCLI {
         var port: UInt16 = 8000
         var idleTimeout: TimeInterval = 600
         var preload = false
+        var voiceProfilePath: String?
 
         var arguments = CommandLine.arguments.dropFirst().makeIterator()
         while let argument = arguments.next() {
@@ -89,6 +98,9 @@ struct TranscribeCLI {
                 idleTimeout = s
             case "--preload":
                 preload = true
+            case "--voice-profile":
+                guard let path = arguments.next() else { exitUsage("--voice-profile needs a value") }
+                voiceProfilePath = path
             case "--help", "-h":
                 print(usage)
                 exit(0)
@@ -101,7 +113,8 @@ struct TranscribeCLI {
 
         if serve {
             await runServe(port: port, idleTimeout: idleTimeout, preload: preload,
-                           modelName: modelName, forcedLanguage: forcedLanguage)
+                           modelName: modelName, forcedLanguage: forcedLanguage,
+                           voiceProfilePath: voiceProfilePath)
             return  // runServe never returns on success (blocks on accept); returns only to exit
         }
 
@@ -134,9 +147,12 @@ struct TranscribeCLI {
     /// may never ask for would double the resident footprint on a personal machine for nothing.
     /// Synthesis loads on its first `/speak` and then stays warm on the same idle rules.
     static func runServe(port: UInt16, idleTimeout: TimeInterval, preload: Bool,
-                         modelName: String, forcedLanguage: String?) async {
+                         modelName: String, forcedLanguage: String?,
+                         voiceProfilePath: String?) async {
         let warm = WarmEngine(modelName: modelName, forcedLanguage: forcedLanguage, idleTimeout: idleTimeout)
-        let speech = WarmTTSEngine(idleTimeout: idleTimeout)
+        let speech = WarmTTSEngine(idleTimeout: idleTimeout,
+                                   makeEngine: makeSpeechEngine(voiceProfilePath: voiceProfilePath,
+                                                                warmAsr: warm))
 
         if preload {
             status("Preloading \(modelName)…")
@@ -170,6 +186,49 @@ struct TranscribeCLI {
         }
     }
 
+    // MARK: - Synthesis engine factory
+
+    /// The synthesis engine for a serve process or a one-shot speak: preset-only without a
+    /// voice profile, the preset/cloning router with one. The profile file is loaded HERE —
+    /// eagerly — so a bad profile fails the process at startup with a clear message, never a
+    /// first `/speak` days later (`WarmTTSEngine.makeEngine` can't throw).
+    ///
+    /// The cloner's prompt-matching ASR rides the serve's warm recognition engine when there
+    /// is one (same model, same idle clock); a one-shot speak builds its own. Either way the
+    /// derived transcript is disk-cached per clip, so the ASR cost is paid once per reference,
+    /// not per note.
+    static func makeSpeechEngine(voiceProfilePath: String?,
+                                 warmAsr: WarmEngine?) -> @Sendable () -> any TtsEngine {
+        guard let voiceProfilePath else {
+            return { TTSKitTtsEngine() }
+        }
+        let profileURL = URL(fileURLWithPath: (voiceProfilePath as NSString).expandingTildeInPath)
+        let profile: CloningVoiceProfile
+        do {
+            profile = try CloningVoiceProfile.load(from: profileURL)
+        } catch {
+            fail(error.localizedDescription)
+        }
+        status("Voice cloning enabled: \(profile.voiceIDs.joined(separator: ", "))")
+        let promptAsr: LuxTtsCloningEngine.PromptAsr
+        if let warmAsr {
+            promptAsr = { samples in try await warmAsr.transcribeWithWordTimestamps(samples: samples) }
+        } else {
+            promptAsr = { samples in
+                let asr = WhisperKitAsrEngine()
+                try await asr.prepare { _ in }
+                return try await asr.transcribe(samples: samples, track: .mixed, wordTimestamps: true)
+            }
+        }
+        return {
+            VoiceRoutingTtsEngine(
+                preset: TTSKitTtsEngine(),
+                presetVoices: TTSKitTtsEngine.supportedVoices,
+                cloning: LuxTtsCloningEngine(profile: profile, promptAsr: promptAsr),
+                cloningVoices: profile.voiceIDs)
+        }
+    }
+
     // MARK: - Speak
 
     /// `transcribe-cli speak <text> --out <path>` — synthesize on-device and write a WAV.
@@ -180,6 +239,7 @@ struct TranscribeCLI {
         var outputPath: String?
         var voice: String?
         var language: String?
+        var voiceProfilePath: String?
 
         var argumentIterator = arguments.makeIterator()
         while let argument = argumentIterator.next() {
@@ -193,6 +253,9 @@ struct TranscribeCLI {
             case "--language":
                 guard let value = argumentIterator.next() else { exitUsage("--language needs a value") }
                 language = value
+            case "--voice-profile":
+                guard let value = argumentIterator.next() else { exitUsage("--voice-profile needs a value") }
+                voiceProfilePath = value
             case "--help", "-h":
                 print(usage)
                 exit(0)
@@ -207,7 +270,7 @@ struct TranscribeCLI {
         guard let outputPath else { exitUsage("speak needs --out <path>") }
 
         do {
-            let engine = TTSKitTtsEngine()
+            let engine = makeSpeechEngine(voiceProfilePath: voiceProfilePath, warmAsr: nil)()
             // Fail on a bad voice/language before downloading a gigabyte of weights.
             try engine.validate(text: text, voice: voice, language: language)
 
