@@ -312,8 +312,15 @@ public actor WhisperKitAsrEngine: AsrEngine {
         }
 
         onProgress(EnginePreparationProgress(phase: "Loading speech model", fraction: nil))
+        // `tokenizerFolder` is where WhisperKit caches the tokenizer, and it must be the app's
+        // own model directory: left unset it defaults to the Hub client's `~/Documents/huggingface`,
+        // and Documents is TCC-protected. Under the 24/7 serve LaunchAgent there is no session
+        // that can answer an access prompt, so reading a tokenizer file there blocks in the
+        // kernel forever and a transcription request never returns — the file's metadata is
+        // still visible, so the search finds it and then hangs on open.
         let config = WhisperKitConfig(
             modelFolder: modelFolder.path,
+            tokenizerFolder: downloadBase,
             verbose: false,
             logLevel: .error,
             prewarm: true,

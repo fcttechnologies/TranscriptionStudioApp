@@ -57,6 +57,31 @@ struct TtsVoiceResolutionTests {
         }
     }
 
+    /// The trap this pins: the Hub client's default cache is `~/Documents/huggingface`, and
+    /// Documents is TCC-protected. Under the 24/7 serve LaunchAgent there is no session to
+    /// answer the access prompt, so an `open()` there blocks in the kernel forever and a
+    /// `/speak` request never returns — observed live, before the tokenizer was pinned to the
+    /// app's own model directory. Every file this engine reads has to live under its download
+    /// base.
+    @Test func everyModelFileLivesUnderTheAppsOwnDownloadBaseNotAProtectedFolder() {
+        let base = TTSKitTtsEngine.defaultDownloadBase()
+        let tokenizer = TTSKitTtsEngine.tokenizerFolder(inDownloadBase: base)
+        #expect(tokenizer.path.hasPrefix(base.path + "/"))
+
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        #expect(!base.path.hasPrefix(documents.path + "/"))
+        #expect(!tokenizer.path.hasPrefix(documents.path + "/"))
+        #expect(base.path.contains("Application Support/TranscriptionStudio"))
+    }
+
+    @Test func theTokenizerFolderFollowsTheHubsOwnRepoLayout() {
+        let base = URL(fileURLWithPath: "/tmp/tts-base")
+        // Must match `HubApi.localRepoLocation` (`<base>/<repoType>/<repoId>`) or the
+        // already-downloaded check would miss the files the Hub client just wrote.
+        #expect(TTSKitTtsEngine.tokenizerFolder(inDownloadBase: base).path
+                == "/tmp/tts-base/models/Qwen/Qwen3-0.6B")
+    }
+
     @Test func validateRejectsEmptyAndWhitespaceOnlyText() {
         let engine = TTSKitTtsEngine()
         #expect(throws: TtsEngineError.emptyText) { try engine.validate(text: "", voice: nil, language: nil) }

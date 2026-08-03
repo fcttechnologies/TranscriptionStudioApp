@@ -12,7 +12,15 @@ mkdir -p "$DEST_DIR"
 
 echo "› Building transcribe-cli (release)…"
 swift build -c release --product transcribe-cli
-cp .build/release/transcribe-cli "$DEST_DIR/transcribe-cli"
+
+# Install to a fresh file and rename over the old one, re-signing on the way. The binary is
+# ad-hoc signed, and overwriting one IN PLACE leaves the kernel holding a signature that no
+# longer matches the bytes — it then SIGKILLs the process the instant it launches, taking the
+# 24/7 service down with no error in any log. A new inode plus a fresh signature avoids both.
+STAGED="$DEST_DIR/.transcribe-cli.incoming"
+cp .build/release/transcribe-cli "$STAGED"
+codesign -f -s - "$STAGED"
+mv -f "$STAGED" "$DEST_DIR/transcribe-cli"
 echo "› Installed $DEST_DIR/transcribe-cli"
 
 # (Re)load the serve LaunchAgent onto the fresh binary.

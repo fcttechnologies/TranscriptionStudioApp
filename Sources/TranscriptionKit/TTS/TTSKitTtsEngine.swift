@@ -40,6 +40,18 @@ public actor TTSKitTtsEngine: TtsEngine {
         return appSupport.appendingPathComponent("TranscriptionStudio/Models/ttskit", isDirectory: true)
     }
 
+    /// Where the tokenizer's files are cached: under this engine's own download base, never the
+    /// Hub client's default.
+    ///
+    /// That default is `~/Documents/huggingface`, which is TCC-protected — the 24/7 serve
+    /// LaunchAgent has no session that can answer a Documents-access prompt, so `open()` there
+    /// blocks in the kernel forever and the request never returns. Every file this engine reads
+    /// must live outside a protected folder, so the tokenizer is fetched with a Hub client
+    /// pinned to the app's own model directory and then loaded from disk by path.
+    public static func tokenizerFolder(inDownloadBase base: URL) -> URL {
+        base.appendingPathComponent("models/\(Qwen3TTSConstants.defaultTokenizerRepo)", isDirectory: true)
+    }
+
     // MARK: - Voice + language resolution
 
     /// The speaker id to synthesize with, defaulting when none was asked for.
@@ -126,11 +138,13 @@ public actor TTSKitTtsEngine: TtsEngine {
     // MARK: - Model preparation
 
     /// Download-then-load, split the same way `WhisperKitAsrEngine` splits it, so a failure to
-    /// fetch the weights is reported as a download failure rather than a generic load error.
+    /// fetch either half is reported as a download failure rather than a generic load error.
     ///
-    /// Note for offline use: loading also fetches the tokenizer from the Hub the first time
-    /// (TTSKit resolves it from a repo id, not from the downloaded model folder), so the very
-    /// first `prepare()` needs the network even once the weights are cached.
+    /// Both halves are fetched here — the CoreML weights and the tokenizer, which lives in a
+    /// different repo — because both must land under this engine's own download base
+    /// (see `tokenizerFolder(inDownloadBase:)`). Once they have, `prepare()` is fully offline:
+    /// TTSKit loads a tokenizer straight off disk when handed a folder holding `tokenizer.json`,
+    /// and only falls back to the Hub when handed a bare repo id.
     private static func buildTTSKit(variant: TTSModelVariant,
                                     downloadBase: URL,
                                     onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws -> TTSKit {
@@ -148,10 +162,13 @@ public actor TTSKitTtsEngine: TtsEngine {
             throw TtsEngineError.modelDownloadFailed(underlying: error.localizedDescription)
         }
 
+        let tokenizerFolder = try await downloadTokenizer(downloadBase: downloadBase, onProgress: onProgress)
+
         onProgress(EnginePreparationProgress(phase: "Loading speech synthesis model", fraction: nil))
         let config = TTSKitConfig(
             model: variant,
             modelFolder: modelFolder,
+            tokenizerFolder: tokenizerFolder,
             verbose: false,
             logLevel: .error,
             download: false,
@@ -161,5 +178,26 @@ public actor TTSKitTtsEngine: TtsEngine {
         onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1))
         Logger.tts.info("TTSKit ready: \(variant.description, privacy: .public)")
         return kit
+    }
+
+    /// Fetch the tokenizer into the app's own model directory with a Hub client pinned there,
+    /// and return the folder to load it from. Already-cached files make this a no-op.
+    private static func downloadTokenizer(downloadBase: URL,
+                                          onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws -> URL {
+        let folder = tokenizerFolder(inDownloadBase: downloadBase)
+        if FileManager.default.fileExists(atPath: folder.appendingPathComponent("tokenizer.json").path) {
+            return folder
+        }
+        onProgress(EnginePreparationProgress(phase: "Downloading speech synthesis tokenizer", fraction: nil))
+        do {
+            let hub = HubApiWrapper(downloadBase: downloadBase)
+            return try await hub.snapshot(
+                from: HubApiWrapper.Repo(id: Qwen3TTSConstants.defaultTokenizerRepo),
+                matching: ["config.json", "tokenizer.json", "tokenizer_config.json"]
+            )
+        } catch {
+            Logger.tts.error("Tokenizer download failed: \(error, privacy: .public)")
+            throw TtsEngineError.modelDownloadFailed(underlying: error.localizedDescription)
+        }
     }
 }
