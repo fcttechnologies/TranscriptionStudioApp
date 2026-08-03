@@ -41,6 +41,12 @@ let package = Package(
         // WhisperKit (on-device ASR) + SpeakerKit (the diarizer cross-check
         // baseline). MIT. The monorepo formerly known as argmaxinc/WhisperKit.
         .package(url: "https://github.com/argmaxinc/argmax-oss-swift.git", from: "1.0.0"),
+        // FluidAudio (Apache-2.0) — the CoreML LuxTTS/ZipVoice-Distill voice-cloning
+        // pipeline behind `LuxTtsCloningEngine`. Pinned to the exact revision the
+        // 2026-08-02 cloning bench fixture-verified and Fernando's ear approved; move the
+        // pin only with a re-listen, not a routine bump.
+        .package(url: "https://github.com/FluidInference/FluidAudio.git",
+                 revision: "5390df9752c8fc583596018360c5fd70d6fa6c75"),
         // FCTFoundation (sibling checkout, ../FCTFoundation) — the shared spine. Granular
         // products only: FCTEntities for the Spotlight donation mechanism, FCTComponentsUI
         // for the shared confidence text affordance.
@@ -74,6 +80,10 @@ let package = Package(
                 // behind the `TtsEngine` seam; nothing outside Sources/TranscriptionKit/TTS
                 // imports it.
                 .product(name: "TTSKit", package: "argmax-oss-swift"),
+                // FluidAudio's CoreML LuxTTS port — the zero-shot voice-cloning engine.
+                // Same seam discipline as TTSKit: only Sources/TranscriptionKit/TTS
+                // imports it.
+                .product(name: "FluidAudio", package: "FluidAudio"),
                 .product(name: "FCTEntities", package: "FCTFoundation"),
                 .product(name: "FCTComponentsUI", package: "FCTFoundation"),
                 // The on-device intelligence spine: the app-parameterized SemanticAssistant
