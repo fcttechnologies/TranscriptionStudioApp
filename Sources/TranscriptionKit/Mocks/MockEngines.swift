@@ -129,6 +129,23 @@ public actor MockTtsEngine: TtsEngine {
         }
         return SynthesizedSpeech(samples: samples, sampleRate: sampleRate)
     }
+
+    /// Real multi-chunk streaming — the same deterministic tone `synthesize` produces, split
+    /// into ordered quarters — so a streaming consumer's incremental path is exercised without
+    /// a model. Honors cancellation between chunks the way the TTSKit engine does.
+    public func synthesizeStreaming(text: String, voice: String?, language: String?,
+                                    onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
+        let speech = try await synthesize(text: text, voice: voice, language: language)
+        let chunkLength = max(1, speech.samples.count / 4)
+        var start = 0
+        while start < speech.samples.count {
+            let end = min(start + chunkLength, speech.samples.count)
+            let chunk = SynthesizedSpeechChunk(samples: Array(speech.samples[start..<end]),
+                                               sampleRate: speech.sampleRate)
+            guard onChunk(chunk) else { return }
+            start = end
+        }
+    }
 }
 
 public final class MockDiarizationEngine: DiarizationEngine, Sendable {

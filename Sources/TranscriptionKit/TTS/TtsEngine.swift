@@ -103,8 +103,21 @@ public enum TtsEngineError: LocalizedError, Sendable, Equatable {
     }
 }
 
+/// One increment of a streaming synthesis: the newly produced samples — never cumulative — at
+/// the rate they were produced. Carries its own rate for the same reason `SynthesizedSpeech`
+/// does: the first chunk is what tells a streaming consumer the format before any audio plays.
+public struct SynthesizedSpeechChunk: Sendable, Equatable {
+    public let samples: [Float]
+    public let sampleRate: Int
+
+    public init(samples: [Float], sampleRate: Int) {
+        self.samples = samples
+        self.sampleRate = sampleRate
+    }
+}
+
 /// The synthesis seam — the TTS counterpart to `AsrEngine`. Text in, mono float PCM out; the
-/// serve route, the CLI, and (later) the app know only this.
+/// serve route, the CLI, and the app know only this.
 ///
 /// `voice` and `language` are engine-specific identifiers, deliberately plain strings: a preset
 /// speaker name for the model shipping today, a reference-clip identifier for a cloning engine
@@ -122,4 +135,24 @@ public protocol TtsEngine: AnyObject, Sendable {
     /// Synthesize one complete utterance. A `nil` voice or language takes the engine's own
     /// default; an unknown one throws rather than quietly substituting one.
     func synthesize(text: String, voice: String?, language: String?) async throws -> SynthesizedSpeech
+
+    /// Synthesize one utterance, delivering audio increments in order as the model produces
+    /// them — what lets a consumer start playing (or sending) before synthesis finishes.
+    ///
+    /// `onChunk` returns whether to continue: `false` cancels the rest of the synthesis, and a
+    /// cancelled run returns normally (the caller asked to stop; nothing failed). An engine
+    /// that can't produce audio incrementally satisfies this with the default implementation —
+    /// the complete utterance as one chunk — so a streaming consumer degrades to
+    /// "starts when synthesis ends" rather than needing a second code path.
+    func synthesizeStreaming(text: String, voice: String?, language: String?,
+                             onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws
+}
+
+public extension TtsEngine {
+    /// Non-streaming fallback: the whole utterance delivered as a single chunk once it exists.
+    func synthesizeStreaming(text: String, voice: String?, language: String?,
+                             onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
+        let speech = try await synthesize(text: text, voice: voice, language: language)
+        _ = onChunk(SynthesizedSpeechChunk(samples: speech.samples, sampleRate: speech.sampleRate))
+    }
 }

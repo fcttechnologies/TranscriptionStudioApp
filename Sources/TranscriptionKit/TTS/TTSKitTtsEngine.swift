@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import Synchronization
 import TTSKit
 
 /// TTSKit-backed `TtsEngine` — on-device Qwen3-TTS through CoreML, from the same
@@ -133,6 +134,63 @@ public actor TTSKitTtsEngine: TtsEngine {
             (voice \(resolvedVoice, privacy: .public), \(resolvedLanguage, privacy: .public))
             """)
         return SynthesizedSpeech(samples: result.audio, sampleRate: result.sampleRate)
+    }
+
+    /// Streaming synthesis: TTSKit's per-step callback hands over each newly decoded audio
+    /// buffer (~80 ms), forwarded here as ordered `SynthesizedSpeechChunk`s.
+    ///
+    /// Generation is forced sequential (`concurrentWorkerCount = 1`) exactly as TTSKit's own
+    /// `play` forces it for its streaming strategies — the concurrent path delivers step
+    /// callbacks with empty audio and the real audio only after each batch, which is the
+    /// opposite of streaming. Cancellation is latched: TTSKit's sentence chunker runs each text
+    /// chunk as its own generation loop and a `false` return only breaks the *current* loop, so
+    /// the latch keeps answering `false` and every later chunk stops on its first step.
+    public func synthesizeStreaming(text: String, voice: String?, language: String?,
+                                    onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
+        try validate(text: text, voice: voice, language: language)
+        let resolvedVoice = try Self.resolvedVoice(voice)
+        let resolvedLanguage = try Self.resolvedLanguage(language)
+        guard let kit else { throw TtsEngineError.notPrepared }
+
+        let spoken = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var options = GenerationOptions()
+        options.concurrentWorkerCount = 1
+
+        let sampleRate = kit.sampleRate
+        // Guards the state across the callback and the post-run reads below; the callbacks
+        // themselves arrive strictly sequentially from the one generation loop, so `onChunk`
+        // is deliberately called outside the lock.
+        let state = Mutex((cancelled: false, samplesDelivered: 0))
+        do {
+            _ = try await kit.generate(text: spoken, voice: resolvedVoice, language: resolvedLanguage,
+                                       options: options) { progress in
+                guard state.withLock({ !$0.cancelled }) else { return false }
+                guard !progress.audio.isEmpty else { return true }
+                let keepGoing = onChunk(SynthesizedSpeechChunk(samples: progress.audio,
+                                                               sampleRate: sampleRate))
+                state.withLock { current in
+                    current.samplesDelivered += progress.audio.count
+                    if !keepGoing { current.cancelled = true }
+                }
+                return keepGoing
+            }
+        } catch {
+            // A caller-cancelled run isn't a failure — whatever was delivered was wanted.
+            guard state.withLock({ $0.cancelled }) else {
+                throw TtsEngineError.synthesisFailed((error as? LocalizedError)?.errorDescription
+                                                     ?? error.localizedDescription)
+            }
+            return
+        }
+        let (cancelled, samplesDelivered) = state.withLock { ($0.cancelled, $0.samplesDelivered) }
+        guard cancelled || samplesDelivered > 0 else {
+            throw TtsEngineError.synthesisFailed("the model produced no audio")
+        }
+        Logger.tts.info("""
+            Streamed \(Double(samplesDelivered) / Double(sampleRate), format: .fixed(precision: 2), privacy: .public)s \
+            of synthesized audio (voice \(resolvedVoice, privacy: .public), \(resolvedLanguage, privacy: .public))\
+            \(cancelled ? " — cancelled by the consumer" : "", privacy: .public)
+            """)
     }
 
     // MARK: - Model preparation
