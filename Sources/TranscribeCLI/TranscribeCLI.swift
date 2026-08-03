@@ -16,6 +16,7 @@ struct TranscribeCLI {
                           [--language <code>]
            transcribe-cli --serve [--port <n>] [--idle-timeout <s>] [--preload]
                           [--model <whisperkit-variant>] [--language <code>]
+           transcribe-cli speak <text> --out <path> [--voice <name>] [--language <name>]
 
     ONE-SHOT (default): transcribe a single URL or file and exit.
       <url-or-file>    An http(s) URL (any yt-dlp-supported source) or a local
@@ -25,12 +26,24 @@ struct TranscribeCLI {
                        Whisper's auto-detect.
 
     SERVE: run a warm on-device transcription service (drop-in for the old FastAPI app on
-           the same :8000 API — POST /api/jobs/start, GET /api/jobs/{id}, POST /api/transcribe/file).
-      --serve          Start the HTTP service (holds the model warm across requests).
+           the same :8000 API — POST /api/jobs/start, GET /api/jobs/{id}, POST /api/transcribe/file),
+           which also speaks: POST /speak {text, voice?, language?} -> audio/wav.
+      --serve          Start the HTTP service (holds the models warm across requests).
       --port <n>       Listen port (default: 8000).
-      --idle-timeout <s>  Release the model after this many seconds idle, reloading on demand
-                       (default: 600 = ~10 min; 0 = never release / stay warm forever).
-      --preload        Load the model at startup for the lowest first-request latency (eager).
+      --idle-timeout <s>  Release a model after this many seconds idle, reloading on demand
+                       (default: 600 = ~10 min; 0 = never release / stay warm forever). The
+                       recognition and synthesis models idle out independently.
+      --preload        Load the recognition model at startup for the lowest first-request
+                       latency (eager). Synthesis always loads on its first request.
+
+    SPEAK: synthesize speech from text with the on-device model and write it to a file.
+      speak <text>     The text to say.
+      --out <path>     Where to write the audio — 16-bit mono WAV (required).
+      --voice <name>   Preset voice (default: \(TTSKitTtsEngine.defaultVoice)).
+                       One of: \(TTSKitTtsEngine.supportedVoices.joined(separator: ", ")).
+      --language <n>   Spoken language (default: \(TTSKitTtsEngine.defaultLanguage)).
+                       One of: \(TTSKitTtsEngine.supportedLanguages.joined(separator: ", ")).
+                       The synthesis model downloads on first use (progress on stderr).
 
     Shared:
       --model <name>   WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
@@ -38,6 +51,13 @@ struct TranscribeCLI {
     """
 
     static func main() async {
+        // `speak` is a leading verb, so the one-shot path below (which reads a bare argument as
+        // the media to transcribe) is reached on exactly the same inputs it always was.
+        if CommandLine.arguments.dropFirst().first == "speak" {
+            await runSpeak(arguments: Array(CommandLine.arguments.dropFirst(2)))
+            return
+        }
+
         var jsonOutput = false
         var modelName = WhisperKitAsrEngine.platformDefaultModelName
         var forcedLanguage: String?
@@ -104,12 +124,18 @@ struct TranscribeCLI {
 
     // MARK: - Serve
 
-    /// Run the warm transcription HTTP service until killed. Builds one warm engine (optionally
-    /// preloaded), starts the idle reaper (a no-op at idle-timeout 0), and blocks on the accept
-    /// loop. Never returns on success.
+    /// Run the warm transcription HTTP service until killed. Builds the warm engines (the
+    /// recognition one optionally preloaded), starts the idle reaper (a no-op at idle-timeout 0),
+    /// and blocks on the accept loop. Never returns on success.
+    ///
+    /// `--preload` covers recognition only. The 24/7 service exists for the `transcribe` tool, so
+    /// that model earns its residency; eagerly loading a ~1 GB synthesis model that a given day
+    /// may never ask for would double the resident footprint on a personal machine for nothing.
+    /// Synthesis loads on its first `/speak` and then stays warm on the same idle rules.
     static func runServe(port: UInt16, idleTimeout: TimeInterval, preload: Bool,
                          modelName: String, forcedLanguage: String?) async {
         let warm = WarmEngine(modelName: modelName, forcedLanguage: forcedLanguage, idleTimeout: idleTimeout)
+        let speech = WarmTTSEngine(idleTimeout: idleTimeout)
 
         if preload {
             status("Preloading \(modelName)…")
@@ -121,20 +147,90 @@ struct TranscribeCLI {
             }
         }
 
-        // Idle reaper: release the model once it's been idle past the timeout. No-op at 0 (warm
-        // forever), so only spun up when a positive timeout is set.
+        // Idle reaper: release a model once it's been idle past the timeout. Both engines are
+        // swept on the same tick but against their own last-used clocks, so either can be
+        // resident while the other is reaped. No-op at 0 (warm forever), so only spun up when a
+        // positive timeout is set.
         if idleTimeout > 0 {
             Task.detached {
                 while true {
                     try? await Task.sleep(for: .seconds(60))
                     await warm.reapIfIdle()
+                    await speech.reapIfIdle()
                 }
             }
         }
 
-        let server = TranscribeServer(port: port, warm: warm)
+        let server = TranscribeServer(port: port, warm: warm, speech: speech)
         do {
             try server.run()  // blocks forever on accept()
+        } catch {
+            fail(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Speak
+
+    /// `transcribe-cli speak <text> --out <path>` — synthesize on-device and write a WAV.
+    /// The written path goes to stdout (the one-shot path's transcript-on-stdout discipline);
+    /// model download and synthesis progress go to stderr.
+    static func runSpeak(arguments: [String]) async {
+        var text: String?
+        var outputPath: String?
+        var voice: String?
+        var language: String?
+
+        var argumentIterator = arguments.makeIterator()
+        while let argument = argumentIterator.next() {
+            switch argument {
+            case "--out":
+                guard let value = argumentIterator.next() else { exitUsage("--out needs a value") }
+                outputPath = value
+            case "--voice":
+                guard let value = argumentIterator.next() else { exitUsage("--voice needs a value") }
+                voice = value
+            case "--language":
+                guard let value = argumentIterator.next() else { exitUsage("--language needs a value") }
+                language = value
+            case "--help", "-h":
+                print(usage)
+                exit(0)
+            default:
+                guard !argument.hasPrefix("-") else { exitUsage("unknown option: \(argument)") }
+                guard text == nil else { exitUsage("more than one text argument given") }
+                text = argument
+            }
+        }
+
+        guard let text else { exitUsage("speak needs the text to synthesize") }
+        guard let outputPath else { exitUsage("speak needs --out <path>") }
+
+        do {
+            let engine = TTSKitTtsEngine()
+            // Fail on a bad voice/language before downloading a gigabyte of weights.
+            try engine.validate(text: text, voice: voice, language: language)
+
+            let lastPhase = Mutex("")
+            try await engine.prepare { progress in
+                let percent = progress.fraction.map { Int($0 * 100) }
+                let line = percent.map { "\(progress.phase)… \($0)%" } ?? "\(progress.phase)…"
+                // Download ticks are near-continuous; report each phase and each 10% step.
+                let key = percent.map { "\(progress.phase)-\($0 / 10)" } ?? progress.phase
+                let shouldPrint = lastPhase.withLock { last in
+                    guard key != last else { return false }
+                    last = key
+                    return true
+                }
+                if shouldPrint { status(line) }
+            }
+
+            status("Synthesizing…")
+            let speech = try await engine.synthesize(text: text, voice: voice, language: language)
+            let url = URL(fileURLWithPath: (outputPath as NSString).expandingTildeInPath)
+            try speech.wavData().write(to: url)
+            status(String(format: "Wrote %.2fs of audio.", speech.duration))
+            print(url.path)
+            exit(0)
         } catch {
             fail(error.localizedDescription)
         }

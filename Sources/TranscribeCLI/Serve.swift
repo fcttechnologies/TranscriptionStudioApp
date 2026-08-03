@@ -16,6 +16,7 @@ import Darwin
 ///   POST /api/jobs/start        {url}            -> {job_id, message}   (async URL job)
 ///   GET  /api/jobs/{job_id}                       -> job record (transcript + timestamped segments)
 ///   POST /api/transcribe/file   multipart file    -> {job_id, transcript, segments, filename}
+///   POST /speak                 {text, voice?, language?} -> audio/wav   (on-device synthesis)
 ///   GET  /            or /health                   -> 200 "ok"           (readiness)
 ///
 /// Blocking POSIX sockets, thread-per-connection: a local single-user service has trivial
@@ -66,6 +67,63 @@ actor WarmEngine {
             TranscriptSegment(start: $0.start, end: $0.end,
                               text: $0.text.trimmingCharacters(in: .whitespacesAndNewlines))
         }
+    }
+
+    /// Release the model if it's been idle past the timeout (the idle reaper calls this).
+    func reapIfIdle() {
+        guard idleTimeout > 0, engine != nil else { return }
+        if Date().timeIntervalSince(lastUsed) > idleTimeout { engine = nil }
+    }
+}
+
+// MARK: - Warm TTS engine (model lifecycle)
+
+/// Holds the speech-synthesis engine across requests, on exactly the discipline `WarmEngine`
+/// holds the ASR one: lazy-load on first use, release after `idleTimeout` seconds idle, reload
+/// on demand, one actor so concurrent connection threads can't race the load/release.
+///
+/// It keeps its *own* `lastUsed` clock, which is the whole reason the two are separate actors:
+/// a service busy transcribing all day never keeps a synthesis model resident, and a service
+/// busy speaking never keeps the ASR model resident. Each pays only for what it's used for.
+///
+/// `makeEngine` is the seam the plan's later cloning engine arrives through — this actor never
+/// names a concrete engine except in that one default argument.
+actor WarmTTSEngine {
+    private let idleTimeout: TimeInterval
+    private let makeEngine: @Sendable () -> any TtsEngine
+    private var engine: (any TtsEngine)?
+    private var lastUsed = Date()
+
+    init(idleTimeout: TimeInterval,
+         makeEngine: @escaping @Sendable () -> any TtsEngine = { TTSKitTtsEngine() }) {
+        self.idleTimeout = idleTimeout
+        self.makeEngine = makeEngine
+    }
+
+    /// Whether the model is currently resident (what the idle reaper's effect is measured by).
+    var isResident: Bool { engine != nil }
+
+    /// Load the model if it isn't resident, returning the ready engine. Idempotent.
+    @discardableResult
+    func ensureLoaded(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void = { _ in }) async throws -> any TtsEngine {
+        lastUsed = Date()
+        if let engine { return engine }
+        let e = makeEngine()
+        try await e.prepare(onProgress: onProgress)
+        engine = e
+        return e
+    }
+
+    /// Synthesize one utterance, loading the model first if it isn't resident.
+    ///
+    /// The request is validated *before* the load, against an unloaded engine — validation is
+    /// model-free by the seam's contract, so an empty text or a typo'd voice is rejected without
+    /// pulling a gigabyte of weights into memory.
+    func synthesize(text: String, voice: String?, language: String?) async throws -> SynthesizedSpeech {
+        try (engine ?? makeEngine()).validate(text: text, voice: voice, language: language)
+        let e = try await ensureLoaded()
+        lastUsed = Date()
+        return try await e.synthesize(text: text, voice: voice, language: language)
     }
 
     /// Release the model if it's been idle past the timeout (the idle reaper calls this).
@@ -148,12 +206,14 @@ actor JobStore {
 final class TranscribeServer: @unchecked Sendable {
     private let port: UInt16
     private let warm: WarmEngine
+    private let speech: WarmTTSEngine
     private let jobs = JobStore()
     private let downloader = URLIngestService()
 
-    init(port: UInt16, warm: WarmEngine) {
+    init(port: UInt16, warm: WarmEngine, speech: WarmTTSEngine) {
         self.port = port
         self.warm = warm
+        self.speech = speech
     }
 
     /// Bind localhost:port and accept forever, a detached thread per connection. Throws (exits
@@ -216,6 +276,9 @@ final class TranscribeServer: @unchecked Sendable {
 
         case ("POST", "/api/transcribe/file"):
             handleTranscribeFile(req, fd: fd)
+
+        case ("POST", "/speak"):
+            handleSpeak(req, fd: fd)
 
         default:
             sendJSON(fd, status: 404, body: ["error": "not found"])
@@ -289,6 +352,34 @@ final class TranscribeServer: @unchecked Sendable {
             sendJSON(fd, status: 500, body: ["error": humanError(error), "job_id": jobID])
         }
     }
+
+    /// Synthesize speech from text, returning the audio itself — a 16-bit mono WAV body, which
+    /// carries its own sample rate so the client needs to know nothing about the model behind
+    /// it. Failures answer in the same `{"error": …}` JSON shape every other route uses.
+    private func handleSpeak(_ req: HTTPRequest, fd: Int32) {
+        guard let obj = try? JSONSerialization.jsonObject(with: req.body) as? [String: Any] else {
+            sendJSON(fd, status: 400, body: ["error": "expected a JSON body: {text, voice?, language?}"])
+            return
+        }
+        let text = obj["text"] as? String ?? ""
+        let voice = obj["voice"] as? String
+        let language = obj["language"] as? String
+        do {
+            let speech = try runBlockingThrowing {
+                try await self.speech.synthesize(text: text, voice: voice, language: language)
+            }
+            sendResponse(fd, status: 200, contentType: "audio/wav", body: try speech.wavData())
+        } catch {
+            sendJSON(fd, status: speakErrorStatus(error), body: ["error": humanError(error)])
+        }
+    }
+}
+
+/// 400 when the request was at fault (nothing to say, an unknown voice or language), 500 when
+/// the engine was — the same split the file's other routes make between a client and a server
+/// failure.
+func speakErrorStatus(_ error: Error) -> Int {
+    (error as? TtsEngineError)?.isInvalidRequest == true ? 400 : 500
 }
 
 // MARK: - Async → blocking bridge

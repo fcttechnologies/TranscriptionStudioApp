@@ -36,6 +36,11 @@ Activities). Regenerate the project with `xcodegen generate` after an edit here 
   time + track tag), `CaptureSource`.
 - `TranscriptionKit/ASR/AsrEngine.swift` — `AsrEngine`, `AsrSegment` (Whisper confidence
   fields surfaced), `AsrUpdate` (confirmed/unconfirmed).
+- `TranscriptionKit/TTS/TtsEngine.swift` — `TtsEngine`, `SynthesizedSpeech` (mono float PCM
+  + its own rate, WAV on the way out), `TtsEngineError` (whose `isInvalidRequest` decides a
+  serve 400 from a 500). Voice and language are plain engine-specific strings, so a second
+  synthesis engine conforms here and nothing above it changes; `TTSKitTtsEngine` is the only
+  file that imports TTSKit.
 - `TranscriptionKit/Diarization/DiarizationEngine.swift` — `DiarizationEngine`,
   `SpeakerTurn` (slot + confidence + committed/provisional), `DiarizationResult/Update`.
 - `TranscriptionKit/Fusion/TranscriptFuser.swift` — `SpeakerID`, `AttributedSegment`, the

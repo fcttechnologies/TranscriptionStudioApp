@@ -39,3 +39,14 @@ swift build -c release --product transcribe-cli
 ```
 
 The WhisperKit model self-provisions on first use (download progress → stderr).
+
+It also speaks — on-device synthesis through TTSKit (`speak <text> --out <path>` writes a
+16-bit mono WAV; `--voice`/`--language` pick a preset voice and its language, listed in
+`--help`), and the same capability rides the serve API as `POST /speak {text, voice?,
+language?} → audio/wav`. The synthesis model self-provisions on first use too, and idles
+out of memory independently of the recognition model.
+
+```bash
+.build/release/transcribe-cli speak "Good morning." --out /tmp/hello.wav --voice serena
+curl -s -X POST localhost:8000/speak -d '{"text":"Good morning."}' -o /tmp/hello.wav
+```

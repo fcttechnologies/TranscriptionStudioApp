@@ -69,6 +69,11 @@ let package = Package(
                 "GlanceKit",
                 .product(name: "WhisperKit", package: "argmax-oss-swift"),
                 .product(name: "SpeakerKit", package: "argmax-oss-swift"),
+                // TTSKit (on-device speech synthesis) — the same vendor package WhisperKit and
+                // SpeakerKit come from, so the app's larynx costs no new dependency. It stays
+                // behind the `TtsEngine` seam; nothing outside Sources/TranscriptionKit/TTS
+                // imports it.
+                .product(name: "TTSKit", package: "argmax-oss-swift"),
                 .product(name: "FCTEntities", package: "FCTFoundation"),
                 .product(name: "FCTComponentsUI", package: "FCTFoundation"),
                 // The on-device intelligence spine: the app-parameterized SemanticAssistant
@@ -123,6 +128,11 @@ let package = Package(
             name: "TranscriptionMacKitTests",
             dependencies: ["TranscriptionMacKit"],
             path: "Tests/TranscriptionMacKitTests"
+        ),
+        .testTarget(
+            name: "TranscribeCLITests",
+            dependencies: ["transcribe-cli", "TranscriptionKit"],
+            path: "Tests/TranscribeCLITests"
         )
     ]
 )

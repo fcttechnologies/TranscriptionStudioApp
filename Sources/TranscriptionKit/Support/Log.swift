@@ -14,6 +14,7 @@ extension Logger {
     public nonisolated static let ingest = Logger(subsystem: subsystem, category: "ingest")
     public nonisolated static let capture = Logger(subsystem: subsystem, category: "capture")
     public nonisolated static let asr = Logger(subsystem: subsystem, category: "asr")
+    public nonisolated static let tts = Logger(subsystem: subsystem, category: "tts")
     public nonisolated static let diarization = Logger(subsystem: subsystem, category: "diarization")
     public nonisolated static let fusion = Logger(subsystem: subsystem, category: "fusion")
     public nonisolated static let jobs = Logger(subsystem: subsystem, category: "jobs")

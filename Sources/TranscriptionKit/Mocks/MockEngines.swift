@@ -84,6 +84,53 @@ public final class MockAsrEngine: AsrEngine, Sendable {
     }
 }
 
+/// Deterministic fake `TtsEngine`: a fixed-frequency tone whose length tracks the input, so a
+/// caller can exercise the whole synthesis path — validation, lazy load, audio out — with no
+/// model on disk. `prepareCount` is what a lifecycle test asserts against.
+public actor MockTtsEngine: TtsEngine {
+    public static let supportedVoices = ["mock", "mock-alt"]
+    public static let defaultVoice = "mock"
+    public static let supportedLanguages = ["english", "spanish"]
+    public static let defaultLanguage = "english"
+
+    public let sampleRate: Int
+    /// How many times the model has actually been loaded.
+    public private(set) var prepareCount = 0
+
+    public init(sampleRate: Int = 24_000) {
+        self.sampleRate = sampleRate
+    }
+
+    public nonisolated func validate(text: String, voice: String?, language: String?) throws {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw TtsEngineError.emptyText
+        }
+        if let voice, !voice.isEmpty, !Self.supportedVoices.contains(voice) {
+            throw TtsEngineError.unsupportedVoice(voice, supported: Self.supportedVoices)
+        }
+        if let language, !language.isEmpty, !Self.supportedLanguages.contains(language) {
+            throw TtsEngineError.unsupportedLanguage(language, supported: Self.supportedLanguages)
+        }
+    }
+
+    public func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        if prepareCount == 0 { prepareCount += 1 }
+        onProgress(EnginePreparationProgress(phase: "Mock voice ready", fraction: 1))
+    }
+
+    public func synthesize(text: String, voice: String?, language: String?) async throws -> SynthesizedSpeech {
+        try validate(text: text, voice: voice, language: language)
+        guard prepareCount > 0 else { throw TtsEngineError.notPrepared }
+        // ~60 ms of audio per character, so the output length tracks the input recognizably.
+        let count = max(1, Int(Double(text.count) * 0.06 * Double(sampleRate)))
+        let frequency = (voice ?? Self.defaultVoice) == Self.defaultVoice ? 220.0 : 330.0
+        let samples = (0..<count).map { index in
+            Float(sin(2 * .pi * frequency * Double(index) / Double(sampleRate)) * 0.3)
+        }
+        return SynthesizedSpeech(samples: samples, sampleRate: sampleRate)
+    }
+}
+
 public final class MockDiarizationEngine: DiarizationEngine, Sendable {
     public let backendName = "Mock"
 
