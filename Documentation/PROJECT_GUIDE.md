@@ -2,8 +2,8 @@
 
 A native, universal (Mac-first) SwiftUI app: on-device transcription (WhisperKit) of URLs,
 files, and live recordings, with on-device speaker diarization (Streaming Sortformer via
-Core AI). Fully offline. Two jobs: FCT's daily transcription driver, and a craft showcase.
-`../BUILD-SPEC.md` holds the mandate; `../PLAN.md` the grounded architecture decisions.
+Core AI), plus on-device synthesis in the other direction. Fully offline. Two jobs: FCT's
+daily transcription driver, and a craft showcase.
 
 ## Platform matrix
 

@@ -1,10 +1,9 @@
 # Transcription Studio (working name)
 
-Native, universal (Mac-first) on-device transcription + live speaker diarization.
-FCT Technologies. Not for sale (yet) — a daily-driver capability and a craft showcase.
+Native, universal (Mac-first) on-device transcription + live speaker diarization, and
+on-device synthesis in the other direction. FCT Technologies. Not for sale (yet) — a
+daily-driver capability and a craft showcase.
 
-- `BUILD-SPEC.md` — the mandate.
-- `PLAN.md` — grounded architecture + lane plan.
 - `Documentation/PROJECT_GUIDE.md` — structure, contracts, conventions.
 - `Documentation/VERIFICATION.md` — how "who said what" is verified.
 
@@ -40,13 +39,18 @@ swift build -c release --product transcribe-cli
 
 The WhisperKit model self-provisions on first use (download progress → stderr).
 
-It also speaks — on-device synthesis through TTSKit (`speak <text> --out <path>` writes a
-16-bit mono WAV; `--voice`/`--language` pick a preset voice and its language, listed in
-`--help`), and the same capability rides the serve API as `POST /speak {text, voice?,
-language?} → audio/wav`. The synthesis model self-provisions on first use too, and idles
-out of memory independently of the recognition model.
+It also speaks — on-device synthesis behind one `TtsEngine` seam with two engines routed by
+voice id. `speak <text> --out <path>` writes a 16-bit mono WAV; `--voice`/`--language` pick a
+TTSKit preset speaker and its language (listed in `--help`), and `--voice-profile <json>`
+adds that profile's zero-shot cloned voices (CoreML LuxTTS, English, 48 kHz) to the same
+roster — a `--voice` naming one of them routes to the cloner, anything else to the presets.
+The same capability rides the serve API as `POST /speak {text, voice?, language?}`, streamed
+chunked as `audio/wav`. Both synthesis models self-provision on first use, load lazily per
+engine, and idle out of memory on their own clocks, independently of the recognition model.
 
 ```bash
 .build/release/transcribe-cli speak "Good morning." --out /tmp/hello.wav --voice serena
+.build/release/transcribe-cli speak "Good morning." --out /tmp/hello.wav \
+    --voice-profile ~/voice-profile.json --voice my-voice
 curl -s -X POST localhost:8000/speak -d '{"text":"Good morning."}' -o /tmp/hello.wav
 ```
