@@ -12,7 +12,7 @@ import SwiftData
 struct SessionFeed: View {
     @Query(sort: \TranscriptSession.createdAt, order: .reverse, animation: .default,
            sectionBy: \.daySectionKey)
-    private var sessions: [TranscriptSession]
+    private var sessions: SectionedResults<TranscriptSession, String>
 
     let searchText: String
     @Binding var pendingDelete: TranscriptSession?
@@ -25,7 +25,7 @@ struct SessionFeed: View {
     /// search text; sections no session matches are dropped. `@Query` provides the day buckets;
     /// the in-memory ``SessionFilter/filter(_:query:)`` keeps search identical to before.
     private var visibleSections: [(key: String, sessions: [TranscriptSession])] {
-        _sessions.sections.compactMap { section in
+        sessions.compactMap { section in
             let matches = SessionFilter.filter(Array(section), query: searchText)
             return matches.isEmpty ? nil : (key: section.id, sessions: matches)
         }

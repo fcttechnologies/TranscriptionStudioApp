@@ -151,12 +151,11 @@ public final class MetricsReporter: Sendable {
     }
 
     /// Responsiveness / runtime metrics that appear in both interval and per-state entries.
-    /// Hang time is a duration histogram; the two hitch metrics are dimensionless ratios.
+    /// Hang time is a duration histogram; hitch time is a dimensionless ratio.
     private static func stateValues(from result: MetricResult) -> [MetricValueSummary] {
         switch result {
         case .hangTime(let m): return histogramValue("hang", durations: m.histogram)
         case .hitchTime(let m): return ratioValue("hitch", m.ratio.value)
-        case .scrollHitchTime(let m): return ratioValue("scrollHitch", m.ratio.value)
         default: return []
         }
     }
