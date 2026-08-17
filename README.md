@@ -1,8 +1,13 @@
 # Transcription Studio (working name)
 
 Native, universal (Mac-first) on-device transcription + live speaker diarization, and
-on-device synthesis in the other direction. FCT Technologies. Not for sale (yet) — a
-daily-driver capability and a craft showcase.
+on-device synthesis in the other direction, by [FCT Technologies](https://fct-technologies.com).
+Not for sale (yet): a daily-driver capability and a craft showcase.
+
+This is the native app. The open-source web engine it grew out of, and which still runs headless
+behind FCT's own workflows, is [TranscriptionStudio](https://github.com/fcttechnologies/TranscriptionStudio)
+(MIT). This repository is **source-available, not open source**: published so the work can be read
+and judged, all rights reserved, no licence granted to use, copy, modify or redistribute it.
 
 - `Documentation/PROJECT_GUIDE.md` — structure, contracts, conventions.
 - `Documentation/VERIFICATION.md` — how "who said what" is verified.
