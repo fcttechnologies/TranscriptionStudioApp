@@ -141,6 +141,42 @@ struct TranscriptionSyncLifecycleTests {
         #expect(device.sync.keptOnSignOut > 0)
     }
 
+    /// **Refused** work is unsynced work, and it is the half waiting cannot fix.
+    ///
+    /// A record the server judged leaves the pending set for good and is never auto-retried, so
+    /// counting only what is pending reports nothing outstanding for exactly the entry that can
+    /// never go by itself — and that is the number the sign-out UI decides from.
+    ///
+    /// Two refused records rather than one, deliberately: the kept-count's floor reports "1" no
+    /// matter what, so a single record would let a pending-only count look right by coincidence.
+    /// Two is what tells a real count from a fabricated one.
+    @MainActor
+    @Test func refusedRecordsAreCountedAsUnsyncedWorkAndReportedWhenTheStoreIsKept() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        let first = try device.recordSession(title: "Refused one", audio: nil)
+        let second = try device.recordSession(title: "Refused two", audio: nil)
+        await device.server.setRejecting([first, second])
+        await device.enroll()
+
+        // The trap, armed: durably failed and out of the pending set, so a pending-only count
+        // reads zero while the outbox demonstrably holds both.
+        let state = device.syncStateFile.read()
+        try #require(state.failedCount == 2, "both refusals must have parked their entries")
+        try #require(state.pendingCount == 0, "and both must have left the pending set")
+
+        #expect(device.sync.unsyncedWork == 2, "refused work is still work the server never took")
+
+        await device.sync.handle(.signedOut)
+
+        let context = device.container.mainContext
+        #expect(try context.fetchCount(FetchDescriptor<TranscriptSession>()) == 2,
+                "the barrier refuses the clear")
+        #expect(device.sync.keptOnSignOut == 2,
+                "and the note names what was actually held, not a floor")
+    }
+
     /// `.resumed` re-fires on every foregrounding, so the bootstrap must recognise its own living
     /// engine and just run a cycle. Rebuilding would accumulate a trigger task and observer set
     /// per foreground — invisible from the outside, which is why the build count is the assertion.

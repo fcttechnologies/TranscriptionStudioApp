@@ -56,6 +56,10 @@ final class BootstrapDevice {
         await sync.handle(.enrolled(accountID))
     }
 
+    /// The engine's durable state, for asserting on the outbox itself rather than on a surface
+    /// that summarises it.
+    var syncStateFile: SyncStateFile { SyncStateFile(url: base.appendingPathComponent("syncstate.json")) }
+
     /// Record a session the way the app does before any account exists: bytes in the session's
     /// own column, nothing staged.
     @discardableResult

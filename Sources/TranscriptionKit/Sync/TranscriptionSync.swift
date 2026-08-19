@@ -144,7 +144,11 @@ public final class TranscriptionSync {
     /// (pending or failed) the object store has not confirmed. The sign-out barrier — while this
     /// is non-zero the UI surfaces push-or-discard before any clear runs.
     public var unsyncedWork: Int {
-        let records = engine?.state.pendingCount ?? 0
+        // The whole outbox, the same predicate the engine's own barrier counts — so this is zero
+        // exactly when the clear would run. A refused record leaves the pending set and is never
+        // auto-retried, so a pending-only count reports nothing to lose for the one entry that
+        // can never go by itself.
+        let records = engine?.state.outbox.count ?? 0
         let uploads = blobStore.map { $0.pendingCount + $0.failedCount } ?? 0
         return records + uploads
     }
@@ -447,7 +451,7 @@ public final class TranscriptionSync {
         let engine = self.engine ?? makeDetachedEngine(container: container)
         let blobs = self.blobStore
 
-        let unpushedRecords = engine?.state.pendingCount ?? 0
+        let unpushedRecords = engine?.state.outbox.count ?? 0
         let undrainedUploads = blobs.map { $0.pendingCount + $0.failedCount } ?? 0
         guard unpushedRecords + undrainedUploads == 0 else {
             keptOnSignOut = unpushedRecords + undrainedUploads
@@ -464,7 +468,11 @@ public final class TranscriptionSync {
             pendingCount = 0
             blobPendingCount = 0
         } catch {
-            keptOnSignOut = max(1, engine?.state.pendingCount ?? 0)
+            // The count the guard above read is the barrier's own, so this reports what is
+            // actually held rather than flooring it: the clear can still fail for a reason that
+            // is not the outbox, and a fabricated "1 change" would name work that does not exist.
+            // `lastError` is what carries a non-barrier failure.
+            keptOnSignOut = engine?.state.outbox.count ?? 0
             lastError = "\(error)"
         }
         self.engine = nil
@@ -478,7 +486,9 @@ public final class TranscriptionSync {
         stopEngine(releasing: false)
         guard let container else { return }
         let engine = self.engine ?? makeDetachedEngine(container: container)
-        discardedOnSwitch = engine?.state.pendingCount ?? 0
+        // This clear discards unconditionally, so this is what is actually being destroyed:
+        // the whole outbox, refused entries included.
+        discardedOnSwitch = engine?.state.outbox.count ?? 0
         try? engine?.clearSyncedData(discardingUnsynced: true)
         try? blobStore?.clearLocalData(discardingUnsynced: true)
         self.engine = nil
