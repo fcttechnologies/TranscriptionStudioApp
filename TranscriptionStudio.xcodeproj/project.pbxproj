@@ -107,7 +107,6 @@
 		50809256097EE7408344DBD1 /* WhisperModelDownloaderExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelDownloaderExtension.swift; sourceTree = "<group>"; };
 		58AC1C828182C11917303A4B /* TranscriptionStudioiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioiOSApp.swift; sourceTree = "<group>"; };
 		77174B2B90D99F829213A8D3 /* ShareExtensioniOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtensioniOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		BA2C04AF8286927A1273BDEF /* TranscriptionStudioApp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TranscriptionStudioApp; path = .; sourceTree = SOURCE_ROOT; };
 		C054EFA708DC83E7186AF372 /* TranscriptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TranscriptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C89036D41006ACD08F408D67 /* BackgroundAssetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = BackgroundAssetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD23B23A4963B17F6D8250A2 /* TranscriptionStudioWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioWidgets.swift; sourceTree = "<group>"; };
@@ -115,6 +114,7 @@
 		CFD1D36AC27D38EE63CC2860 /* ShareExtensionMac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtensionMac.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D333470E29E74E0A76E411A2 /* TranscriptionStudioiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TranscriptionStudioiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D4B603D88F01D0517EBFD6F4 /* TranscriptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioApp.swift; sourceTree = "<group>"; };
+		D9E31C82226AA9AF7981A3FA /* wt-tsa */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "wt-tsa"; path = .; sourceTree = SOURCE_ROOT; };
 		DACE3E75FDAB6765A1409435 /* TranscriptionStudio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TranscriptionStudio.entitlements; sourceTree = "<group>"; };
 		E176940DA9940A2C40E5B9D4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -234,7 +234,7 @@
 		94496EA3E344C69F64F0F68C /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				BA2C04AF8286927A1273BDEF /* TranscriptionStudioApp */,
+				D9E31C82226AA9AF7981A3FA /* wt-tsa */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
