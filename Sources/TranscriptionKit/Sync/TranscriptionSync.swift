@@ -262,21 +262,43 @@ public final class TranscriptionSync {
         let context = ModelContext(container)
         context.author = AppModelContainer.localAuthorName
         do {
+            // Oldest first, so the pass's order is the library's rather than the store's: a
+            // session the object store refuses is skipped, and a fixed order is what keeps that
+            // skip from depending on which row the fetch happened to return first.
             let pending = try context.fetch(FetchDescriptor<TranscriptSession>(
-                predicate: #Predicate { $0.audioData != nil }
+                predicate: #Predicate { $0.audioData != nil },
+                sortBy: [SortDescriptor(\.createdAt, order: .forward)]
             ))
             guard !pending.isEmpty else { return }
             for session in pending {
                 guard let bytes = session.audioData else { continue }
-                let ref = try blobStore.stage(
-                    bytes,
-                    contentType: "audio/mp4",
-                    // No preview: a recording has no thumbnail, and a waveform would be a derived
-                    // artifact bought at kilobytes on every session row. The list renders from the
-                    // synced metadata (title, duration, date) it already has.
-                    preview: nil,
-                    owner: BlobOwner(table: TranscriptSession.syncTableName, uuid: session.id)
-                )
+                let ref: BlobRef
+                do {
+                    ref = try blobStore.stage(
+                        bytes,
+                        contentType: "audio/mp4",
+                        // No preview: a recording has no thumbnail, and a waveform would be a
+                        // derived artifact bought at kilobytes on every session row. The list
+                        // renders from the synced metadata (title, duration, date) it already has.
+                        preview: nil,
+                        owner: BlobOwner(table: TranscriptSession.syncTableName, uuid: session.id)
+                    )
+                } catch let error as BlobStoreError {
+                    // A session past the object store's per-file cap is refused at stage time —
+                    // ~3.5 hours at 32 kbps, which a long meeting reaches. Skipped rather than
+                    // rethrown: an over-cap recording is a permanent condition, and letting it out
+                    // of the loop would end the pass there on every cycle, so every session
+                    // recorded after it would stage on no cycle ever.
+                    //
+                    // What that session loses is its audio alone — its record, transcript,
+                    // segments and highlights sync as usual, and the bytes stay readable on the
+                    // device that recorded them.
+                    guard case .tooLarge = error else { throw error }
+                    Logger.persistence.error(
+                        "session audio over the object store cap, kept on device: bytes=\(bytes.count, privacy: .public)"
+                    )
+                    continue
+                }
                 session.audioAsset = .authored(ref)
                 session.audioData = nil
             }

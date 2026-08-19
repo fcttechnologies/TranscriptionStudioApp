@@ -87,11 +87,16 @@ struct ToastCenterInteractionTests {
 
     // The queue caps its backlog at 4: pushing a 5th behind an already-full queue drops the
     // oldest queued entry rather than growing unbounded.
+    //
+    // Sticky toasts, because this test owns the advancing. A toast's default 4s auto-dismiss is a
+    // second writer against the same queue, and one presented toast outliving its duration before
+    // the next `dismiss()` advances the queue an extra step — so the sequence desynchronises and
+    // the queue runs dry under nothing worse than a loaded suite.
     @Test func queueDropsTheOldestQueuedEntryPastTheCap() async throws {
         let center = ToastCenter()
-        center.show(FCTToast(title: "0", systemImage: "circle"))
+        center.show(FCTToast(title: "0", systemImage: "circle", duration: nil))
         for index in 1...5 {
-            center.show(FCTToast(title: "\(index)", systemImage: "circle"))
+            center.show(FCTToast(title: "\(index)", systemImage: "circle", duration: nil))
         }
         var seen: [String] = [try #require(center.current?.title)]
         for _ in 0..<4 {

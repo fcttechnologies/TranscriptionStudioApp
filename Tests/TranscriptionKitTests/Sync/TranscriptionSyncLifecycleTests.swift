@@ -58,6 +58,54 @@ struct TranscriptionSyncLifecycleTests {
         #expect(stored?.bytes == bytes, "the authored bytes are on the object store")
     }
 
+    /// A recording past the object store's per-file cap is refused at **stage** time, and this is
+    /// the app most able to reach it: 32 kbps mono is ~14.4 MB/hour, so 50 MB is ~3.5 hours of one
+    /// meeting.
+    ///
+    /// That must cost the long session its upload and nothing else. The sweep runs oldest-first,
+    /// so a refusal allowed out of the loop ends the pass where it stands: every session recorded
+    /// *after* the long one stages on no cycle ever, because the same refusal waits at the same
+    /// place every time. One long meeting is not a wedge for the library behind it.
+    @MainActor
+    @Test func anOverCapRecordingKeepsItsAudioLocalWithoutWedgingTheSweep() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        // Oldest first, so the long session sits between two ordinary ones: one the sweep reaches
+        // before the refusal, one it only reaches by surviving it.
+        let before = try device.recordSession(
+            title: "Standup", audio: Data("short and ordinary".utf8),
+            createdAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let oversize = try device.recordSession(
+            title: "Six-hour offsite", audio: Data(count: Int(BlobPolicy.maxObjectBytes) + 1),
+            createdAt: Date(timeIntervalSince1970: 2_000)
+        )
+        let after = try device.recordSession(
+            title: "Retro", audio: Data("also short".utf8),
+            createdAt: Date(timeIntervalSince1970: 3_000)
+        )
+
+        await device.enroll()
+
+        let long = try #require(try device.session(oversize))
+        #expect(long.audioAsset == nil, "over the cap, so nothing was staged")
+        #expect(long.audioData != nil, "and the bytes stay readable on the device that recorded them")
+
+        for (id, name) in [(before, "ahead of it"), (after, "behind it")] {
+            let session = try #require(try device.session(id))
+            #expect(session.audioAsset != nil, "the session \(name) stages")
+            #expect(session.audioData == nil, "and its pre-staging column is cleared")
+        }
+
+        // Every row still reaches the server: what an over-cap session loses is its audio, not its
+        // record — title, transcript and segments are ordinary columns and travel as usual.
+        #expect(await device.server.liveCount(in: TranscriptSession.syncTableName) == 3)
+        #expect(device.sync.unsyncedWork == 0, "and nothing is left held")
+
+        #expect(await device.objects.objectCount() == 2, "only the two ordinary recordings uploaded")
+    }
+
     // MARK: - The destructive mappings
 
     @MainActor
@@ -211,3 +259,4 @@ struct TranscriptionSyncLifecycleTests {
         #expect(device.sync.status == .needsReauthentication)
     }
 }
+

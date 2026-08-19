@@ -62,11 +62,15 @@ final class BootstrapDevice {
 
     /// Record a session the way the app does before any account exists: bytes in the session's
     /// own column, nothing staged.
+    ///
+    /// `createdAt` is settable because the staging sweep runs oldest-first: a test about which
+    /// session the sweep reaches first has to say so rather than lean on wall-clock ordering.
     @discardableResult
-    func recordSession(title: String, audio: Data?) throws -> UUID {
+    func recordSession(title: String, audio: Data?, createdAt: Date = .now) throws -> UUID {
         let context = container.mainContext
         let session = TranscriptSession(title: title, kind: .roomRecording)
         session.audioData = audio
+        session.createdAt = createdAt
         context.insert(session)
         try context.save()
         return session.id

@@ -104,13 +104,16 @@ public final class TranscriptSession {
     /// glyph. The list cell renders from the synced metadata it already has.
     ///
     /// **The one hard edge, stated rather than discovered:** the bucket caps a single object at
-    /// 50 MB, which at 32 kbps is **~3.5 hours** of continuous recording. A longer session's
-    /// upload is refused, and the ordering rule then holds that record unpushed with the failure
-    /// surfaced (`TranscriptionSync.unsyncedWork`) — never a record whose bytes 404.
+    /// 50 MB, which at 32 kbps is **~3.5 hours** of continuous recording. A longer session is
+    /// refused at *stage* time, so it never enters the upload queue: it keeps its audio in
+    /// ``audioData`` on the device that recorded it, and the sweep passes over it and stages the
+    /// sessions behind it. Its record, transcript, segments and highlights all sync as usual.
     ///
-    /// Stored as encoded bytes because SwiftData cannot persist `AssetSource` itself: an enum
-    /// with a labelled-tuple payload traps the model coder. ``audioAsset`` is its typed face.
-    public var audioAssetData: Data?
+    /// Stored as text because `AssetSource` cannot be a stored property: SwiftData describes a
+    /// property by reflecting its type's shape rather than by running its `Codable` conformance,
+    /// and this one's is hand-written for the discriminated wire shape — which compiles clean and
+    /// dies at the first save. ``audioAsset`` is its typed face.
+    public var audioAssetText: String?
 
     public var duration: TimeInterval = 0
     /// The full plain-text transcript, denormalized for fast search/copy.
@@ -186,10 +189,10 @@ public final class TranscriptSession {
         set { highlightsStatusRaw = newValue.rawValue }
     }
 
-    /// The staged recording's typed face over ``audioAssetData``.
+    /// The staged recording's typed face over ``audioAssetText``.
     public var audioAsset: AssetSource? {
-        get { audioAssetData.flatMap { try? JSONDecoder().decode(AssetSource.self, from: $0) } }
-        set { audioAssetData = newValue.flatMap { try? JSONEncoder().encode($0) } }
+        get { audioAssetText.flatMap(AssetSource.init(storedText:)) }
+        set { audioAssetText = newValue?.storedText }
     }
 
     public var kind: SessionKind {
