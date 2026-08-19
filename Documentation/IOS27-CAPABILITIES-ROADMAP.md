@@ -477,7 +477,7 @@ pairing — `NSSupportsLiveActivitiesFrequent`), and supports specifying compute
 
 **How it applies.** Today: `TranscriptionJob`/`JobStore` run entirely in-process, in the
 foreground; `UIBackgroundModes` only declares `audio` (keeps the process alive during *live
-mic recording*) and `remote-notification` (CloudKit sync). A **file/link transcription job
+mic recording*). A **file/link transcription job
 has no such cover** — if the user backgrounds the app mid-job, the job is vulnerable to
 suspension. `BGContinuedProcessingTask` is the correct fix: wrap the ASR+diarization run in a
 continued-processing task, report `Progress` from the pipeline's existing stage/percentage
@@ -556,7 +556,7 @@ headline feature on its own.
 - **`ResultsObserver`/`HistoryObserver`** — closes a real current gap.
   `TranscriptSpotlightIndex.reindexAll`'s own doc comment says it's "called on launch so
   external/seeded changes are covered" — a session created/edited/deleted on the *other*
-  device (Mac↔iOS CloudKit sync is already wired) is only reflected in this device's
+  device (Mac↔iOS sync is already wired) is only reflected in this device's
   Spotlight index on next launch, not the moment sync lands. `HistoryObserver`, filtered by
   transaction author, closes that gap: reindex incrementally the moment a synced change
   arrives. This directly firms up both flagships' data freshness across devices.
@@ -646,7 +646,7 @@ else. Dependencies noted; independent items can run in parallel lanes.
 | 3 | **EventKit — Calendar/Reminders proactive actions** | M | #2 | The "wow" that makes extraction felt |
 | 4 | **Contacts — speaker mapping, auto-detect, Siri resolution** | M | #2 (auto-detect), #1 (resolver wiring); speaker-mapping alone is independent | Both flagships' name-handling quality |
 | 5 | **Proactive suggestion UX (chips)** | M | #2; wires into #3/#4 | Delivery mechanism for all of Flagship B |
-| 6 | **SwiftData `HistoryObserver` incremental reindex** | S-M | — (independent) | Both flagships' data freshness across CloudKit-synced devices |
+| 6 | **SwiftData `HistoryObserver` incremental reindex** | S-M | — (independent) | Both flagships' data freshness across synced devices |
 | 7 | **Background GPU inference (`BGContinuedProcessingTask`)** | M | `DETAIL-REDESIGN.md` Live Activity lane | Reliability for long file/meeting jobs |
 | 8 | App Intents expansion (`LongRunningIntent`/cancellation, `RelevantEntities`, on-screen annotation, `OwnershipProvidingEntity`) | M | — (independent) | Siri/Shortcuts polish |
 | 9 | PCC escalation for long transcripts | M | Foundation Models (already wired) | Removes on-device context ceiling |
@@ -689,7 +689,7 @@ already knows how to do gracefully.
    than a backend capability nobody sees; needs a real taste-checklist pass given it's a
    brand-new UI pattern.
 6. **`HistoryObserver` incremental reindex** (S-M) — closes the one real data-freshness gap
-   (Spotlight index only refreshes on launch today for cross-device CloudKit changes),
+   (Spotlight index only refreshes on launch today for cross-device changes),
    quietly load-bearing for both flagships.
 
 Everything else (Background GPU inference, App Intents polish, PCC escalation, MetricKit,

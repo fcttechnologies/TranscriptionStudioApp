@@ -4,7 +4,7 @@ Research pass to answer: who uses transcription/voice-note apps, how, what they 
 what would make each of them say "damn, how does it do all that." Web-grounded (July 2026
 market), mapped against TS as it is and as roadmapped (`PROJECT_GUIDE.md`, `DETAIL-REDESIGN.md`,
 the iOS-27 assistant-layer plans: Siri semantic Q&A over transcripts, Foundation Models
-extraction → Calendar/Reminders/Contacts, share sheet, CloudKit sync, iOS↔Mac companion).
+extraction → Calendar/Reminders/Contacts, share sheet, cross-device sync, iOS↔Mac companion).
 
 ## The competitive field (where TS sits)
 
@@ -32,7 +32,7 @@ extraction → Calendar/Reminders/Contacts, share sheet, CloudKit sync, iOS↔Ma
 - **The one gap nobody in the field owns**: a single **on-device, offline, universal** app
   that's *actually* premium (not a hobbyist Whisper wrapper) and serves every vertical through
   one elegant surface instead of forcing a different bot per job. TS's on-device pipeline +
-  CloudKit-native sync + iOS-27 assistant layer is built to be exactly that.
+  cross-device sync + iOS-27 assistant layer is built to be exactly that.
 
 ---
 
@@ -91,7 +91,7 @@ Each: who · workflow · needs · pain points with the field · the "damn" momen
 - **Damn moment:** a verbatim-mode toggle that's honest about it — no silent "cleaning" of
   disfluencies — with per-word confidence visibly flagged, so a paralegal knows exactly which
   five words to double-check against the audio instead of proofreading the whole thing.
-- **Flag:** genuinely privacy/liability-sensitive — CloudKit sync of privileged client material
+- **Flag:** genuinely privacy/liability-sensitive — syncing privileged client material
   needs an explicit "keep this session device-only, never sync" per-session control.
 
 ### 5. Medical / clinical (dictation, patient notes)
@@ -267,7 +267,7 @@ than a pile of per-vertical settings. Ranked by how many verticals each one move
    competitors don't make (most silently "clean" everything).
 4. **Per-session privacy control (device-only / never sync).** One toggle, huge leverage: legal,
    medical, therapy, personal journaling, and journalists' source protection all need "this one
-   never leaves the device or the family's CloudKit" as an explicit, visible guarantee — not an
+   never leaves this device" as an explicit, visible guarantee — not an
    implicit default nobody can verify. This is also the single sharpest differentiator against
    the *entire* cloud-based field (the Otter litigation is the market handing TS this argument).
 5. **Flexible structured export (beyond plain text).** DOCX/TXT/SRT/VTT/PDF cover journalists,

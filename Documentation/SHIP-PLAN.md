@@ -10,7 +10,8 @@ Anything generalizable across FCT apps is built into the right **FCTFoundation**
 consumed by TS — never copied per-app. VillainArc is the *reference*; FCTFoundation is the *home*.
 - FM / AI / RAG / extraction machinery → **FCTIntelligence** (generalize VA's `AskAssistant` +
   the `@Generable` extraction pipeline; the app supplies its own index + schema).
-- CloudKit sync/status → **FCTCloudKit** / **FCTSync** (already adopted by the companion).
+- Cross-device sync → **FCTServerSync** + **FCTBlobSync** + **FCTAccount** over **FCTSync**'s
+  change feed (adopted; see `TranscriptionSync`).
 - Shared UI (suggestion chips, media/now-playing controls) → **FCTComponentsUI**.
 - Core primitives → **FCTCore**.
 - A new module only when nothing fits.

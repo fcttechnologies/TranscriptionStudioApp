@@ -210,10 +210,14 @@ extension StoredSegment: SyncedModel, TranscriptSessionChild {
     /// `words` crosses as the structured JSON it already is, not as opaque bytes: `wordsJSON` is
     /// `JSONEncoder` output over `[AsrWord]`, so decoding it into the wire keeps the column a real
     /// `jsonb` a query can reach rather than a base64 string nothing can read.
+    ///
+    /// `start_time`/`end_time` rather than `start`/`end`: `end` is a reserved word in Postgres, and
+    /// a column that needs quoting in every hand-written query is a trap the wire name can simply
+    /// not set.
     public func syncRow() -> [String: JSONValue] {
         [
-            "start": .double(start),
-            "end": .double(end),
+            "start_time": .double(start),
+            "end_time": .double(end),
             "text": .string(text),
             "track": .string(trackRaw),
             "speaker_slot": .int(Int64(speakerSlot)),
@@ -228,8 +232,8 @@ extension StoredSegment: SyncedModel, TranscriptSessionChild {
 
     @discardableResult
     public func apply(_ row: [String: JSONValue]) -> UUID? {
-        if let value = row["start"]?.doubleValue { start = value }
-        if let value = row["end"]?.doubleValue { end = value }
+        if let value = row["start_time"]?.doubleValue { start = value }
+        if let value = row["end_time"]?.doubleValue { end = value }
         if let value = row["text"]?.stringValue { text = value }
         if let value = row["track"]?.stringValue { trackRaw = value }
         if let value = row["speaker_slot"]?.intValue { speakerSlot = Int(value) }

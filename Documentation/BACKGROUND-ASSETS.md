@@ -60,7 +60,7 @@ Host app (`TranscriptionStudioiOS`) Info.plist:
 Entitlement `com.apple.developer.background-assets` (Boolean `true`) is on **both** the host
 (`Sources/iOSApp/TranscriptionStudioiOS.entitlements`) and the extension
 (`Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements`), plus the shared App
-Group on both. Like the App Group and iCloud entitlements, it registers through automatic signing
+Group on both. Like the App Group and Sign-in-with-Apple entitlements, it registers through automatic signing
 (`-allowProvisioningUpdates`) when a real `DEVELOPMENT_TEAM` signs the build; a teamless simulator
 build strips all provisioning-dependent entitlements (only `hardened-process` survives codesign),
 which is expected and identical to how the existing App Group entitlement behaves there.

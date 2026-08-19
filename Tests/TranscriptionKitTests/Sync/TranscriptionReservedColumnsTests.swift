@@ -77,6 +77,59 @@ struct TranscriptionReservedColumnsTests {
         }
     }
 
+    /// The wire's column inventory, pinned against the migration.
+    ///
+    /// `sync_push` **rejects a payload naming a column the table does not have**, so a rename on
+    /// this side that the SQL in `FCTPlatform` never hears about is not a mismatch that degrades:
+    /// it is every push of that table failing in the field, with nothing on this side to catch it
+    /// (the migration lives in another repo and no build can see it). This is that tripwire — the
+    /// one place a reviewer can read the Swift wire and the SQL side by side.
+    @Test @MainActor
+    func theWireCarriesExactlyTheColumnsTheMigrationDeclares() {
+        let expected: [String: Set<String>] = [
+            TranscriptSession.syncTableName: [
+                "title", "kind", "status", "created_at", "source_url", "audio", "duration",
+                "full_text", "error_message", "is_private", "location_name", "latitude",
+                "longitude", "claimed_at", "claimed_by", "highlights_status",
+                "dismissed_suggestion_ids",
+            ],
+            StoredSegment.syncTableName: [
+                "start_time", "end_time", "text", "track", "speaker_slot", "speaker_confidence",
+                "avg_logprob", "no_speech_prob", "compression_ratio", "words", "session_id",
+            ],
+            TranscriptDecision.syncTableName: ["text", "session_id"],
+            TranscriptActionItem.syncTableName: [
+                "task", "owner", "due_date_text", "due_date", "done", "session_id",
+            ],
+            TranscriptEvent.syncTableName: ["title", "date_text", "date", "attendees", "session_id"],
+            TranscriptPerson.syncTableName: ["name", "session_id"],
+            TranscriptPlace.syncTableName: ["name", "session_id"],
+            SpeakerAssignment.syncTableName: [
+                "speaker_slot", "contact_identifier", "display_name", "session_id",
+            ],
+            MacPresence.syncTableName: ["device_id", "device_name", "last_seen"],
+        ]
+
+        let session = TranscriptSession(title: "t", kind: .roomRecording)
+        let rows: [String: [String: JSONValue]] = [
+            TranscriptSession.syncTableName: session.syncRow(),
+            StoredSegment.syncTableName: StoredSegment(start: 0, end: 1, text: "x").syncRow(),
+            TranscriptDecision.syncTableName: TranscriptDecision(text: "x").syncRow(),
+            TranscriptActionItem.syncTableName: TranscriptActionItem(task: "x").syncRow(),
+            TranscriptEvent.syncTableName: TranscriptEvent(title: "x").syncRow(),
+            TranscriptPerson.syncTableName: TranscriptPerson(name: "x").syncRow(),
+            TranscriptPlace.syncTableName: TranscriptPlace(name: "x").syncRow(),
+            SpeakerAssignment.syncTableName: SpeakerAssignment(
+                speakerSlot: 0, contactIdentifier: "x", displayName: "x").syncRow(),
+            MacPresence.syncTableName: MacPresence(deviceIDString: "x", deviceName: "x").syncRow(),
+        ]
+
+        #expect(Set(expected.keys) == Set(TranscriptionSyncSchema.schema.tables.map(\.name)))
+        for (table, columns) in expected {
+            #expect(Set(rows[table]?.keys ?? [:].keys) == columns, "\(table)'s wire columns drifted")
+        }
+    }
+
     /// The absence, pinned: no model carries an app-side edit stamp, so none needed the
     /// `updated_at` → `edited_at` rename the fleet does. If one is ever added, it must be named
     /// `edited_at` and this expectation is what will say so.

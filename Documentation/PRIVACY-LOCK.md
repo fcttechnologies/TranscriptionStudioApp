@@ -26,22 +26,23 @@ personal journaling) — the explicit, marketable version of TS's on-device edge
 - `NSFaceIDUsageDescription` is set on both app targets (project.yml). Missing it crashes the
   prompt.
 
-## CloudKit sync exclusion — the honest limitation
+## Sync exclusion — the honest limitation
 
-The moat's ideal is "this session never leaves the device — not even to your own iCloud." **That
+The moat's ideal is "this session never leaves the device — not even to your own account." **That
 half is documented, not shipped, and here's why — this is a real architectural constraint, not an
 oversight.**
 
-**SwiftData + CloudKit sync is configured per `ModelConfiguration` (per store), and a `@Model`
-type belongs to exactly one configuration. There is no API to keep *some* rows of a type local
-while others sync** — sync is all-or-nothing per model type. (Grounded against Apple's SwiftData
-docs: `cloudKitDatabase` is a `ModelConfiguration` property; the container is a set of
-configurations, each a separate store.)
+**Sync membership is per model *type*, not per row.** `TranscriptionSyncSchema` names the tables
+the engine drains, and a `@Model` type is either in that schema or out of it; the outbox is
+derived from persistent history over the whole store, so there is nowhere for "this row only" to
+live. The recording is the same story one layer down: `BlobStore.stage` is what puts authored
+bytes in the upload queue, and a session that skipped it would have a `nil` asset — visibly a
+different kind of record, not a private one.
 
-So true per-session sync exclusion would require private sessions to live in a **separate,
-local-only `ModelContainer`** (`cloudKitDatabase: .none`), routed there **at creation** (a
-post-hoc "make private" toggle can't honestly promise "never left the device" — by the time you
-flip it, CloudKit has already synced the row). That is not clean in TS's architecture:
+So true per-session exclusion would mean private sessions living in a **separate, local-only
+`ModelContainer`** the engine never sees, routed there **at creation** (a post-hoc "make private"
+toggle cannot honestly promise "never left the device" — by the time it is flipped, the row has
+pushed). That is not clean in this architecture:
 
 - The app is wired to a **single shared container** (`AppModelContainer.shared`) across the feed
   fetch, `SessionStoreObserver`, `AppModel.openSession`, the `TranscriptSessionEntity` read-path,
@@ -51,18 +52,17 @@ flip it, CloudKit has already synced the row). That is not clean in TS's archite
   private" UX would require deep-copying the session + segments + highlights across stores.
 - Privacy would have to become a **create-time-only** decision to be honest, changing the UX.
 
-Per the moat brief's explicit guidance ("if true CloudKit exclusion isn't cleanly achievable in
-this architecture, implement the biometric lock + honestly document rather than fake it"), the
-shipped guarantee is: **biometric lock + full withholding from the on-device assistant surface
-(Spotlight / Siri / App Intents).** What a private session's data does *not* yet get is exclusion
-from the user's own CloudKit private database (their own iCloud, end-to-end within their Apple
-account — not a third-party server; TS is on-device and has no vendor cloud).
+So the shipped guarantee is: **biometric lock + full withholding from the on-device assistant
+surface (Spotlight / Siri / App Intents).** What a private session does *not* yet get is exclusion
+from sync: with an account signed in, its rows and its recording reach the user's own private FCT
+account like any other session. Transcription itself never leaves the device either way — no audio
+is ever sent anywhere to be processed.
 
 ### The correct future design (when it's worth the surgery)
 
 A dedicated local-only container for private sessions, chosen **at creation**:
 
-- `AppModelContainer` gains a second container: `privateLocal` with `cloudKitDatabase: .none`.
+- `AppModelContainer` gains a second container the sync engine is never handed.
 - A thin `SessionStore` seam fronts both — the feed and by-id lookups query both and merge by
   `createdAt`; creation routes by the chosen privacy at record-start.
 - Privacy becomes create-time (a "start private" affordance on the recorder), not a post-hoc

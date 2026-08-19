@@ -29,10 +29,11 @@ DERIVED="$(mktemp -d)"
 trap 'rm -rf "$DERIVED"' EXIT
 
 # Automatic signing + -allowProvisioningUpdates mints (and then reuses) a "Mac Team Provisioning
-# Profile" that includes the restricted CloudKit / Push / Enhanced-Security capabilities, so the
-# STANDALONE .app runs without Xcode AND CloudKit-syncs. It uses the Apple-account session already
-# in Xcode; the same Apple Development cert keeps the code identity stable, so TCC grants persist.
-echo "› Building Release (automatic signing + provisioning updates, CloudKit-enabled)…"
+# Profile" that includes the restricted Sign-in-with-Apple / keychain-group / Enhanced-Security
+# capabilities, so the STANDALONE .app runs without Xcode AND can sign in to sync. It uses the
+# Apple-account session already in Xcode; the same Apple Development cert keeps the code identity
+# stable, so TCC grants persist.
+echo "› Building Release (automatic signing + provisioning updates)…"
 xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio -configuration Release \
   -derivedDataPath "$DERIVED" -destination 'platform=macOS' \
   -allowProvisioningUpdates \

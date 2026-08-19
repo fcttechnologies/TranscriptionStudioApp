@@ -76,7 +76,8 @@ conversion is presumed guilty until our gates pass) and Fernando's daily testing
 
 - **Test fixtures:** the real-engine integration tests read `TestResources/*.wav`
   (gitignored). Run `scripts/make-verification-audio.sh` once before the full suite.
-- **Mac app signing:** the target's iCloud entitlements need a development team, and
+- **Mac app signing:** the target's Sign in with Apple + keychain-group entitlements need a
+  development team, and
   `project.yml` deliberately leaves it empty — pass it on the CLI:
   `xcodebuild … DEVELOPMENT_TEAM=<team> build`.
 - **Simulator limits:** mic capture fails on the simulator (CoreAudio -10868 — the input
