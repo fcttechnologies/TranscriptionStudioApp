@@ -107,7 +107,10 @@ public final class TranscriptSession {
     /// 50 MB, which at 32 kbps is **~3.5 hours** of continuous recording. A longer session's
     /// upload is refused, and the ordering rule then holds that record unpushed with the failure
     /// surfaced (`TranscriptionSync.unsyncedWork`) — never a record whose bytes 404.
-    public var audioAsset: AssetSource?
+    ///
+    /// Stored as encoded bytes because SwiftData cannot persist `AssetSource` itself: an enum
+    /// with a labelled-tuple payload traps the model coder. ``audioAsset`` is its typed face.
+    public var audioAssetData: Data?
 
     public var duration: TimeInterval = 0
     /// The full plain-text transcript, denormalized for fast search/copy.
@@ -181,6 +184,12 @@ public final class TranscriptSession {
     public var highlightsStatus: HighlightsStatus {
         get { HighlightsStatus(rawValue: highlightsStatusRaw) ?? .pending }
         set { highlightsStatusRaw = newValue.rawValue }
+    }
+
+    /// The staged recording's typed face over ``audioAssetData``.
+    public var audioAsset: AssetSource? {
+        get { audioAssetData.flatMap { try? JSONDecoder().decode(AssetSource.self, from: $0) } }
+        set { audioAssetData = newValue.flatMap { try? JSONEncoder().encode($0) } }
     }
 
     public var kind: SessionKind {

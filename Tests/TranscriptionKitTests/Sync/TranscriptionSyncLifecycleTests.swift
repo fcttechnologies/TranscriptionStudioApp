@@ -1,0 +1,177 @@
+import FCTAccount
+import FCTBlobSync
+import FCTBlobSyncTesting
+import FCTServerSync
+import FCTServerSyncTesting
+import FCTSync
+import Foundation
+import SwiftData
+import Testing
+@testable import TranscriptionKit
+
+/// The bootstrap's lifecycle mapping, pinned: which account events run the destructive sequence,
+/// which are barrier-gated, and whether this app's composition root actually wires the blob
+/// layer's ordering rule into the record engine.
+@Suite("TranscriptionSync lifecycle mapping")
+struct TranscriptionSyncLifecycleTests {
+
+    // MARK: - The push gate, through this app's own composition root
+
+    /// **The gate the shared suite structurally cannot prove.** `BlobContractScenario` wires its
+    /// own `pushGate` on its own fixture engine, so it proves the machinery works wherever it is
+    /// wired — and passes identically for an app that never wires it. Every shipped adopter wires
+    /// it inline in its bootstrap; there is no shared hook to reach.
+    ///
+    /// So: stage a real recording through the shipping path (`syncNow` runs the staging sweep),
+    /// refuse the upload transport, run a full ordinary cycle, and assert the session never
+    /// reached the server and stayed *pending* — held, never pushed, never failed.
+    @MainActor
+    @Test func pushGateHoldsASessionWhoseRecordingHasNotUploaded() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        let bytes = Data("the user's own recording, megabytes in real life".utf8)
+        let sessionID = try device.recordSession(title: "Held", audio: bytes)
+        await device.objects.setOnline(false)
+        await device.enroll()
+
+        // The sweep ran: the bytes moved out of the session's own column and into the blob layer.
+        let staged = try #require(try device.session(sessionID))
+        #expect(staged.audioData == nil, "the staging sweep must clear the pre-staging column")
+        let ref = try #require(staged.audioAsset?.blobRef, "and write the asset in its place")
+
+        // The upload could not land, so the record must not have gone out with it.
+        let rows = await device.server.liveCount(in: TranscriptSession.syncTableName)
+        #expect(rows == 0, """
+        the session reached the server while its recording was still on the device: the engine's \
+        push gate is not wired to the blob store, so the ordering rule is not in force
+        """)
+        #expect(device.sync.unsyncedWork > 0, "the held work is surfaced, never inferred")
+
+        // The other side of the same wire: the upload lands, the gate opens, the record goes.
+        await device.objects.setOnline(true)
+        await device.sync.syncNow()
+        let pushed = await device.server.liveCount(in: TranscriptSession.syncTableName)
+        #expect(pushed == 1, "the confirmed upload must release the session through the same gate")
+        let stored = await device.objects.object(at: BlobPath(
+            account: device.accountID, app: TranscriptionSyncSchema.postgresSchema, blobID: ref.id))
+        #expect(stored?.bytes == bytes, "the authored bytes are on the object store")
+    }
+
+    // MARK: - The destructive mappings
+
+    @MainActor
+    @Test func switchedRunsTheDestructiveSequence() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        await device.server.setOnline(false)
+        try device.recordSession(title: "A's meeting", audio: nil)
+        await device.enroll()
+        #expect(device.sync.unsyncedWork > 0, "the switch must be discarding real unpushed work")
+
+        await device.sync.handle(.switched(from: device.accountID, to: UUID()))
+
+        // Account A's rows must not survive into account B — pushed or not.
+        let context = device.container.mainContext
+        #expect(try context.fetchCount(FetchDescriptor<TranscriptSession>()) == 0)
+        #expect(device.sync.discardedOnSwitch > 0,
+                "the one moment this app can lose a write is surfaced, never swallowed")
+    }
+
+    @MainActor
+    @Test func signedOutClearsOnceEverythingHasSynced() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        let bytes = Data("recorded, uploaded, acked".utf8)
+        try device.recordSession(title: "Fully synced", audio: bytes)
+        await device.enroll()
+        #expect(device.sync.unsyncedWork == 0, "the barrier's precondition must actually hold")
+
+        await device.sync.handle(.signedOut)
+
+        // Everything this app holds syncs — records through the engine, the recording through the
+        // blob layer — and the barrier just proved the server has all of it. So sign-out removes
+        // it from this device, and a re-sign-in restores it.
+        let context = device.container.mainContext
+        #expect(try context.fetchCount(FetchDescriptor<TranscriptSession>()) == 0)
+        #expect(device.sync.status == .off)
+        #expect(device.sync.keptOnSignOut == 0)
+        let rows = await device.server.liveCount(in: TranscriptSession.syncTableName)
+        #expect(rows == 1, "the server's copy is untouched — sign-out ends a session, not the data")
+    }
+
+    @MainActor
+    @Test func signedOutWithUnpushedWorkKeepsTheStoreWhole() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        await device.server.setOnline(false)
+        try device.recordSession(title: "Never pushed", audio: nil)
+        await device.enroll()
+        #expect(device.sync.unsyncedWork > 0)
+
+        await device.sync.handle(.signedOut)
+
+        // Between a local write and its push ack this device is the only holder of that change:
+        // the barrier refuses the clear, and the library outlives the session.
+        let context = device.container.mainContext
+        #expect(try context.fetchCount(FetchDescriptor<TranscriptSession>()) == 1)
+        #expect(device.sync.keptOnSignOut > 0, "the kept work is surfaced, never silent")
+        #expect(device.sync.status == .off)
+    }
+
+    /// A recording whose upload never landed is unpushed work too, even when every *record* has
+    /// been acked — the barrier reads both layers or it clears a library whose bytes exist
+    /// nowhere else.
+    @MainActor
+    @Test func signedOutWithAnUndrainedUploadKeepsTheStoreWhole() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        await device.objects.setOnline(false)
+        try device.recordSession(title: "Bytes still here", audio: Data("only on this device".utf8))
+        await device.enroll()
+
+        await device.sync.handle(.signedOut)
+
+        let context = device.container.mainContext
+        #expect(try context.fetchCount(FetchDescriptor<TranscriptSession>()) == 1)
+        #expect(device.sync.keptOnSignOut > 0)
+    }
+
+    /// `.resumed` re-fires on every foregrounding, so the bootstrap must recognise its own living
+    /// engine and just run a cycle. Rebuilding would accumulate a trigger task and observer set
+    /// per foreground — invisible from the outside, which is why the build count is the assertion.
+    @MainActor
+    @Test func resumingTheSameAccountDoesNotRebuildTheEngine() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        await device.enroll()
+        #expect(device.sync.engineBuildCountForTesting == 1)
+
+        await device.sync.handle(.resumed(device.accountID))
+        await device.sync.handle(.resumed(device.accountID))
+        #expect(device.sync.engineBuildCountForTesting == 1,
+                "a foregrounding is a cycle, not a new engine")
+    }
+
+    /// Involuntary: nothing local is cleared and the outbox is untouched, so one sign-in resumes.
+    @MainActor
+    @Test func needsReauthenticationClearsNothing() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        await device.server.setOnline(false)
+        try device.recordSession(title: "Still mine", audio: nil)
+        await device.enroll()
+
+        await device.sync.handle(.needsReauthentication(device.accountID))
+
+        let context = device.container.mainContext
+        #expect(try context.fetchCount(FetchDescriptor<TranscriptSession>()) == 1)
+        #expect(device.sync.status == .needsReauthentication)
+    }
+}
