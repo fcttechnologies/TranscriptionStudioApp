@@ -18,6 +18,11 @@ daily transcription driver, and a craft showcase.
 Floor is 27 on both because the diarizer is a Core AI (`.aimodel`) model — the framework
 is new in the 27 OSes. Swift 6, strict concurrency.
 
+Because the floor *is* 27, there is no OS-version `#available` gating anywhere. The only
+gates are runtime-capability checks — `SystemLanguageModel.default.availability`,
+permission grants, `BGTaskScheduler.supportedResources` — and `#if os(…)` where a
+capability is genuinely one-platform.
+
 ## Structure
 
 Thin app shells (`Sources/MacApp`, `Sources/iOSApp`, xcodegen targets) over one local
@@ -69,8 +74,10 @@ Activities). Regenerate the project with `xcodegen generate` after an edit here 
 
 ## Verification
 
-`Documentation/VERIFICATION.md` — the diarizer-verification plan (the community
-conversion is presumed guilty until our gates pass) and Fernando's daily testing loop.
+`Documentation/VERIFICATION.md` — the automated gates that keep "who said what" honest, the
+device passes host tests can't reach, and Fernando's daily testing loop. The diarizer's neural
+core is a model export whose fidelity is never assumed; `Documentation/SORTFORMER-STATUS.md`
+carries its provenance and the recipe to regenerate it.
 
 ## Building from a fresh clone / worktree
 

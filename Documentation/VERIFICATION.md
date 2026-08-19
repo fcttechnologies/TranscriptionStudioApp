@@ -150,6 +150,88 @@ network up):
 If the row only appears after force-quitting and relaunching the receiving device, the remote
 refresh path has regressed.
 
+### Manual two-device check — Spotlight index freshness
+
+Launch-time `reindexAll` keeps this device's named Spotlight index current with its own writes;
+`SpotlightIndexObserver` is what keeps it current with the *other* device's while the app runs.
+One simulator can't exercise it (there is no second device to pull from). With both devices
+signed into the same FCT account, the app installed and synced, and the receiving app already
+foregrounded (**not** relaunched — a relaunch runs `reindexAll` and proves nothing):
+
+1. Create or rename a session on the Mac. On the iPhone, once sync lands (a few seconds), pull
+   down Spotlight and search its title — it appears without a relaunch.
+2. Delete a session on the Mac; confirm it drops out of the iPhone's Spotlight results, again
+   without a relaunch.
+3. Repeat both, reversed.
+
+## The assistant layer — device checks (Apple Intelligence)
+
+Foundation Models and Siri runtime behaviour run only on an Apple-Intelligence-eligible device
+with Apple Intelligence enabled. Everything below is a device check; the build lane proves only
+the code path (documented API usage, deterministic logic unit-tested, clean builds).
+
+### Extraction
+
+1. Record or import a short meeting with a clear decision and a dated action item ("let's ship
+   Friday; Sergio, send the deck by next Tuesday"). Let it finish transcribing.
+2. Extraction runs off the critical path: the transcript appears immediately and highlights fill
+   in a moment later (`session.highlightsStatus` → `.ready`).
+3. Confirm the extracted models persist and are queryable — the session's decisions, action items
+   (with owner and resolved due date), events, people and places are populated.
+4. Turn Apple Intelligence **off** and record again → the status degrades to `.unavailable`
+   silently: no highlights, and no error surface.
+
+### Library Q&A
+
+5. With several transcripts saved, tap **Ask your library** and ask a cross-session question.
+   Confirm it retrieves from the *right* session(s) and answers from their content.
+6. Via Siri/Shortcuts, run **Ask a Transcript** with **no** transcript chosen → it searches the
+   whole library. Choose a specific transcript → it answers grounded in that one only.
+7. **Named-index scoping — the one real runtime unknown.** Sessions are donated into a *named*
+   Core Spotlight index, never the system default, because only a named index carries a
+   data-protection class; `CoreSpotlightSource` exposes no index-name parameter, and the
+   `searchableIndexDelegate` hydrates full transcript text for matched ids rather than scoping
+   the search. Confirm library Q&A actually retrieves named-index content. If it does not, the
+   fallback is to additionally donate a metadata-only copy into the default index, keeping the
+   full-text hydration delegate as-is — do **not** inflate the persisted named index.
+8. **Safety boundary.** The assistant is read-only by construction (its tools are vetted
+   `.readOnly`) and must never create, edit or delete. Ask it to "delete my last transcript" —
+   it should explain that it can only answer questions.
+
+## Ecosystem actions — device checks
+
+Permission prompts, real Calendar/Reminders writes, the system contact picker and Siri phrasing
+all run only on a device; some also need Apple Intelligence for the upstream extraction.
+
+### Calendar (write-only) and Reminders
+
+1. Open a transcript that extracted an event. Trigger **Add Meeting to Calendar** via
+   Shortcuts/Siri, parameterized by the transcript. With several events, confirm the
+   disambiguation prompt appears; pick one.
+2. The app opens to the confirm sheet — title and start/end editable, notes carrying attendees
+   and the transcript attribution. Tap **Add to Calendar** → the *write-only* permission prompt
+   appears the first time. Grant it; the event lands in the default calendar with a success
+   toast, and exists in Calendar.
+3. **Nothing is written until Add.** Dismiss the sheet without tapping Add; confirm no event was
+   created.
+4. Repeat for an action item via **Add Action Item to Reminders** → the reminders permission
+   prompt, a due date and alarm when one resolved, saved to the default list.
+5. **Deny** the permission once: the failure toast must be calm and point to Settings — no crash,
+   no silent no-op.
+
+### Contacts and Siri name resolution
+
+6. On a multi-speaker transcript, trigger **Name Transcript Speakers** (iOS). Tap **Choose
+   contact** → the system picker appears with **no** Contacts permission prompt. Pick a contact;
+   the speaker shows that name. Confirm **Clear** removes it.
+7. **Mentions.** With Contacts read access already granted, the sheet shows which extracted
+   mentions are in your contacts. Confirm that opening the sheet does **not** trigger a contacts
+   prompt when access is undetermined.
+8. **Name resolution.** After binding a speaker (say "Speaker 2" → "Sergio Ramos"), ask the
+   library assistant a name question. It should resolve to that session even though the
+   transcript text only said "Speaker 2". Reindex is async on bind — allow a moment.
+9. **Contacts stays read-only.** The app never creates or edits a contact.
+
 ## Deferred (forge-able later)
 
 - NeMo golden-tensor byte gate: the zoo's capture scripts can regenerate reference

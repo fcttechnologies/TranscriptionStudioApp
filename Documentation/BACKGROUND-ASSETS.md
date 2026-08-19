@@ -57,13 +57,15 @@ Host app (`TranscriptionStudioiOS`) Info.plist:
   `BADownloadAllowance` (non-essential total + margin), `BAEssentialDownloadAllowance` (`0`), and
   `BADownloadDomainAllowList` (the HuggingFace hosts).
 
-Entitlement `com.apple.developer.background-assets` (Boolean `true`) is on **both** the host
-(`Sources/iOSApp/TranscriptionStudioiOS.entitlements`) and the extension
-(`Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements`), plus the shared App
-Group on both. Like the App Group and Sign-in-with-Apple entitlements, it registers through automatic signing
-(`-allowProvisioningUpdates`) when a real `DEVELOPMENT_TEAM` signs the build; a teamless simulator
+The shared App Group is on both the host and the extension. The
+`com.apple.developer.background-assets` entitlement is on **neither**: it isn't provisionable on a
+sideloaded / automatic-signing dev build (Xcode: *"not found and could not be included in
+profile"*), and Background Assets never fires on a sideload anyway, so carrying it today is pure
+build friction. It goes back on both entitlements files at ship — see the ship-time steps below.
+Like the App Group and Sign-in-with-Apple entitlements it registers through automatic signing
+(`-allowProvisioningUpdates`) once a real `DEVELOPMENT_TEAM` signs the build; a teamless simulator
 build strips all provisioning-dependent entitlements (only `hardened-process` survives codesign),
-which is expected and identical to how the existing App Group entitlement behaves there.
+which is expected and identical to how the App Group behaves there.
 
 The extension is an **ExtensionKit** extension (`com.apple.product-type.extensionkit-extension`):
 its Info.plist declares the point via `EXAppExtensionAttributes.EXExtensionPointIdentifier =
@@ -86,26 +88,20 @@ model twice — so WhisperKit's download stays the single runtime fallback while
 ready capability for a future UI affordance (and the touch-the-pipeline change to make Background
 Assets the sole downloader is deliberately out of scope).
 
-## What's testable now vs. needs the App Store install flow
+## What the gates cover, and what only the App Store install flow can fire
 
-**Verified now (this build):**
-- The full implementation compiles with zero warnings — `swift build` (macOS) and the iOS
-  `xcodebuild` (extension included).
-- The extension target builds and **embeds** in the app's `Extensions/` folder with the correct
-  extension-point identifier and no `NSExtension` dict.
-- All Info.plist keys and both entitlements files are wired and land in the built products.
-- Unit tests (`BackgroundAssetsManifestTests`) cover the pure core: HuggingFace-URL construction
-  from a relative path, the install/staging/download-base path mapping, the pending-asset planner,
-  and that the committed manifest describes the real 24-file model exactly (sizes + total).
-- The launch-time `installStagedModel()` relocation is exercisable by dropping files into the App
-  Group staging dir (its logic is plain filesystem moves).
+**Covered by the build and the suite:** the extension builds and embeds into the app's
+`Extensions/` folder with the correct extension-point identifier and no `NSExtension` dict; every
+`BA*` Info.plist key lands in the built product; `BackgroundAssetsManifestTests` pins the pure core
+— HuggingFace-URL construction from a relative path, the install/staging/download-base path
+mapping, the pending-asset planner, and that the committed manifest describes the real 24-file
+model exactly (per-file sizes and total). The launch-time `installStagedModel()` relocation is
+plain filesystem moves, exercisable by dropping files into the App Group staging directory.
 
-**Requires the App Store install/update flow to *fire* (cannot be triggered on a sideloaded or
-simulator build):**
-- The system waking the extension **before first launch** on install/update, and the periodic
-  background re-checks. Background Assets extensions are launched by the OS install pipeline, which
-  only runs for App Store / TestFlight installs — not `xcodebuild install` or a dev-signed sideload.
-  The *code* is complete and embedded; only this trigger needs the Store path.
+**Only an App Store / TestFlight install can fire** the system waking the extension *before first
+launch*, and the periodic background re-checks: those are driven by the OS install pipeline, which
+never runs for `xcodebuild install` or a dev-signed sideload. The code is complete and embedded;
+only the trigger needs the Store path.
 
 ## Ship-time steps (turn it on)
 
@@ -116,24 +112,16 @@ simulator build):**
 2. **Verify the HuggingFace CDN domains.** `resolve/main/...weight.bin` (LFS files) 302-redirect to
    a HuggingFace CDN host. Confirm the actual redirect target and ensure `BADownloadDomainAllowList`
    covers it (currently `huggingface.co`, `*.huggingface.co`, `*.hf.co`, `*.cloudfront.net`).
-3. **Sign with a real team.** Set `DEVELOPMENT_TEAM` so automatic signing registers the
-   `com.apple.developer.background-assets` capability and the App Group.
+3. **Re-add the entitlement and enable the capability.** Add
+   ```xml
+   <key>com.apple.developer.background-assets</key>
+   <true/>
+   ```
+   to both `Sources/iOSApp/TranscriptionStudioiOS.entitlements` and
+   `Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements`, enable the
+   **Background Assets** capability on the App ID in the Developer portal, and set a real
+   `DEVELOPMENT_TEAM` so automatic signing can register it and the App Group. Everything else —
+   the extension, the manifest, the `BA*` Info.plist keys — stays as-is.
 4. **Regenerate if the model changes.** Run `scripts/gen-ba-manifest.sh` to rebuild the manifest
    from a fresh on-disk model, and update `BAMaxInstallSize` / `BADownloadAllowance` to match the
    new total.
-
-## ⚠️ The `com.apple.developer.background-assets` entitlement — dev vs ship
-This entitlement is **removed from the entitlements files for now.** It isn't provisionable on a
-sideloaded / automatic-signing dev build (Xcode: *"not found and could not be included in
-profile"*), and Background Assets never fires on a sideload anyway — the OS only schedules
-pre-launch downloads for App Store / TestFlight installs. So it's pure build friction today.
-
-**At ship time**, re-add it to both `Sources/iOSApp/TranscriptionStudioiOS.entitlements` and
-`Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements`:
-```xml
-<key>com.apple.developer.background-assets</key>
-<true/>
-```
-and enable the **Background Assets** capability on the App ID in the Developer portal (or via
-Xcode's Signing & Capabilities) so the profile can carry it. Everything else (the extension, the
-manifest, the `BA*` Info.plist keys) stays as-is.

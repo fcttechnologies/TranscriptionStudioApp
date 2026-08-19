@@ -5,8 +5,8 @@ import FoundationModels
 import FCTIntelligence
 @testable import TranscriptionKit
 
-/// Flagship A wiring + the read-only safety boundary — model-free. On-device answer quality is a
-/// later with-Fernando device pass (see `Documentation/PHASE2-BRAIN-VERIFICATION.md`).
+/// Library Q&A wiring + the read-only safety boundary — model-free. On-device answer quality is a
+/// later with-Fernando device pass (see `Documentation/VERIFICATION.md`).
 struct TranscriptLibraryAssistantTests {
 
     @Test func instructionsDeclareReadOnlyPrivateDataBoundary() {

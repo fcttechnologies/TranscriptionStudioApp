@@ -84,10 +84,3 @@ one in-memory-store test):
    the iPhone card becomes a normal session.
 5. Failure path: paste a bad/unsupported link → it ends **`.failed`** on both devices with the
    error message.
-
-## Build
-
-`swift build` (macOS) is clean; `TS_SKIP_MODEL_TESTS=1 swift test` is green (298 + 14 companion).
-Both app targets build for their platforms via `xcodegen generate` + `xcodebuild`
-(`CODE_SIGNING_ALLOWED=NO` in an unprovisioned checkout). The schema change is in-place (nothing
-shipped): delete the app from the device/simulator on first run after pulling this.
