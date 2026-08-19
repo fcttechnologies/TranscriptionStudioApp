@@ -118,13 +118,6 @@ public enum AppModelContainer {
         }
     }
 
-    /// A second handle on the *same* store file — the extension/intent-process shape. Only the app
-    /// process runs the sync engine; an intent's write reaches the server via the cross-process
-    /// history trigger, or at the latest on the app's next foreground.
-    public static func secondaryLocalContainer() -> ModelContainer {
-        configuration.secondaryLocalContainer(migrationPlan: TranscriptionSchemaMigrationPlan.self)
-    }
-
     /// Covers XCTest and Swift Testing hosts.
     public static var isRunningTests: Bool {
         NSClassFromString("XCTestCase") != nil
