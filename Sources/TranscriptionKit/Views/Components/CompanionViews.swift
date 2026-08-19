@@ -17,11 +17,11 @@ struct SyncStatusIndicator: View {
                 .controlSize(.small)
                 .accessibilityLabel("Syncing")
         case .offline:
-            Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90.icloud")
+            Image(systemName: "arrow.triangle.2.circlepath")
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Offline — will retry")
         case .failed, .resyncRequired, .needsReauthentication:
-            Image(systemName: "exclamationmark.icloud")
+            Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
                 .accessibilityLabel("Sync needs attention")
         case .idle, .off, .none:

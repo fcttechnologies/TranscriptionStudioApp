@@ -1,9 +1,10 @@
+import FCTServerSync
 import Foundation
 import Testing
 @testable import TranscriptionKit
 
 // The incremental Spotlight observer reindexes sessions changed on the *other* device the moment
-// their CloudKit sync merges. This covers the two pure filters that decide what it acts on:
+// the sync applier lands them. This covers the two pure filters that decide what it acts on:
 // skip our own already-inline-indexed writes (author), and only care about session rows (entity).
 
 @Suite("Spotlight reindex decision")
@@ -17,9 +18,10 @@ struct SpotlightReindexDecisionTests {
         #expect(!SpotlightReindexDecision.shouldProcess(transactionAuthor: AppModelContainer.localAuthorName))
     }
 
-    @Test func syncedChangesFromAnotherAuthorAreProcessed() {
-        // CloudKit stamps its own import author on a change synced from the other device.
-        #expect(SpotlightReindexDecision.shouldProcess(transactionAuthor: "NSCloudKitMirroringDelegate.import"))
+    @Test @MainActor func syncedChangesFromAnotherAuthorAreProcessed() {
+        // The sync applier stamps its own author on every row it lands from the server.
+        #expect(SpotlightReindexDecision.shouldProcess(transactionAuthor: SyncEngine.applierAuthor))
+        #expect(SpotlightReindexDecision.shouldProcess(transactionAuthor: SyncEngine.restoreAuthor))
     }
 
     // Fail-open: an unidentifiable author is processed rather than risk missing a real update.

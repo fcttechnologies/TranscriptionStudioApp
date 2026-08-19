@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import TranscriptionKit
 
-// The sessions feed re-fetches on store changes (local saves + remote CloudKit imports). This
+// The sessions feed re-fetches on store changes (local saves + changes the sync applier lands). This
 // covers the pure "does this change matter to the feed?" decision that keeps a 60-second
 // `MacPresence` heartbeat from churning the feed while never dropping a real session update.
 

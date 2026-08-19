@@ -5,7 +5,7 @@ import Testing
 /// Covers the AAC codec that replaced on-disk WAV archiving: mono 16 kHz float samples
 /// encode to compact m4a `Data` and decode back to playable samples, and the compression is
 /// the big win (~20× smaller than the equivalent Float32 WAV) that makes the audio small
-/// enough to live in the SwiftData row and sync via CloudKit.
+/// enough to archive and re-play, and to ride the blob layer as an authored recording.
 @Suite("AudioFileIO — AAC codec")
 struct AudioFileIOTests {
 
