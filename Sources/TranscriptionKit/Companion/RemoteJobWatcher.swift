@@ -3,8 +3,8 @@ import Foundation
 import SwiftData
 
 /// The Mac-side observer that turns a link queued on iOS into a real transcription. It watches the
-/// shared CloudKit store three ways — an initial scan on launch, `NSPersistentStoreRemoteChange`
-/// notifications (a CloudKit import landed new work), and a periodic poll (the safety net when a
+/// shared store three ways — an initial scan on launch, `NSPersistentStoreRemoteChange`
+/// notifications (a pull landed new work), and a periodic poll (the safety net when a
 /// push is missed) — then **claims** one `.pendingRemote` session at a time (stamping a claim
 /// marker so no other device double-processes it) and hands it to `process`, which runs the
 /// existing URL pipeline into that same session. Its result (complete + segments, or failed)
@@ -42,7 +42,7 @@ public final class RemoteJobWatcher {
     }
 
     public func start() {
-        // A CloudKit import landing new/updated rows posts this — the immediate trigger.
+        // A pull landing new/updated rows posts this — the immediate trigger.
         remoteChangeObserver = NotificationCenter.default.addObserver(
             forName: .NSPersistentStoreRemoteChange, object: nil, queue: nil
         ) { [weak self] _ in

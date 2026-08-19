@@ -97,10 +97,11 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         ENABLE_ENHANCED_SECURITY: YES
         ENABLE_POINTER_AUTHENTICATION: NO
-        # iCloud/CloudKit capability is declared via the entitlements file below (shared
-        # container iCloud.com.fcttechnologies.TranscriptionStudio for both targets → Mac↔iOS
-        # sync). The CloudKit container itself is provisioned in Xcode — selecting the team on
-        # this target auto-creates it. Code + entitlements are all that's in scope here.
+        # Sign in with Apple + the shared keychain access group are declared via the
+        # entitlements file below. The keychain group needs no portal registration (unlike an App
+        # Group) — it is an entitlement string plus a regenerated profile, and every app carrying
+        # it must be signed by the same team. Sign in with Apple DOES need the bundle id
+        # registered for it before a live sign-in succeeds.
         CODE_SIGN_ENTITLEMENTS: Sources/MacApp/TranscriptionStudio.entitlements
 
   TranscriptionStudioiOS:
@@ -150,7 +151,6 @@ targets:
           it by location later — captured only while recording and kept entirely on this device.
         UIBackgroundModes:
           - audio
-          - remote-notification   # CloudKit push-triggered SwiftData sync
         # Live Activities (recording + playback), rendered by WidgetExtensioniOS. Frequent
         # updates cover the recording activity's ~1/s waveform refresh — and the
         # BGContinuedProcessingTask's system Live Activity, which mirrors a file/link job's
@@ -217,9 +217,9 @@ targets:
         # WhisperKit/SpeakerKit ship via the external argmax-oss-swift package (see Mac target note).
         ENABLE_ENHANCED_SECURITY: YES
         ENABLE_POINTER_AUTHENTICATION: NO
-        # iCloud/CloudKit capability is declared via the entitlements file below (same shared
-        # container as the Mac target). The CloudKit container is provisioned in Xcode — team
-        # selection auto-creates it. Code + entitlements are all that's in scope here.
+        # Sign in with Apple + the shared keychain access group are declared via the
+        # entitlements file below — the same group string as the Mac target, so one session
+        # serves both. See the Mac target's note on what needs registering.
         CODE_SIGN_ENTITLEMENTS: Sources/iOSApp/TranscriptionStudioiOS.entitlements
 
   # Share extensions — one per platform (a target has a single platform). Both build the same

@@ -154,11 +154,12 @@ public struct SessionDetailView: View {
         // Onscreen awareness: let Siri / Apple Intelligence know which transcript is showing —
         // but never for a private session (it's withheld from the assistant surface).
         .modifier(OnscreenTranscript(session: session))
-        .onAppear {
-            hasAudio = app.playback.prepare(session: session)
+        // `.task` rather than `.onAppear`: a restored device fetches the recording on this
+        // first read, and everything else on screen renders from synced records meanwhile.
+        .task {
+            hasAudio = await app.playback.prepare(session: session)
             guard PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) else { return }
-            let entity = TranscriptSessionEntity(session)
-            Task { await TranscriptionIntentDonations.donateOpenTranscript(entity) }
+            await TranscriptionIntentDonations.donateOpenTranscript(TranscriptSessionEntity(session))
         }
         // Engaged playback survives the sheet (the mini-player picks it up); audio that was
         // never played is put away.

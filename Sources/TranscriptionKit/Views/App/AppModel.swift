@@ -51,6 +51,12 @@ public final class AppModel {
     @ObservationIgnored private var remoteJobWatcher: RemoteJobWatcher?
     @ObservationIgnored private var presenceHeartbeat: PresenceHeartbeat?
 
+    /// The sync bootstrap, wired by the app root so the delete paths can release a deleted
+    /// session's staged recording — deleting the record cannot reach an object on the blob layer.
+    /// Nil before an account exists, and then the recording still lives in the session's own byte
+    /// column, which the row's deletion takes with it.
+    @ObservationIgnored public weak var sync: TranscriptionSync?
+
     // Live controllers.
     public let recording: RecordingController
     public let playback: PlaybackController
@@ -336,7 +342,7 @@ public final class AppModel {
 
     /// Submit a link for transcription from the "+" menu or the Share extension. On a device with
     /// the URL downloader (Mac) it transcribes locally; elsewhere (iOS) it queues a
-    /// `.pendingRemote` session for a Mac to claim and transcribe over CloudKit. Routing never
+    /// `.pendingRemote` session for a Mac to claim and transcribe once it syncs. Routing never
     /// depends on Mac presence — a link always queues; presence is display only.
     public func submitLink(urlString: String, title: String) {
         switch LinkSubmissionRoute.decide(hasURLDownloader: urlDownloader != nil) {
@@ -348,7 +354,7 @@ public final class AppModel {
     }
 
     /// Create and persist a `.pendingRemote` URL session (iOS) — the queued job a Mac claims and
-    /// transcribes, its result syncing back via CloudKit.
+    /// transcribes, its result syncing back.
     private func queueRemoteLink(urlString: String, title: String) {
         let session = TranscriptSession(title: title, kind: .urlTranscription)
         session.sourceURLString = urlString

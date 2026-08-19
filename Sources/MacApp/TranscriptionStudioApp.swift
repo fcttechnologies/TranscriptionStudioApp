@@ -1,13 +1,18 @@
-import SwiftUI
+import FCTAccount
 import SwiftData
-import FCTCloudKit
+import SwiftUI
 import TranscriptionKit
 import TranscriptionMacKit
 
 @main
 struct TranscriptionStudioApp: App {
     @State private var app: AppModel
-    @State private var cloudKitSync = CloudKitSyncMonitor()
+    /// The shared FCT session — one keychain item for the whole portfolio. Resolves before the
+    /// engine does: `resume()` is what turns a stored session into the event the engine's
+    /// lifecycle is built from.
+    @State private var account = AccountController()
+    /// The record engine + blob layer, alive exactly as long as an account is.
+    @State private var sync: TranscriptionSync
     @State private var bootstrap: LibraryBootstrap
     /// Keeps this device's Spotlight index fresh with sessions changed on the other device while
     /// the app runs (launch's `reindexAll` only covers the gap at startup). Retained for the
@@ -34,16 +39,20 @@ struct TranscriptionStudioApp: App {
         TranscriptionAppIntents.registerDependencies(appModel: model)
         _app = State(initialValue: model)
         let context = model.modelContext
-        _bootstrap = State(initialValue: LibraryBootstrap(sessionCount: {
-            (try? context.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
-        }))
+        let sync = TranscriptionSync()
+        _sync = State(initialValue: sync)
+        _bootstrap = State(initialValue: LibraryBootstrap(
+            sessionCount: { (try? context.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0 },
+            isRestoring: { sync.status == .syncing }
+        ))
     }
 
     var body: some Scene {
         WindowGroup {
             MacRootView()
                 .environment(app)
-                .environment(cloudKitSync)
+                .environment(account)
+                .environment(sync)
                 .environment(bootstrap)
                 // A shared link arrives via the Share extension's URL-scheme ping; drain the
                 // App Group drop-box and enqueue it as a job.
@@ -51,12 +60,27 @@ struct TranscriptionStudioApp: App {
                 // Safety net: also drain on every foreground, in case the extension staged an
                 // item without the open landing.
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { app.ingestPendingShares() }
+                    guard phase == .active else { return }
+                    app.ingestPendingShares()
+                    // Re-read the shared session, re-check the Apple credential, run a cycle —
+                    // launch, foregrounding, post-push is the rung correctness rides on.
+                    Task {
+                        await account.resume()
+                        await account.refreshAppleCredentialState()
+                        sync.foregrounded()
+                    }
                 }
                 .task {
                     // Wipe any per-job temp dirs left by a previous run (web-app parity).
                     URLIngestService.sweepStartupTemp()
                     AppModelContainer.stampMainContextAuthor()
+                    sync.start(controller: account, container: AppModelContainer.shared)
+                    // The recording is fetch-on-demand, so playback reads the blob layer through
+                    // these two seams: the cache first, one digest-verified download otherwise.
+                    app.sync = sync
+                    app.playback.cachedRecordingBytes = { sync.cachedRecordingData(for: $0) }
+                    app.playback.recordingBytes = { try await sync.recordingData(for: $0) }
+                    await account.resume()
                     // Start consuming MetricKit reports for the rest of the session (idempotent).
                     metricsReporter.start()
                     TranscriptSpotlightIndex.reindexAll()

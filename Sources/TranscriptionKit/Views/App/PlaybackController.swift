@@ -1,7 +1,8 @@
 import AVFoundation
+import FCTBlobSync
+import FCTGlanceables
 import Foundation
 import Observation
-import FCTGlanceables
 
 /// Plays an archived session's audio and exposes a live playhead, so the library can seek to
 /// a tapped segment's start — the ear-vs-label check in one click. Backed by `AVAudioPlayer`
@@ -36,9 +37,20 @@ public final class PlaybackController {
     /// The current playback speed (persists across sessions until changed).
     public private(set) var playbackRate: Float = 1
 
+    /// True while a restored recording is downloading — the state a surface renders instead of a
+    /// transport it cannot drive yet. Only ever true on a device that did not make the recording.
+    public private(set) var isFetchingRecording = false
+
     /// Fired just before playback starts (play or resume) — the hook `AppModel` uses to
     /// silence the read-aloud voice, so two audio surfaces never speak over each other.
     @ObservationIgnored public var onTransportWillStart: (() -> Void)?
+
+    /// Where a staged recording's bytes come from, wired by the app root to the blob layer.
+    ///
+    /// Both are nil before an account exists, which is exactly when only the pre-staging
+    /// `audioData` column is reachable and nothing needs fetching.
+    @ObservationIgnored public var cachedRecordingBytes: ((AssetSource) -> Data?)?
+    @ObservationIgnored public var recordingBytes: ((AssetSource) async throws -> Data?)?
 
     @ObservationIgnored private var player: AVAudioPlayer?
     @ObservationIgnored private var ticker: Task<Void, Never>?
@@ -49,13 +61,18 @@ public final class PlaybackController {
 
     public init() {}
 
-    /// Load a session's archived audio for the detail sheet + mini-player. A no-op when the
-    /// same session is already loaded, so reopening the sheet from the mini-player never
-    /// interrupts playback. Returns whether audio is available.
+    /// Load a session's recording for the detail sheet + mini-player. A no-op when the same
+    /// session is already loaded, so reopening the sheet from the mini-player never interrupts
+    /// playback. Returns whether audio is available.
+    ///
+    /// Async because a restored device pays for the bytes on the first play and not before: the
+    /// recording is fetch-on-demand (the arithmetic is on `TranscriptSession.audioAsset`), so
+    /// every other surface — the feed, the transcript, the duration, the date — renders from
+    /// synced records while the audio is still `.notFetched`.
     @discardableResult
-    public func prepare(session: TranscriptSession) -> Bool {
+    public func prepare(session: TranscriptSession) async -> Bool {
         if nowPlaying?.sessionID == session.id, hasLoadedAudio { return true }
-        let loaded = load(data: session.audioData)
+        let loaded = await loadRecording(of: session)
         nowPlaying = loaded
             ? NowPlaying(sessionID: session.id, title: session.title, kind: session.kind)
             : nil
@@ -87,6 +104,20 @@ public final class PlaybackController {
     public func releaseIfIdle() {
         guard !isPlaying, currentTime == 0 else { return }
         unload()
+    }
+
+    /// Resolve a session's recording bytes, cheapest source first: the pre-staging column (this
+    /// device recorded it and enrollment has not moved it yet), then the permanent blob cache
+    /// (this device recorded it, or has fetched it once), then one digest-verified download.
+    private func loadRecording(of session: TranscriptSession) async -> Bool {
+        if let bytes = session.audioData { return load(data: bytes) }
+        guard let asset = session.audioAsset else { return load(data: nil) }
+        if let cached = cachedRecordingBytes?(asset) { return load(data: cached) }
+        guard let fetch = recordingBytes else { return load(data: nil) }
+        isFetchingRecording = true
+        defer { isFetchingRecording = false }
+        guard let bytes = try? await fetch(asset) else { return load(data: nil) }
+        return load(data: bytes)
     }
 
     /// Load a session's archived audio from its compressed `Data`. Returns whether it loaded.

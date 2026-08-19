@@ -50,7 +50,7 @@ public struct PlayTranscriptIntent: AppIntent {
         guard let session = try context.fetch(descriptor).first else {
             throw TranscriptionIntentError.noTranscripts
         }
-        guard appModel.playback.prepare(session: session) else {
+        guard await appModel.playback.prepare(session: session) else {
             throw PlaybackIntentError.noAudioAvailable
         }
         if !appModel.playback.isPlaying {

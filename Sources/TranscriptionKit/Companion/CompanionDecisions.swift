@@ -3,10 +3,10 @@ import Foundation
 /// The pure, distributed-safe decisions the iOS↔Mac companion feature turns on — the claim lock,
 /// the submit routing, and the presence-freshness read. Kept free of SwiftData and SwiftUI so the
 /// correctness that matters (no double-processing, iOS-queues-vs-Mac-processes, connected-vs-stale)
-/// is directly unit-testable without a CloudKit container or a live device.
+/// is directly unit-testable without a backend or a live device.
 
 /// Whether the Mac companion should take on a URL-transcription session it found in the shared
-/// CloudKit store — the lock that keeps two devices (or one device across a relaunch) from
+/// store — the lock that keeps two devices (or one device across a relaunch) from
 /// transcribing the same queued link twice.
 ///
 /// Only the Mac ever claims (it alone has the yt-dlp/ffmpeg downloader). A freshly queued
@@ -52,7 +52,7 @@ public enum RemoteJobClaim {
 }
 
 /// Where a submitted link goes: transcribed locally on a device that has the URL downloader
-/// (the Mac), or queued as a `.pendingRemote` job for a Mac to pick up over CloudKit (iOS).
+/// (the Mac), or queued as a `.pendingRemote` job for a Mac to pick up once it syncs (iOS).
 /// The routing never depends on Mac presence — a link always queues; presence is display only.
 public enum LinkSubmissionRoute {
     public enum Route: Equatable, Sendable {

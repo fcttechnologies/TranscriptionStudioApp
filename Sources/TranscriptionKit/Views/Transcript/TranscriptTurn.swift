@@ -68,9 +68,8 @@ public struct TranscriptTurn: Identifiable, Equatable {
                 AsrSegment(track: .mixed, start: segment.start, end: segment.end, text: segment.text,
                            avgLogprob: segment.avgLogprob, noSpeechProb: segment.noSpeechProb,
                            compressionRatio: segment.compressionRatio))
-            let words = segment.wordsJSON.flatMap { try? JSONDecoder().decode([AsrWord].self, from: $0) }
             let line = Line(id: segment.id.uuidString, text: segment.text, start: segment.start,
-                            isProvisional: false, asrScore: asrScore, words: words)
+                            isProvisional: false, asrScore: asrScore, words: segment.words)
             if var last = turns.last, last.speaker == segment.speaker {
                 last.lines.append(line)
                 turns[turns.count - 1] = last

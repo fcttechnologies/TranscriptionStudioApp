@@ -1,8 +1,8 @@
 import AppIntents
 import SwiftData
 
-/// Delete a saved transcript — mirrors the home feed's delete: deletes the SwiftData
-/// session (its archived `audioData` goes with it) and de-indexes it from Spotlight. Confirms
+/// Delete a saved transcript — mirrors the home feed's delete: releases the staged recording,
+/// deletes the SwiftData session, and de-indexes it from Spotlight. Confirms
 /// with a destructive choice first since this can run from Siri/Shortcuts with no confirmation
 /// UI already on screen.
 public struct DeleteTranscriptIntent: AppIntent {
@@ -38,6 +38,8 @@ public struct DeleteTranscriptIntent: AppIntent {
         guard choice.style == .destructive else { throw DeleteTranscriptIntentError.cancelled }
 
         let deletedID = session.id
+        // Same as the feed's delete: release the staged recording before the record that names it.
+        appModel.sync?.discardRecording(session.audioAsset)
         context.delete(session)
         try? context.save()
         TranscriptSpotlightIndex.deindex(id: deletedID)

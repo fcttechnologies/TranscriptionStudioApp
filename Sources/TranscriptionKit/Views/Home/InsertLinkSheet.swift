@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The "+ → Insert Link" prompt: paste a URL and start it. On the Mac the audio is downloaded and
 /// transcribed locally; on iOS (no yt-dlp/ffmpeg) the link is queued as a `.pendingRemote` job for
-/// a Mac to pick up over CloudKit — so the copy and the presence badge adapt to the platform.
+/// a Mac to pick up once it syncs — so the copy and the presence badge adapt to the platform.
 struct InsertLinkSheet: View {
     @Environment(AppModel.self) private var app
     @Environment(\.dismiss) private var dismiss

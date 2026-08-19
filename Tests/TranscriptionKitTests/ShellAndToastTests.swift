@@ -170,10 +170,10 @@ struct URLValidationTests {
 struct PlaybackKeepAliveTests {
 
     // A session without archived audio prepares to "no audio" and never sets now-playing.
-    @Test func prepareWithoutAudioClearsNowPlaying() {
+    @Test func prepareWithoutAudioClearsNowPlaying() async {
         let playback = PlaybackController()
         let session = TranscriptSession(title: "Silent", kind: .fileTranscription)
-        #expect(playback.prepare(session: session) == false)
+        #expect(await playback.prepare(session: session) == false)
         #expect(playback.nowPlaying == nil)
         #expect(playback.hasLoadedAudio == false)
     }

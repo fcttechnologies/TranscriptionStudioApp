@@ -2,9 +2,11 @@ import AVFoundation
 import Foundation
 
 /// Encodes and decodes the app's one audio currency (16 kHz mono Float32) as compressed
-/// AAC/m4a `Data`, so any session's audio is archived in the SwiftData row (and syncs via
-/// CloudKit) and stays re-playable — the offline verification loop. Also synthesizes demo
-/// audio when no capture hardware ran.
+/// AAC/m4a `Data`, so any session's recording is archived and stays re-playable — the offline
+/// verification loop. The bytes are authored, so they leave the row for the blob layer at the
+/// next staging sweep (`TranscriptionSync`); ~32 kbps mono is what makes the egress arithmetic
+/// on `TranscriptSession.audioAsset` come out where it does. Also synthesizes demo audio when
+/// no capture hardware ran.
 public enum AudioFileIO {
     /// 16 kHz mono Float32 — the same contract `AudioChunk` speaks.
     public static var format: AVAudioFormat {

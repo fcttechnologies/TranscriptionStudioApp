@@ -7,7 +7,7 @@ import SwiftData
 ///
 /// The day grouping is native SwiftData sectioning (`@Query(sectionBy:)`, SDK 27) keyed on
 /// ``TranscriptSession/daySectionKey``; `@Query` also keeps the feed live for *local* writes.
-/// Cross-device (CloudKit) freshness — which a bare `@Query` misses — is driven by the host
+/// Cross-device freshness — which a bare `@Query` misses — is driven by the host
 /// re-identifying this view on a remote import (see `StudioHomeView`/`SessionStoreObserver`).
 struct SessionFeed: View {
     @Query(sort: \TranscriptSession.createdAt, order: .reverse, animation: .default,

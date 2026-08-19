@@ -2,8 +2,8 @@ import Foundation
 import SwiftData
 
 /// The Mac companion's presence beacon: while the Mac app runs, it upserts a single
-/// ``MacPresence`` row every `interval`, bumping `lastSeen`. That row syncs over CloudKit, and
-/// iOS reads it (through ``MacPresenceStatus``) to show "Mac connected" vs "waiting for your Mac".
+/// ``MacPresence`` row every `interval`, bumping `lastSeen`. That row syncs, and iOS reads it
+/// (through ``MacPresenceStatus``) to show "Mac connected" vs "waiting for your Mac".
 /// Best-effort and display-only — a failed write never blocks anything, and presence never gates
 /// queuing a link.
 @MainActor
@@ -39,8 +39,8 @@ public final class PresenceHeartbeat {
         task = nil
     }
 
-    /// Upsert this device's presence row (one per device — matched by `deviceIDString`, which is
-    /// a plain attribute, not a CloudKit-forbidden unique constraint).
+    /// Upsert this device's presence row (one per device — matched by `deviceIDString`, a plain
+    /// attribute; `id` is the record's cross-device name and stays stable across beats).
     private func beat() {
         let deviceID = self.deviceID
         let descriptor = FetchDescriptor<MacPresence>(

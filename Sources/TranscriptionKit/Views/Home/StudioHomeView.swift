@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
-import FCTCloudKit
 import FCTComponentsUI
 #if os(iOS)
 import PhotosUI
@@ -28,13 +27,13 @@ public struct StudioHomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.modelContext) private var modelContext
     // Optional so previews/tests that host this view without the app-root injection still resolve.
-    @Environment(CloudKitSyncMonitor.self) private var cloudKitSync: CloudKitSyncMonitor?
+    @Environment(TranscriptionSync.self) private var sync: TranscriptionSync?
     @Environment(LibraryBootstrap.self) private var bootstrap: LibraryBootstrap?
     // The feed itself is a native `@Query(sectionBy:)` in `SessionFeed` (live for local writes).
     // `storeObserver` supplies the cross-device freshness a bare `@Query` misses: its
-    // `remoteGeneration` re-identifies the feed on a CloudKit import, and its `changeToken`
-    // (local + remote) drives the first-launch bootstrap gate below (which must also react to the
-    // remote import that first populates the library).
+    // `remoteGeneration` re-identifies the feed on a change the sync applier landed, and its
+    // `changeToken` (local + applied) drives the first-launch bootstrap gate below (which must
+    // also react to the first pull that populates the library).
     @State private var storeObserver: SessionStoreObserver?
     // Whether the library has any sessions — the bootstrap "Syncing…" gate reads this. Recomputed
     // by a cheap count on every store change so it, too, reflects a remote import immediately.
@@ -60,7 +59,7 @@ public struct StudioHomeView: View {
             SessionFeed(searchText: debouncedSearchText,
                         pendingDelete: $pendingDelete,
                         onOpen: { app.openSession(id: $0.id) })
-                // Re-identify on a remote CloudKit import (only) so the inner `@Query` re-fetches
+                // Re-identify on an applied remote change (only) so the inner `@Query` re-fetches
                 // the synced rows; local writes update it in place with no rebuild.
                 .id(storeObserver?.remoteGeneration ?? 0)
                 .navigationTitle("Sessions")
@@ -99,8 +98,8 @@ public struct StudioHomeView: View {
             refreshLibraryEmptiness()
             bootstrap?.beginIfNeeded()
         }
-        // A cheap count on every store change (local save or remote CloudKit import) keeps the
-        // bootstrap gate current; the feed itself refreshes via its own `@Query` + the remote
+        // A cheap count on every store change (a local save or an applied remote change) keeps
+        // the bootstrap gate current; the feed itself refreshes via its own `@Query` + the remote
         // re-identify above.
         .onChange(of: storeObserver?.changeToken) { _, _ in refreshLibraryEmptiness() }
         .onChange(of: isLibraryEmpty) { _, isEmpty in
@@ -174,9 +173,9 @@ public struct StudioHomeView: View {
         .accessibilityIdentifier("toolbar.askLibrary")
     }
 
-    /// A quiet CloudKit sync-status glyph (syncing/error; invisible when idle).
+    /// A quiet sync-status glyph (syncing/offline/needs-attention; invisible when idle).
     private var syncIndicator: some View {
-        SyncStatusIndicator(monitor: cloudKitSync)
+        SyncStatusIndicator(sync: sync)
     }
 
     private var inspectorButton: some View {
@@ -240,15 +239,15 @@ public struct StudioHomeView: View {
         }
     }
 
-    /// First-launch "syncing your library…" state, shown over an empty feed while the initial
-    /// CloudKit import is still landing — so a fresh install doesn't read as "you have nothing".
+    /// First-launch "restoring your library…" state, shown over an empty feed while the first
+    /// pull is still landing — so a fresh install doesn't read as "you have nothing".
     @ViewBuilder
     private var bootstrapOverlay: some View {
         if bootstrap?.phase == .syncing, isLibraryEmpty {
             ContentUnavailableView {
-                Label("Syncing your library…", systemImage: "arrow.triangle.2.circlepath")
+                Label("Restoring your library…", systemImage: "arrow.triangle.2.circlepath")
             } description: {
-                Text("Getting your transcripts from iCloud.")
+                Text("Getting your transcripts from your account.")
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.feedCanvas)
@@ -291,7 +290,7 @@ public struct StudioHomeView: View {
     // MARK: Feed data
 
     /// Recompute whether the library is empty (a fresh count reads the store's current state,
-    /// including rows a CloudKit import merged in — which a bare `@Query` misses). Drives only the
+    /// including rows the sync applier merged in — which a bare `@Query` misses). Drives only the
     /// bootstrap gate; the feed's own `@Query` renders the sessions.
     private func refreshLibraryEmptiness() {
         let count = (try? modelContext.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
@@ -333,7 +332,9 @@ public struct StudioHomeView: View {
 
     private func delete(_ session: TranscriptSession) {
         let entity = TranscriptSessionEntity(session)
-        // Deleting the record drops its archived `audioData` with it — no file to clean up.
+        // The record's deletion takes a pre-staging `audioData` with it, but cannot reach a
+        // staged recording on the blob layer: release it first, while the asset is still readable.
+        app.sync?.discardRecording(session.audioAsset)
         let deletedID = session.id
         if app.playback.nowPlaying?.sessionID == deletedID { app.playback.unload() }
         modelContext.delete(session)

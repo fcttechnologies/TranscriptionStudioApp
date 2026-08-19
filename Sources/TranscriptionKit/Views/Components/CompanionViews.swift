@@ -1,26 +1,30 @@
-import SwiftUI
+import FCTServerSync
 import SwiftData
-import FCTCloudKit
+import SwiftUI
 
-/// A subtle CloudKit sync-status indicator for the shell's toolbar. Reads the injected
-/// ``CloudKitSyncMonitor`` (FCTFoundation) and shows a quiet glyph while syncing or on error;
-/// idle shows nothing (sync is invisible when it's working). The companion UX leans on this —
-/// a link queued on the phone only reaches the Mac once the store has synced, so the user
-/// wants to see that it's happening.
+/// A subtle sync-status indicator for the shell's toolbar. Reads the injected
+/// ``TranscriptionSync`` and shows a quiet glyph while syncing, offline, or failed; idle and
+/// signed-out show nothing (sync is invisible when it's working, and an app with no account is
+/// not "unsynced" — it simply isn't syncing). The companion UX leans on this: a link queued on
+/// the phone only reaches the Mac once it has pushed, so the user wants to see that it's happening.
 struct SyncStatusIndicator: View {
-    let monitor: CloudKitSyncMonitor?
+    let sync: TranscriptionSync?
 
     var body: some View {
-        switch monitor?.status {
+        switch sync?.status {
         case .syncing:
             ProgressView()
                 .controlSize(.small)
                 .accessibilityLabel("Syncing")
-        case .error:
+        case .offline:
+            Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90.icloud")
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Offline — will retry")
+        case .failed, .resyncRequired, .needsReauthentication:
             Image(systemName: "exclamationmark.icloud")
                 .foregroundStyle(.orange)
-                .accessibilityLabel("Sync error")
-        case .idle, .none:
+                .accessibilityLabel("Sync needs attention")
+        case .idle, .off, .none:
             EmptyView()
         }
     }
@@ -32,7 +36,7 @@ struct SyncStatusIndicator: View {
 struct MacPresenceBadge: View {
     @Query(sort: \MacPresence.lastSeen, order: .reverse) private var presences: [MacPresence]
 
-    /// A Mac beats every 60s; treat three missed beats as gone so one dropped sync doesn't flip it.
+    /// A Mac beats every 60s; treat three missed beats as gone so one dropped push doesn't flip it.
     private let freshWithin: TimeInterval = 180
 
     var body: some View {

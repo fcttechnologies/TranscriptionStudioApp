@@ -15,11 +15,11 @@ public enum HighlightsStatus: String, Sendable, Codable, CaseIterable {
 }
 
 /// A key decision made in a conversation, one concise sentence. A real queryable `@Model` (not a
-/// Codable blob) so "show me every decision across my meetings" is a plain SwiftData fetch. CloudKit-
-/// ready: every attribute defaulted, optional inverse, identity is the UUID `id`.
+/// Codable blob) so "show me every decision across my meetings" is a plain SwiftData fetch. Every
+/// attribute defaulted, optional inverse, identity is the UUID `id`.
 @Model
 public final class TranscriptDecision {
-    public var id: UUID = UUID()
+    @Attribute(.unique, .preserveValueOnDeletion) public var id: UUID = UUID()
     public var text: String = ""
     public var session: TranscriptSession?
 
@@ -35,7 +35,7 @@ public final class TranscriptDecision {
 public final class TranscriptActionItem {
     #Index<TranscriptActionItem>([\.dueDate], [\.done])
 
-    public var id: UUID = UUID()
+    @Attribute(.unique, .preserveValueOnDeletion) public var id: UUID = UUID()
     public var task: String = ""
     /// Who is responsible, if stated; otherwise nil.
     public var owner: String?
@@ -55,13 +55,13 @@ public final class TranscriptActionItem {
 }
 
 /// A meeting, event, or deadline mentioned with a time reference. `dateText` is the phrase as spoken;
-/// `date` is the resolved concrete date when parseable. `attendees` is a plain string array (CloudKit-
-/// compatible) — names, not yet Contacts-bound (that's Phase 3).
+/// `date` is the resolved concrete date when parseable. `attendees` is a plain string array —
+/// names, not yet Contacts-bound (that's Phase 3).
 @Model
 public final class TranscriptEvent {
     #Index<TranscriptEvent>([\.date])
 
-    public var id: UUID = UUID()
+    @Attribute(.unique, .preserveValueOnDeletion) public var id: UUID = UUID()
     public var title: String = ""
     /// The date/time exactly as stated in the conversation.
     public var dateText: String = ""
@@ -82,7 +82,7 @@ public final class TranscriptEvent {
 /// later, Contacts binding (Phase 3) have something to hang on.
 @Model
 public final class TranscriptPerson {
-    public var id: UUID = UUID()
+    @Attribute(.unique, .preserveValueOnDeletion) public var id: UUID = UUID()
     public var name: String = ""
     public var session: TranscriptSession?
 
@@ -94,7 +94,7 @@ public final class TranscriptPerson {
 /// A place or location mentioned in a conversation.
 @Model
 public final class TranscriptPlace {
-    public var id: UUID = UUID()
+    @Attribute(.unique, .preserveValueOnDeletion) public var id: UUID = UUID()
     public var name: String = ""
     public var session: TranscriptSession?
 

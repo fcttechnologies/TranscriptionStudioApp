@@ -31,7 +31,7 @@ enum FeedRefreshDecision {
 ///
 /// A SwiftData `@Query` re-evaluates for *local* writes (SwiftData observes the store across the
 /// app's several model contexts — recording, intents, the view context), but it does **not**
-/// reliably re-evaluate when `NSPersistentCloudKitContainer` merges a *remote* import on its
+/// reliably re-evaluate when the sync applier merges a pulled page on its
 /// background context. That merge lands in the store yet the feed stays stale until relaunch —
 /// the bug this type fixes. So the feed drives itself from an explicit fetch instead, refreshed by:
 ///
@@ -52,7 +52,7 @@ final class SessionStoreObserver {
 
     /// Remote-import-only counter (the `HistoryObserver`'s `eventCounter`, which fires only on
     /// `ModelContainer.remoteChange`, never on a local save). The home feed re-identifies its
-    /// native `@Query(sectionBy:)` list on this so a cross-device CloudKit change — which a bare
+    /// native `@Query(sectionBy:)` list on this so a cross-device change — which a bare
     /// `@Query` doesn't observe — forces a fresh sectioned fetch, while frequent local writes
     /// keep updating the list in place (scroll preserved) with no re-identify.
     var remoteGeneration: Int { historyObserver?.eventCounter ?? 0 }
@@ -61,7 +61,7 @@ final class SessionStoreObserver {
     @ObservationIgnored private var didSaveToken: (any NSObjectProtocol)?
 
     init(container: ModelContainer) {
-        // Remote CloudKit imports of session rows. `try?`: a store without history providing
+        // Applied remote changes to session rows. `try?`: a store without history providing
         // (e.g. an in-memory test store) simply leaves the remote path inactive — local still works.
         historyObserver = try? HistoryObserver(observedModels: [TranscriptSession.self],
                                                modelContainer: container)

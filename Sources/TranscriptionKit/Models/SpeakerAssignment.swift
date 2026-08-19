@@ -5,13 +5,13 @@ import SwiftData
 /// speaker→person mapping. A real queryable `@Model` (per-session, not a Codable blob) so a name
 /// search or a future "everything Sergio said" is a plain fetch. The contact's `displayName` is
 /// denormalized alongside the identifier so labels and the Spotlight index need no Contacts re-fetch
-/// (and keep working even if read access is later revoked). CloudKit-ready: every attribute defaulted,
-/// optional inverse, identity is the UUID `id`.
+/// (and keep working even if read access is later revoked). Every attribute defaulted, optional
+/// inverse, identity is the UUID `id`.
 @Model
 public final class SpeakerAssignment {
     #Index<SpeakerAssignment>([\.speakerSlot])
 
-    public var id: UUID = UUID()
+    @Attribute(.unique, .preserveValueOnDeletion) public var id: UUID = UUID()
     /// The diarized speaker slot this binds: -1 = me, 0…3 = a diarized speaker (mirrors
     /// `StoredSegment.speakerSlot`).
     public var speakerSlot: Int = 0

@@ -10,7 +10,7 @@ import SwiftData
 /// The two filters it encodes:
 /// - **Author** — skip transactions authored by *this* device's own writes (they were already
 ///   indexed inline by `TranscriptSpotlightIndex.index`/`deindex` at each mutation). Anything else
-///   — notably CloudKit's import author on a change synced from the other device — is processed.
+///   — notably the sync applier's author on a change pulled from the other device — is processed.
 ///   Fail-open: an absent/unknown author is processed rather than skipped, so a real cross-device
 ///   change is never missed (same philosophy as ``FeedRefreshDecision``).
 /// - **Entity** — only `TranscriptSession` changes touch the Spotlight index; a synced
@@ -34,7 +34,7 @@ enum SpotlightReindexDecision {
     }
 }
 
-/// Keeps this device's named Spotlight index fresh with changes that arrive by CloudKit sync —
+/// Keeps this device's named Spotlight index fresh with changes that arrive by sync —
 /// the gap `TranscriptSpotlightIndex.reindexAll` (launch-only) leaves open while the app is
 /// running. A session created, renamed, or deleted on the *other* device now lands in this
 /// device's `"TranscriptionStudioSessions"` index the moment its sync merges, not at next launch.
