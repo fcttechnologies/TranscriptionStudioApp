@@ -124,9 +124,9 @@ targets:
         # running with GPU/ANE cover when the app is backgrounded mid-run. The wildcard suffix is
         # a per-job UUID; the concrete id is registered + submitted at runtime
         # (ContinuedTranscriptionTask). Must stay in sync with `identifierPrefix` there, which is
-        # built from the iOS bundle id.
+        # built from the bundle id at runtime — so this wildcard's parent tracks it.
         BGTaskSchedulerPermittedIdentifiers:
-          - com.fcttechnologies.TranscriptionStudioiOS.transcription.*
+          - com.fcttechnologies.TranscriptionStudio.transcription.*
         # --- Background Assets (self-hosted, unmanaged) -------------------------------------
         # The system reads these before first launch: it downloads the manifest at BAManifestURL,
         # then wakes BackgroundAssetsExtension to schedule the WhisperKit model files it lists.
@@ -161,12 +161,10 @@ targets:
     settings:
       groups: [fct]
       base:
-        # Two bundle ids inside one target — and on this app the *iOS* one carries the suffix,
-        # the reverse of every other app in the portfolio. Collapsing the targets does not force
-        # one id, and unifying them is a store decision taken separately from this topology; the
-        # per-SDK override is what keeps them apart until then.
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS
-        "PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]": com.fcttechnologies.TranscriptionStudio
+        # One bundle id across every destination: Universal Purchase requires it, so an iPhone
+        # subscriber is entitled on the Mac from the same store record. The surviving id is the
+        # one the Mac slice already carried, whose App ID holds a working app-group association.
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio
         # One target, one product name — so one Swift module name, and one mangled App Shortcuts
         # provider string on both platforms. The displayed name was already identical on both.
         PRODUCT_NAME: TranscriptionStudio
@@ -195,7 +193,7 @@ targets:
 
   # The Share extension — one multiplatform target building the same platform-conditional
   # ShareViewController over the lean ShareKit. Everything that genuinely differs is selected by
-  # SDK: the bundle id (whose parent differs, since the app's own ids are inverted), the Info.plist
+  # SDK: the Info.plist
   # (macOS takes the dictionary activation form; iOS has no audio-with-max-count key at all, so its
   # activation must be a predicate string), and the entitlements (a macOS app extension must be
   # sandboxed even though its host is not). It stages the shared item into the App Group drop-box
@@ -219,8 +217,7 @@ targets:
     settings:
       groups: [fct]
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.ShareExtension
-        "PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]": com.fcttechnologies.TranscriptionStudio.ShareExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.ShareExtension
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/ShareExtension/iOS/Info.plist
         "INFOPLIST_FILE[sdk=macosx*]": Sources/ShareExtension/macOS/Info.plist
@@ -251,7 +248,7 @@ targets:
     settings:
       groups: [fct]
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.WidgetExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.WidgetExtension
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/WidgetExtension/iOS/Info.plist
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
@@ -277,7 +274,7 @@ targets:
     settings:
       groups: [fct]
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.BackgroundAssetsExtension
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/BackgroundAssetsExtension/Info.plist
         # No App Intents in this target — skip metadata extraction (see ShareExtension).

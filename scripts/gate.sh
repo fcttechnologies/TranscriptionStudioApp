@@ -109,21 +109,29 @@ for key in com.apple.security.app-sandbox com.apple.security.application-groups;
   echo "${MAC_EXT_ENTITLEMENTS}" | grep -q "${key}" || fail "macOS Share extension is missing ${key}"
 done
 
-# Two bundle ids from one target via PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*] — and on this app it is
-# the *iOS* id that carries the suffix, the reverse of every other app here. That is exactly the
-# kind of conditional a regeneration can drop without any build failing.
-echo "==> Bundle ids per platform"
+# Universal Purchase requires ONE bundle id across every destination: an iPhone subscriber is
+# entitled on the Mac only when both artifacts carry the same id. A per-destination override
+# reintroduced here would split the store record again, and no build would fail.
+echo "==> Bundle id identical on both platforms"
 ios_id="$(plutil -extract CFBundleIdentifier raw -o - "${IOS_APP}/Info.plist")"
 mac_id="$(plutil -extract CFBundleIdentifier raw -o - "${MAC_APP}/Contents/Info.plist")"
-[ "${ios_id}" = "com.fcttechnologies.TranscriptionStudioiOS" ] || fail "iOS bundle id is ${ios_id}"
-[ "${mac_id}" = "com.fcttechnologies.TranscriptionStudio" ] || fail "macOS bundle id is ${mac_id}"
+[ "${ios_id}" = "com.fcttechnologies.TranscriptionStudio" ] || fail "iOS bundle id is ${ios_id}"
+[ "${mac_id}" = "${ios_id}" ] || fail "macOS bundle id is ${mac_id}, expected ${ios_id}"
 
 ios_ext_id="$(plutil -extract CFBundleIdentifier raw -o - "${IOS_APP}/PlugIns/ShareExtension.appex/Info.plist")"
 mac_ext_id="$(plutil -extract CFBundleIdentifier raw -o - "${MAC_APP}/Contents/PlugIns/ShareExtension.appex/Contents/Info.plist")"
-[ "${ios_ext_id}" = "com.fcttechnologies.TranscriptionStudioiOS.ShareExtension" ] \
+[ "${ios_ext_id}" = "com.fcttechnologies.TranscriptionStudio.ShareExtension" ] \
   || fail "iOS Share extension bundle id is ${ios_ext_id}"
-[ "${mac_ext_id}" = "com.fcttechnologies.TranscriptionStudio.ShareExtension" ] \
-  || fail "macOS Share extension bundle id is ${mac_ext_id}"
+[ "${mac_ext_id}" = "${ios_ext_id}" ] \
+  || fail "macOS Share extension bundle id is ${mac_ext_id}, expected ${ios_ext_id}"
+
+# The background-transcription wildcard is what BGTaskScheduler matches a submitted job against,
+# and ContinuedTranscriptionTask builds the concrete id from Bundle.main at runtime. If this drifts
+# from the app's own id every background job is rejected — at runtime, with nothing at build time
+# reporting it.
+bg_id="$(plutil -extract BGTaskSchedulerPermittedIdentifiers.0 raw -o - "${IOS_APP}/Info.plist")"
+[ "${bg_id}" = "${ios_id}.transcription.*" ] \
+  || fail "BGTaskSchedulerPermittedIdentifiers is ${bg_id}, expected ${ios_id}.transcription.*"
 
 # The Share extension ships on both platforms; the widget and Background Assets extensions are
 # iOS-only and must NOT ride along into the macOS product, where embedded iOS-only content is a

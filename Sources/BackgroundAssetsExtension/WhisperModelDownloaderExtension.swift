@@ -16,7 +16,7 @@ import ShareKit
 /// path math and Foundation, so the extension stays well under its memory budget.
 @main
 struct WhisperModelDownloaderExtension: BADownloaderExtension {
-    private let log = Logger(subsystem: "com.fcttechnologies.TranscriptionStudioiOS",
+    private let log = Logger(subsystem: "com.fcttechnologies.TranscriptionStudio",
                              category: "background-assets-extension")
 
     init() {}

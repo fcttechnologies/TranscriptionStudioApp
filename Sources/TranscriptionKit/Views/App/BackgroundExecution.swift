@@ -66,7 +66,7 @@ final class ContinuedTranscriptionTask {
     /// The wildcard task identifier (`<bundle-id>.transcription.*`) — registered once, matching
     /// the `BGTaskSchedulerPermittedIdentifiers` entry in the app's Info.plist. Each submitted job
     /// gets a concrete identifier under it (`…​.transcription.<job-uuid>`).
-    private static let identifierPrefix = "\(Bundle.main.bundleIdentifier ?? "com.fcttechnologies.TranscriptionStudioiOS").transcription"
+    private static let identifierPrefix = "\(Bundle.main.bundleIdentifier ?? "com.fcttechnologies.TranscriptionStudio").transcription"
     private static var wildcardIdentifier: String { "\(identifierPrefix).*" }
     private static func identifier(for job: TranscriptionJob) -> String { "\(identifierPrefix).\(job.id.uuidString)" }
 

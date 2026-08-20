@@ -24,7 +24,7 @@
 	<integer>1638464446</integer>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>com.fcttechnologies.TranscriptionStudioiOS.transcription.*</string>
+		<string>com.fcttechnologies.TranscriptionStudio.transcription.*</string>
 	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

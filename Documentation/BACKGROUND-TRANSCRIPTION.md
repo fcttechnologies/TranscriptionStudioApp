@@ -33,7 +33,7 @@ If the OS declines the request (e.g. `tooManyPendingTaskRequests`), it falls bac
 ## Configuration (must stay in sync)
 
 - **`project.yml`** → iOS `BGTaskSchedulerPermittedIdentifiers`:
-  `com.fcttechnologies.TranscriptionStudioiOS.transcription.*` (wildcard; the concrete per-job id
+  `com.fcttechnologies.TranscriptionStudio.transcription.*` (wildcard; the concrete per-job id
   is composed at runtime from `Bundle.main.bundleIdentifier` in `ContinuedTranscriptionTask`).
   Regenerate the Info.plist with `xcodegen generate` after editing.
 - **`Sources/App/TranscriptionStudio.entitlements`** (the iOS set) →

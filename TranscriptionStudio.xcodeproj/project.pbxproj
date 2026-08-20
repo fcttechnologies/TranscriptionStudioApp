@@ -440,7 +440,7 @@
 				);
 				LM_SKIP_METADATA_EXTRACTION = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.BackgroundAssetsExtension;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
@@ -536,8 +536,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio;
 				PRODUCT_NAME = TranscriptionStudio;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
@@ -572,8 +571,7 @@
 				);
 				LM_SKIP_METADATA_EXTRACTION = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.ShareExtension;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio.ShareExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.ShareExtension;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -612,8 +610,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio;
 				PRODUCT_NAME = TranscriptionStudio;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
@@ -648,8 +645,7 @@
 				);
 				LM_SKIP_METADATA_EXTRACTION = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.ShareExtension;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio.ShareExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.ShareExtension;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
@@ -735,7 +731,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.WidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.WidgetExtension;
 				SDKROOT = iphoneos;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -762,7 +758,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.WidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.WidgetExtension;
 				SDKROOT = iphoneos;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
@@ -790,7 +786,7 @@
 				);
 				LM_SKIP_METADATA_EXTRACTION = YES;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.BackgroundAssetsExtension;
 				SDKROOT = iphoneos;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;

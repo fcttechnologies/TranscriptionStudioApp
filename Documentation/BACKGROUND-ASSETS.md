@@ -49,7 +49,7 @@ fits its tight memory sandbox.
 
 ## Config (project.yml → generated Info.plist / entitlements)
 
-Host app Info.plist (the iOS slice — `com.fcttechnologies.TranscriptionStudioiOS`):
+Host app Info.plist (the iOS slice — `com.fcttechnologies.TranscriptionStudio`):
 - `BAManifestURL` — where the system fetches the manifest.
 - `BAAppGroupID` — `group.com.fcttechnologies.TranscriptionStudio` (shared with the extension).
 - `BAMaxInstallSize` — `1638464446` (uncompressed total; shown on the App Store).
