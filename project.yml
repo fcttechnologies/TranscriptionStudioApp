@@ -18,33 +18,72 @@ attributes:
   LastSwiftUpdateCheck: "9999"
 
 # All real code lives in the local Swift package (Package.swift in this directory);
-# the app targets are thin shells. Regenerate the project with `xcodegen generate`
+# the app and extension targets are thin shells. Regenerate the project with `xcodegen generate`
 # after an edit here. The .xcodeproj is tracked — commit the regenerated result
 # alongside this file.
 packages:
   TranscriptionStudioPackage:
     path: .
 
+settingGroups:
+  fct:
+    DEVELOPMENT_TEAM: X26SC78YDG
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    # Hardening (xcode-security-audit): Enhanced Security v2. Pointer authentication (arm64e) is
+    # OFF: WhisperKit/SpeakerKit ship via the external argmax-oss-swift package; keep it off until
+    # that dep is verified arm64e-universal — a non-arm64e binary package crashes under pointer
+    # authentication.
+    ENABLE_ENHANCED_SECURITY: YES
+    ENABLE_POINTER_AUTHENTICATION: NO
+
 targets:
+  # ONE app target for every destination Transcription Studio ships to. The platform split lives in
+  # build settings and `#if os(...)`, never in a second target: the AppShortcutsProvider has to
+  # compile into the app target, and with two targets that requirement is met once and missed once.
   TranscriptionStudio:
     type: application
-    platform: macOS
-    deploymentTarget: "27.0"
+    supportedDestinations: [iOS, macOS]
+    deploymentTarget:
+      iOS: "27.0"
+      macOS: "27.0"
     sources:
-      - path: Sources/MacApp
+      - path: Sources/App
     dependencies:
       - package: TranscriptionStudioPackage
         product: TranscriptionKit
+      # The Mac-only feature kit: yt-dlp/ffmpeg URL ingest (Process, which iOS has no API for),
+      # ScreenCaptureKit meeting capture (SCShareableContent / SCDisplay / SCContentFilter are
+      # API_UNAVAILABLE(ios) even though the framework itself gained an iOS 27 slice), and the Mac
+      # window shell. The filter is what keeps the module from being built for the iOS destination
+      # at all; without it the iOS build compiles it and fails. It stays a package target rather
+      # than folding into Sources/App because `transcribe-cli` depends on it too.
       - package: TranscriptionStudioPackage
         product: TranscriptionMacKit
-      # The Share extension, auto-embedded into the app's PlugIns folder.
-      - target: ShareExtensionMac
+        destinationFilters: [macOS]
+      # The Share extension ships on both platforms and is itself multiplatform — no filter.
+      - target: ShareExtension
+      # These two ship on iOS only. Without the filter the macOS product embeds an iOS-only appex
+      # and Xcode hard-fails on the mismatched platform content — `platform: iOS` on the extension
+      # target itself is necessary and not sufficient, because the dependency edge is what embeds.
+      - target: BackgroundAssetsExtension
+        destinationFilters: [iOS]
+      - target: WidgetExtensioniOS
+        destinationFilters: [iOS]
+    # Entitlements are NOT declared here. xcodegen's `entitlements:` key generates exactly one file
+    # per target, which cannot express the iOS set alongside the macOS one, so both files are
+    # hand-owned in Sources/App and selected by CODE_SIGN_ENTITLEMENTS below.
     info:
-      path: Sources/MacApp/Info.plist
+      path: Sources/App/Info.plist
       properties:
         NSMicrophoneUsageDescription: >-
           Transcription Studio records from your microphone to transcribe and
-          identify speakers — entirely on this device. Nothing leaves your Mac.
+          identify speakers — entirely on this device. Nothing leaves your device.
+        # macOS only (ScreenCaptureKit meeting capture); inert in the iOS build.
         NSAudioCaptureUsageDescription: >-
           Transcription Studio captures system audio to transcribe meetings and
           calls — entirely on this device. Nothing leaves your Mac.
@@ -72,83 +111,7 @@ targets:
         NSLocationWhenInUseUsageDescription: >-
           Transcription Studio can tag a recording with the place you made it, so you can find
           it by location later — captured only while recording and kept entirely on this device.
-        # Custom URL scheme the Share extension opens to hand a staged link to this app.
-        CFBundleURLTypes:
-          - CFBundleURLName: com.fcttechnologies.TranscriptionStudio.ingest
-            CFBundleURLSchemes:
-              - transcriptionstudio
-    settings:
-      base:
-        DEVELOPMENT_TEAM: X26SC78YDG
-        CODE_SIGN_STYLE: Automatic
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Transcription Studio
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor   # thin @main shell; the mixed TranscriptionKit package stays nonisolated-by-default
-        ENABLE_DEBUG_DYLIB: YES
-        # Hardening (xcode-security-audit): Hardened Runtime + Enhanced Security v2.
-        # Pointer authentication (arm64e) is OFF: WhisperKit/SpeakerKit ship via the external
-        # argmax-oss-swift package; keep it off until that dep is verified arm64e-universal.
-        ENABLE_HARDENED_RUNTIME: YES
-        ENABLE_ENHANCED_SECURITY: YES
-        ENABLE_POINTER_AUTHENTICATION: NO
-        # Sign in with Apple + the shared keychain access group are declared via the
-        # entitlements file below. The keychain group needs no portal registration (unlike an App
-        # Group) — it is an entitlement string plus a regenerated profile, and every app carrying
-        # it must be signed by the same team. Sign in with Apple DOES need the bundle id
-        # registered for it before a live sign-in succeeds.
-        CODE_SIGN_ENTITLEMENTS: Sources/MacApp/TranscriptionStudio.entitlements
-
-  TranscriptionStudioiOS:
-    type: application
-    platform: iOS
-    deploymentTarget: "27.0"
-    sources:
-      - path: Sources/iOSApp
-    dependencies:
-      - package: TranscriptionStudioPackage
-        product: TranscriptionKit
-      # The Share extension, auto-embedded into the app's PlugIns folder.
-      - target: ShareExtensioniOS
-      # The Background Assets downloader extension, auto-embedded into the app's Extensions folder.
-      - target: BackgroundAssetsExtension
-      # The widget extension carrying the recording + playback Live Activities.
-      - target: WidgetExtensioniOS
-    info:
-      path: Sources/iOSApp/Info.plist
-      properties:
-        NSMicrophoneUsageDescription: >-
-          Transcription Studio records from your microphone to transcribe and
-          identify speakers — entirely on this device. Nothing leaves your phone.
-        # Ecosystem actions (Phase 3). Calendar is write-only — the app only ever *adds* an
-        # event you review and confirm; it never reads your calendar. Reminders has no write-only
-        # scope, so it requests the minimal available (full). Contacts is read-only, used to match
-        # a mentioned name to a saved contact for speaker mapping and Siri name resolution.
-        NSCalendarsWriteOnlyAccessUsageDescription: >-
-          Transcription Studio adds meetings you review from a transcript to your
-          calendar. It only ever adds — it never reads your existing calendar.
-        NSRemindersFullAccessUsageDescription: >-
-          Transcription Studio adds action items you review from a transcript to
-          your reminders.
-        NSContactsUsageDescription: >-
-          Transcription Studio matches names in your transcripts to your contacts so
-          speakers and mentions show real names — read only, entirely on this device.
-        # Per-session privacy lock: Face ID / Touch ID (passcode fallback) gates opening a
-        # session you've marked private.
-        NSFaceIDUsageDescription: >-
-          Transcription Studio uses Face ID to unlock sessions you've marked private, so
-          only you can open them.
-        # Opt-in recording-location tag (off by default). Captured once at recording start and
-        # reverse-geocoded to a coarse place name stored with the session — entirely on this
-        # device; the location is never uploaded.
-        NSLocationWhenInUseUsageDescription: >-
-          Transcription Studio can tag a recording with the place you made it, so you can find
-          it by location later — captured only while recording and kept entirely on this device.
+        # iOS-only keys below; each is inert in the macOS build.
         UIBackgroundModes:
           - audio
         # Live Activities (recording + playback), rendered by WidgetExtensioniOS. Frequent
@@ -160,7 +123,8 @@ targets:
         # Background transcription (BGContinuedProcessingTask, iOS 26+): a file/link job keeps
         # running with GPU/ANE cover when the app is backgrounded mid-run. The wildcard suffix is
         # a per-job UUID; the concrete id is registered + submitted at runtime
-        # (ContinuedTranscriptionTask). Must stay in sync with `identifierPrefix` there.
+        # (ContinuedTranscriptionTask). Must stay in sync with `identifierPrefix` there, which is
+        # built from the iOS bundle id.
         BGTaskSchedulerPermittedIdentifiers:
           - com.fcttechnologies.TranscriptionStudioiOS.transcription.*
         # --- Background Assets (self-hosted, unmanaged) -------------------------------------
@@ -187,18 +151,25 @@ targets:
             - "*.huggingface.co"
             - "*.hf.co"
             - "*.cloudfront.net"
-        # Custom URL scheme the Share extension opens to hand a staged media file to this app.
+        # Custom URL scheme the Share extension opens to hand a staged item to this app. The name
+        # is a label nothing resolves against; deriving it from the bundle id keeps it
+        # per-platform through the one shared entry.
         CFBundleURLTypes:
-          - CFBundleURLName: com.fcttechnologies.TranscriptionStudioiOS.ingest
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).ingest
             CFBundleURLSchemes:
               - transcriptionstudio
     settings:
+      groups: [fct]
       base:
-        DEVELOPMENT_TEAM: X26SC78YDG
-        CODE_SIGN_STYLE: Automatic
+        # Two bundle ids inside one target — and on this app the *iOS* one carries the suffix,
+        # the reverse of every other app in the portfolio. Collapsing the targets does not force
+        # one id, and unifying them is a store decision taken separately from this topology; the
+        # per-SDK override is what keeps them apart until then.
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        "PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]": com.fcttechnologies.TranscriptionStudio
+        # One target, one product name — so one Swift module name, and one mangled App Shortcuts
+        # provider string on both platforms. The displayed name was already identical on both.
+        PRODUCT_NAME: TranscriptionStudio
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Transcription Studio
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
@@ -208,29 +179,33 @@ targets:
         # the standard three (no upside-down).
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor   # thin @main shell; the mixed TranscriptionKit package stays nonisolated-by-default
         ENABLE_DEBUG_DYLIB: YES
-        # Hardening (xcode-security-audit): Enhanced Security v2. Pointer authentication OFF —
-        # WhisperKit/SpeakerKit ship via the external argmax-oss-swift package (see Mac target note).
-        ENABLE_ENHANCED_SECURITY: YES
-        ENABLE_POINTER_AUTHENTICATION: NO
-        # Sign in with Apple + the shared keychain access group are declared via the
-        # entitlements file below — the same group string as the Mac target, so one session
-        # serves both. See the Mac target's note on what needs registering.
-        CODE_SIGN_ENTITLEMENTS: Sources/iOSApp/TranscriptionStudioiOS.entitlements
+        # The Mac slice is deliberately NOT sandboxed: it runs Hardened Runtime plus the
+        # hardened-process entitlements instead, because URL ingest shells out to yt-dlp/ffmpeg
+        # and the app reads the user's own Application Support tree.
+        "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+        # Sign in with Apple + the shared keychain access group are declared via the entitlements
+        # files below — the same keychain group on both platforms, so one session serves both. The
+        # keychain group needs no portal registration (unlike an App Group): it is an entitlement
+        # string plus a regenerated profile, and every app carrying it must be signed by the same
+        # team. Sign in with Apple DOES need each bundle id registered for it.
+        CODE_SIGN_ENTITLEMENTS: Sources/App/TranscriptionStudio.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/App/TranscriptionStudio-macOS.entitlements
 
-  # Share extensions — one per platform (a target has a single platform). Both build the same
-  # ShareViewController source (platform-conditional) + the lean ShareKit; each carries its own
-  # Info.plist (macOS = web-URL activation, iOS = movie/audio-file activation) and App Group
-  # entitlement. They stage the shared item into the App Group drop-box and never transcribe
-  # (extensions are memory-capped — WhisperKit would blow the budget).
-  ShareExtensionMac:
+  # The Share extension — one multiplatform target building the same platform-conditional
+  # ShareViewController over the lean ShareKit. Everything that genuinely differs is selected by
+  # SDK: the bundle id (whose parent differs, since the app's own ids are inverted), the Info.plist
+  # (macOS takes the dictionary activation form; iOS has no audio-with-max-count key at all, so its
+  # activation must be a predicate string), and the entitlements (a macOS app extension must be
+  # sandboxed even though its host is not). It stages the shared item into the App Group drop-box
+  # and never transcribes — extensions are memory-capped and WhisperKit would blow the budget.
+  ShareExtension:
     type: app-extension
-    platform: macOS
-    deploymentTarget: "27.0"
+    supportedDestinations: [iOS, macOS]
+    deploymentTarget:
+      iOS: "27.0"
+      macOS: "27.0"
     sources:
       # Only the shared Swift source compiles; the iOS/ + macOS/ subfolders hold Info.plists +
       # entitlements referenced via build settings, not bundled resources.
@@ -242,57 +217,25 @@ targets:
       - package: TranscriptionStudioPackage
         product: ShareKit
     settings:
+      groups: [fct]
       base:
-        DEVELOPMENT_TEAM: X26SC78YDG
-        CODE_SIGN_STYLE: Automatic
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.ShareExtension
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.ShareExtension
+        "PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]": com.fcttechnologies.TranscriptionStudio.ShareExtension
         GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: Sources/ShareExtension/macOS/Info.plist
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+        INFOPLIST_FILE: Sources/ShareExtension/iOS/Info.plist
+        "INFOPLIST_FILE[sdk=macosx*]": Sources/ShareExtension/macOS/Info.plist
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         # No App Intents in this target — skip metadata extraction (silences the processor's
         # "no AppIntents.framework dependency" build notice at its cause).
         LM_SKIP_METADATA_EXTRACTION: YES
-        CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/macOS/ShareExtensionMac.entitlements
-
-  ShareExtensioniOS:
-    type: app-extension
-    platform: iOS
-    deploymentTarget: "27.0"
-    sources:
-      - path: Sources/ShareExtension
-        excludes:
-          - "macOS/**"
-          - "iOS/**"
-    dependencies:
-      - package: TranscriptionStudioPackage
-        product: ShareKit
-    settings:
-      base:
-        DEVELOPMENT_TEAM: X26SC78YDG
-        CODE_SIGN_STYLE: Automatic
-        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.ShareExtension
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
-        GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: Sources/ShareExtension/iOS/Info.plist
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
-        # No App Intents in this target — skip metadata extraction (see ShareExtensionMac).
-        LM_SKIP_METADATA_EXTRACTION: YES
         CODE_SIGN_ENTITLEMENTS: Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/ShareExtension/macOS/ShareExtensionMac.entitlements
 
   # The widget extension (iOS only) — hosts the recording + playback Live Activities (Dynamic
   # Island + Lock Screen). Links only the lean GlanceKit (attributes + button intents + pure
   # clock/level math); the heavy TranscriptionKit never enters the extension's memory sandbox.
   # The intents perform in the app's process (LiveActivityIntent), so the extension stays a
-  # renderer.
+  # renderer. One SDK, one Info.plist — so it keeps `platform:`, and the app filters its edge.
   WidgetExtensioniOS:
     type: app-extension
     platform: iOS
@@ -306,17 +249,11 @@ targets:
       - package: TranscriptionStudioPackage
         product: GlanceKit
     settings:
+      groups: [fct]
       base:
-        DEVELOPMENT_TEAM: X26SC78YDG
-        CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.WidgetExtension
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/WidgetExtension/iOS/Info.plist
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
 
   # The Background Assets downloader extension (iOS only). An ExtensionKit extension — no
@@ -338,21 +275,16 @@ targets:
       - package: TranscriptionStudioPackage
         product: BackgroundAssetsKit
     settings:
+      groups: [fct]
       base:
-        DEVELOPMENT_TEAM: X26SC78YDG
-        CODE_SIGN_STYLE: Automatic
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension
-        MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/BackgroundAssetsExtension/Info.plist
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-        # No App Intents in this target — skip metadata extraction (see ShareExtensionMac).
+        # No App Intents in this target — skip metadata extraction (see ShareExtension).
         LM_SKIP_METADATA_EXTRACTION: YES
         CODE_SIGN_ENTITLEMENTS: Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements
 
+# One scheme now serves both platforms — pick the destination from the menu.
 schemes:
   TranscriptionStudio:
     build:
@@ -361,10 +293,4 @@ schemes:
     run:
       config: Debug
     test:
-      config: Debug
-  TranscriptionStudioiOS:
-    build:
-      targets:
-        TranscriptionStudioiOS: all
-    run:
       config: Debug

@@ -8,78 +8,55 @@
 
 /* Begin PBXBuildFile section */
 		105AF20E4FC6A9D964D59BB5 /* BackgroundAssetsKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4AAE34B942BF334CB89FDC2B /* BackgroundAssetsKit */; };
+		153F12A8EC8D0F31E78C042F /* ShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5E123A608A0FC7F122696924 /* ShareKit */; };
+		1B32CD843D37899081532E23 /* TranscriptionShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34C452C08235266EB3CDE744 /* TranscriptionShortcuts.swift */; };
 		267E2FBDF300C52A5EAD7854 /* GlanceKit in Frameworks */ = {isa = PBXBuildFile; productRef = C05CB006EA3756884F9164AC /* GlanceKit */; };
 		2C6012EA4320D308DCF2D939 /* PlaybackLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1359BA1E77A18CA6AC217483 /* PlaybackLiveActivity.swift */; };
 		2F54765B5EADFBDA487D9CC2 /* WhisperModelDownloaderExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50809256097EE7408344DBD1 /* WhisperModelDownloaderExtension.swift */; };
-		322D9C5BE9F0AEA57A83DFAC /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487542E84ADF52910CD81F72 /* ShareViewController.swift */; };
+		31170CC4BAD096E7A2E20526 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8857F026CB4BECEA4B983330 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34B5E9506D29AA6C3C926346 /* TranscriptionKit in Frameworks */ = {isa = PBXBuildFile; productRef = C2D3913715E95D2F80B01C04 /* TranscriptionKit */; };
-		35595A3D972DF70F1F1AE3DD /* ShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 786C7D30FC95C0DB395F7678 /* ShareKit */; };
-		5D18D31ADA325D665CBBDE18 /* TranscriptionStudioiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58AC1C828182C11917303A4B /* TranscriptionStudioiOSApp.swift */; };
-		5E1A1AA5E8F45C918A314F09 /* WidgetExtensioniOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 10655D91DE9E8A453840E9AF /* WidgetExtensioniOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		5FEBFAC97D81354A5C928925 /* ShareExtensionMac.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CFD1D36AC27D38EE63CC2860 /* ShareExtensionMac.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		69CB9A5494A7C01F86A7A724 /* RecordingLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E8221B1031C323DA057747B /* RecordingLiveActivity.swift */; };
-		6C7F187AFEE14CEAA979B273 /* TranscriptionMacKit in Frameworks */ = {isa = PBXBuildFile; productRef = 63D4082584CE563BE86432A6 /* TranscriptionMacKit */; };
-		7A80CED419B5FA716FF5D389 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CF184064408F9F586B1A277A /* Assets.xcassets */; };
+		6C7F187AFEE14CEAA979B273 /* TranscriptionMacKit in Frameworks */ = {isa = PBXBuildFile; platformFilters = (macos, ); productRef = 63D4082584CE563BE86432A6 /* TranscriptionMacKit */; };
 		7CFF18ED124559DFAC2BBD2F /* TranscriptionStudioWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD23B23A4963B17F6D8250A2 /* TranscriptionStudioWidgets.swift */; };
-		8AE9B86A50885233405E7EEC /* ShareKit in Frameworks */ = {isa = PBXBuildFile; productRef = 894A8EA3080D26E50B35DD02 /* ShareKit */; };
-		BC228436F5005595D0A39630 /* BackgroundAssetsExtension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = C89036D41006ACD08F408D67 /* BackgroundAssetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		D9E89A1A3A538D555E5391A7 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487542E84ADF52910CD81F72 /* ShareViewController.swift */; };
-		E2B6B0E0040DE2506BFB96F2 /* ShareExtensioniOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 77174B2B90D99F829213A8D3 /* ShareExtensioniOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		E5B24A4040701112577921EE /* TranscriptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4B603D88F01D0517EBFD6F4 /* TranscriptionStudioApp.swift */; };
-		F0D958408528C814136DDA44 /* TranscriptionKit in Frameworks */ = {isa = PBXBuildFile; productRef = E5025B435ADEF887C6BF75C9 /* TranscriptionKit */; };
+		80433BF7BDE22FDCB1E8D454 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487542E84ADF52910CD81F72 /* ShareViewController.swift */; };
+		9FDB075ED2768E6378537DFC /* BackgroundAssetsExtension.appex in Embed ExtensionKit Extensions */ = {isa = PBXBuildFile; fileRef = C89036D41006ACD08F408D67 /* BackgroundAssetsExtension.appex */; platformFilters = (ios, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B32623461B1614922A72E4C2 /* WidgetExtensioniOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 10655D91DE9E8A453840E9AF /* WidgetExtensioniOS.appex */; platformFilters = (ios, ); settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BDCBBB58A151DD9A018E5767 /* TranscriptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F630E5C199EC9EED9E969C4 /* TranscriptionStudioApp.swift */; };
+		D68B424E7AC7F1485A4B1A3D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BC0A6FBE775B9F4D36FFB700 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		32CA54248552695CE628E997 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = FEA9CA82D8A7CA70A7927142 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 2CFE63CC32099F3E0E2A79F4;
-			remoteInfo = BackgroundAssetsExtension;
-		};
-		A8660AF0D114063ED29396DF /* PBXContainerItemProxy */ = {
+		96C62C538DF59D95BD3D54F1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FEA9CA82D8A7CA70A7927142 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = A5D699956C221AE61E31A073;
 			remoteInfo = WidgetExtensioniOS;
 		};
-		BA38F158A5A7EF020A5C1B72 /* PBXContainerItemProxy */ = {
+		98F6F61118191F522C93AB95 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FEA9CA82D8A7CA70A7927142 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 0D2CD73FCCFDD04FEBC2B5B8;
-			remoteInfo = ShareExtensionMac;
+			remoteGlobalIDString = F3F63C28F18C88FD27210B2E;
+			remoteInfo = ShareExtension;
 		};
-		BE6E95336A9E2F0AA04203F2 /* PBXContainerItemProxy */ = {
+		C1F4D3108B78AB586A3EE37C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FEA9CA82D8A7CA70A7927142 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 7389A5D54F5F283EF0E2B988;
-			remoteInfo = ShareExtensioniOS;
+			remoteGlobalIDString = 2CFE63CC32099F3E0E2A79F4;
+			remoteInfo = BackgroundAssetsExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		6F0E1B185A2B203551FC4ED7 /* Embed Foundation Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				E2B6B0E0040DE2506BFB96F2 /* ShareExtensioniOS.appex in Embed Foundation Extensions */,
-				5E1A1AA5E8F45C918A314F09 /* WidgetExtensioniOS.appex in Embed Foundation Extensions */,
-			);
-			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BE64692CE2EB76D20C727B99 /* Embed ExtensionKit Extensions */ = {
+		1F51C4362DD9A273C3CC35E5 /* Embed ExtensionKit Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "$(EXTENSIONS_FOLDER_PATH)";
 			dstSubfolderSpec = 16;
 			files = (
-				BC228436F5005595D0A39630 /* BackgroundAssetsExtension.appex in Embed ExtensionKit Extensions */,
+				9FDB075ED2768E6378537DFC /* BackgroundAssetsExtension.appex in Embed ExtensionKit Extensions */,
 			);
 			name = "Embed ExtensionKit Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -90,7 +67,8 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				5FEBFAC97D81354A5C928925 /* ShareExtensionMac.appex in Embed Foundation Extensions */,
+				31170CC4BAD096E7A2E20526 /* ShareExtension.appex in Embed Foundation Extensions */,
+				B32623461B1614922A72E4C2 /* WidgetExtensioniOS.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -101,38 +79,35 @@
 		0E8221B1031C323DA057747B /* RecordingLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingLiveActivity.swift; sourceTree = "<group>"; };
 		10655D91DE9E8A453840E9AF /* WidgetExtensioniOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = WidgetExtensioniOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		1359BA1E77A18CA6AC217483 /* PlaybackLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackLiveActivity.swift; sourceTree = "<group>"; };
-		1681C1D7912BE86B4B8DB423 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		40ADD96AADB9CD3E91FCAFA0 /* TranscriptionStudioiOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TranscriptionStudioiOS.entitlements; sourceTree = "<group>"; };
+		34C452C08235266EB3CDE744 /* TranscriptionShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionShortcuts.swift; sourceTree = "<group>"; };
 		487542E84ADF52910CD81F72 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		50809256097EE7408344DBD1 /* WhisperModelDownloaderExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelDownloaderExtension.swift; sourceTree = "<group>"; };
-		58AC1C828182C11917303A4B /* TranscriptionStudioiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioiOSApp.swift; sourceTree = "<group>"; };
-		77174B2B90D99F829213A8D3 /* ShareExtensioniOS.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtensioniOS.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		C054EFA708DC83E7186AF372 /* TranscriptionStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TranscriptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		52568358502C50EA2DDA3A23 /* TranscriptionStudio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TranscriptionStudio.entitlements; sourceTree = "<group>"; };
+		6F630E5C199EC9EED9E969C4 /* TranscriptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioApp.swift; sourceTree = "<group>"; };
+		8857F026CB4BECEA4B983330 /* ShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA25B947CDA557401BBE3C52 /* TranscriptionStudio-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "TranscriptionStudio-macOS.entitlements"; sourceTree = "<group>"; };
+		BA2C04AF8286927A1273BDEF /* TranscriptionStudioApp */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TranscriptionStudioApp; path = .; sourceTree = SOURCE_ROOT; };
+		BC0A6FBE775B9F4D36FFB700 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C054EFA708DC83E7186AF372 /* TranscriptionStudio.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TranscriptionStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C89036D41006ACD08F408D67 /* BackgroundAssetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = BackgroundAssetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD23B23A4963B17F6D8250A2 /* TranscriptionStudioWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioWidgets.swift; sourceTree = "<group>"; };
-		CF184064408F9F586B1A277A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		CFD1D36AC27D38EE63CC2860 /* ShareExtensionMac.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtensionMac.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		D333470E29E74E0A76E411A2 /* TranscriptionStudioiOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = TranscriptionStudioiOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		D4B603D88F01D0517EBFD6F4 /* TranscriptionStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStudioApp.swift; sourceTree = "<group>"; };
-		D9E31C82226AA9AF7981A3FA /* wt-tsa */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "wt-tsa"; path = .; sourceTree = SOURCE_ROOT; };
-		DACE3E75FDAB6765A1409435 /* TranscriptionStudio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TranscriptionStudio.entitlements; sourceTree = "<group>"; };
-		E176940DA9940A2C40E5B9D4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DD16216E11A5914F3240534B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0524A86F7882653147AA0B52 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				153F12A8EC8D0F31E78C042F /* ShareKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		117D1484DFE65AC671C26179 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				267E2FBDF300C52A5EAD7854 /* GlanceKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		33D205A3CB6640C70B07BCD4 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F0D958408528C814136DDA44 /* TranscriptionKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -144,28 +119,12 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B6A0C211C95A278C965590D8 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				35595A3D972DF70F1F1AE3DD /* ShareKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		BAB8397646DB794755D8FE9B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				34B5E9506D29AA6C3C926346 /* TranscriptionKit in Frameworks */,
 				6C7F187AFEE14CEAA979B273 /* TranscriptionMacKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		CFEFE0EC334910F5085105B0 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				8AE9B86A50885233405E7EEC /* ShareKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -190,12 +149,24 @@
 			path = WidgetExtension;
 			sourceTree = "<group>";
 		};
+		3010CBE53B7208402A53990C /* App */ = {
+			isa = PBXGroup;
+			children = (
+				BC0A6FBE775B9F4D36FFB700 /* Assets.xcassets */,
+				DD16216E11A5914F3240534B /* Info.plist */,
+				34C452C08235266EB3CDE744 /* TranscriptionShortcuts.swift */,
+				BA25B947CDA557401BBE3C52 /* TranscriptionStudio-macOS.entitlements */,
+				52568358502C50EA2DDA3A23 /* TranscriptionStudio.entitlements */,
+				6F630E5C199EC9EED9E969C4 /* TranscriptionStudioApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
 		5074CA7F4822361D5F914460 /* Sources */ = {
 			isa = PBXGroup;
 			children = (
+				3010CBE53B7208402A53990C /* App */,
 				0B513EFFC7B2B443591CD332 /* BackgroundAssetsExtension */,
-				81E6BDCB5BD3E2DAB735A2C6 /* iOSApp */,
-				8BF931CAB55D82BC4252A28F /* MacApp */,
 				762956FA9D95933EF0710DC9 /* ShareExtension */,
 				0C2E8BA3F72F4C8C9B0AED4B /* WidgetExtension */,
 			);
@@ -210,31 +181,10 @@
 			path = ShareExtension;
 			sourceTree = "<group>";
 		};
-		81E6BDCB5BD3E2DAB735A2C6 /* iOSApp */ = {
-			isa = PBXGroup;
-			children = (
-				CF184064408F9F586B1A277A /* Assets.xcassets */,
-				1681C1D7912BE86B4B8DB423 /* Info.plist */,
-				40ADD96AADB9CD3E91FCAFA0 /* TranscriptionStudioiOS.entitlements */,
-				58AC1C828182C11917303A4B /* TranscriptionStudioiOSApp.swift */,
-			);
-			path = iOSApp;
-			sourceTree = "<group>";
-		};
-		8BF931CAB55D82BC4252A28F /* MacApp */ = {
-			isa = PBXGroup;
-			children = (
-				E176940DA9940A2C40E5B9D4 /* Info.plist */,
-				DACE3E75FDAB6765A1409435 /* TranscriptionStudio.entitlements */,
-				D4B603D88F01D0517EBFD6F4 /* TranscriptionStudioApp.swift */,
-			);
-			path = MacApp;
-			sourceTree = "<group>";
-		};
 		94496EA3E344C69F64F0F68C /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				D9E31C82226AA9AF7981A3FA /* wt-tsa */,
+				BA2C04AF8286927A1273BDEF /* TranscriptionStudioApp */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -243,10 +193,8 @@
 			isa = PBXGroup;
 			children = (
 				C89036D41006ACD08F408D67 /* BackgroundAssetsExtension.appex */,
-				77174B2B90D99F829213A8D3 /* ShareExtensioniOS.appex */,
-				CFD1D36AC27D38EE63CC2860 /* ShareExtensionMac.appex */,
+				8857F026CB4BECEA4B983330 /* ShareExtension.appex */,
 				C054EFA708DC83E7186AF372 /* TranscriptionStudio.app */,
-				D333470E29E74E0A76E411A2 /* TranscriptionStudioiOS.app */,
 				10655D91DE9E8A453840E9AF /* WidgetExtensioniOS.appex */,
 			);
 			name = Products;
@@ -264,25 +212,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0D2CD73FCCFDD04FEBC2B5B8 /* ShareExtensionMac */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 5A9BF4FE5A539C6A03FA2DDC /* Build configuration list for PBXNativeTarget "ShareExtensionMac" */;
-			buildPhases = (
-				4EFFAC46281849705162A0C9 /* Sources */,
-				CFEFE0EC334910F5085105B0 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = ShareExtensionMac;
-			packageProductDependencies = (
-				894A8EA3080D26E50B35DD02 /* ShareKit */,
-			);
-			productName = ShareExtensionMac;
-			productReference = CFD1D36AC27D38EE63CC2860 /* ShareExtensionMac.appex */;
-			productType = "com.apple.product-type.app-extension";
-		};
 		2CFE63CC32099F3E0E2A79F4 /* BackgroundAssetsExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 19F253ABE5AA0999BCB364E9 /* Build configuration list for PBXNativeTarget "BackgroundAssetsExtension" */;
@@ -301,25 +230,6 @@
 			productName = BackgroundAssetsExtension;
 			productReference = C89036D41006ACD08F408D67 /* BackgroundAssetsExtension.appex */;
 			productType = "com.apple.product-type.extensionkit-extension";
-		};
-		7389A5D54F5F283EF0E2B988 /* ShareExtensioniOS */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 32E71171126B728093B92E52 /* Build configuration list for PBXNativeTarget "ShareExtensioniOS" */;
-			buildPhases = (
-				D196EDC628EDC3A410DE8199 /* Sources */,
-				B6A0C211C95A278C965590D8 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = ShareExtensioniOS;
-			packageProductDependencies = (
-				786C7D30FC95C0DB395F7678 /* ShareKit */,
-			);
-			productName = ShareExtensioniOS;
-			productReference = 77174B2B90D99F829213A8D3 /* ShareExtensioniOS.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 		A5D699956C221AE61E31A073 /* WidgetExtensioniOS */ = {
 			isa = PBXNativeTarget;
@@ -340,43 +250,22 @@
 			productReference = 10655D91DE9E8A453840E9AF /* WidgetExtensioniOS.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		B5533A2D8B61C7E8371EC2F3 /* TranscriptionStudioiOS */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = E2EB9313859B9013AC48AA6B /* Build configuration list for PBXNativeTarget "TranscriptionStudioiOS" */;
-			buildPhases = (
-				B626805365C71DF1FA5CDA7D /* Sources */,
-				CDCA74070262DEEAB3C963A3 /* Resources */,
-				33D205A3CB6640C70B07BCD4 /* Frameworks */,
-				6F0E1B185A2B203551FC4ED7 /* Embed Foundation Extensions */,
-				BE64692CE2EB76D20C727B99 /* Embed ExtensionKit Extensions */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				8CF6D3496FCD7E74803932F0 /* PBXTargetDependency */,
-				882935F23195C0E845298309 /* PBXTargetDependency */,
-				B05D932BCF323613D190607A /* PBXTargetDependency */,
-			);
-			name = TranscriptionStudioiOS;
-			packageProductDependencies = (
-				E5025B435ADEF887C6BF75C9 /* TranscriptionKit */,
-			);
-			productName = TranscriptionStudioiOS;
-			productReference = D333470E29E74E0A76E411A2 /* TranscriptionStudioiOS.app */;
-			productType = "com.apple.product-type.application";
-		};
 		D289E7F3384BBF41887D9478 /* TranscriptionStudio */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 51EF65333D0543D1F38B1618 /* Build configuration list for PBXNativeTarget "TranscriptionStudio" */;
 			buildPhases = (
 				77A524F64F88F0DAF596DFF6 /* Sources */,
+				89D67AC39C7E9FA0E8F7FF7A /* Resources */,
 				BAB8397646DB794755D8FE9B /* Frameworks */,
 				C7EE70B56034DC2B8E40D335 /* Embed Foundation Extensions */,
+				1F51C4362DD9A273C3CC35E5 /* Embed ExtensionKit Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				777FFF975EB569AFF7B27FC1 /* PBXTargetDependency */,
+				14B675D64E2C759F54DF5A45 /* PBXTargetDependency */,
+				58FDCD78B1C74B64D65C1140 /* PBXTargetDependency */,
+				3F5E649078543A420ECBF5AE /* PBXTargetDependency */,
 			);
 			name = TranscriptionStudio;
 			packageProductDependencies = (
@@ -386,6 +275,25 @@
 			productName = TranscriptionStudio;
 			productReference = C054EFA708DC83E7186AF372 /* TranscriptionStudio.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F3F63C28F18C88FD27210B2E /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FC17C9C03D9E08A201E22011 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				C618941810C95B53B7BD108C /* Sources */,
+				0524A86F7882653147AA0B52 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			packageProductDependencies = (
+				5E123A608A0FC7F122696924 /* ShareKit */,
+			);
+			productName = ShareExtension;
+			productReference = 8857F026CB4BECEA4B983330 /* ShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -397,15 +305,7 @@
 				LastSwiftUpdateCheck = 9999;
 				LastUpgradeCheck = 9999;
 				TargetAttributes = {
-					0D2CD73FCCFDD04FEBC2B5B8 = {
-						DevelopmentTeam = X26SC78YDG;
-						ProvisioningStyle = Automatic;
-					};
 					2CFE63CC32099F3E0E2A79F4 = {
-						DevelopmentTeam = X26SC78YDG;
-						ProvisioningStyle = Automatic;
-					};
-					7389A5D54F5F283EF0E2B988 = {
 						DevelopmentTeam = X26SC78YDG;
 						ProvisioningStyle = Automatic;
 					};
@@ -413,11 +313,11 @@
 						DevelopmentTeam = X26SC78YDG;
 						ProvisioningStyle = Automatic;
 					};
-					B5533A2D8B61C7E8371EC2F3 = {
+					D289E7F3384BBF41887D9478 = {
 						DevelopmentTeam = X26SC78YDG;
 						ProvisioningStyle = Automatic;
 					};
-					D289E7F3384BBF41887D9478 = {
+					F3F63C28F18C88FD27210B2E = {
 						DevelopmentTeam = X26SC78YDG;
 						ProvisioningStyle = Automatic;
 					};
@@ -441,9 +341,7 @@
 			projectRoot = "";
 			targets = (
 				D289E7F3384BBF41887D9478 /* TranscriptionStudio */,
-				B5533A2D8B61C7E8371EC2F3 /* TranscriptionStudioiOS */,
-				0D2CD73FCCFDD04FEBC2B5B8 /* ShareExtensionMac */,
-				7389A5D54F5F283EF0E2B988 /* ShareExtensioniOS */,
+				F3F63C28F18C88FD27210B2E /* ShareExtension */,
 				A5D699956C221AE61E31A073 /* WidgetExtensioniOS */,
 				2CFE63CC32099F3E0E2A79F4 /* BackgroundAssetsExtension */,
 			);
@@ -451,25 +349,17 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		CDCA74070262DEEAB3C963A3 /* Resources */ = {
+		89D67AC39C7E9FA0E8F7FF7A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				7A80CED419B5FA716FF5D389 /* Assets.xcassets in Resources */,
+				D68B424E7AC7F1485A4B1A3D /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		4EFFAC46281849705162A0C9 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				D9E89A1A3A538D555E5391A7 /* ShareViewController.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		706B4B935289C00001CC93A4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -484,7 +374,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E5B24A4040701112577921EE /* TranscriptionStudioApp.swift in Sources */,
+				1B32CD843D37899081532E23 /* TranscriptionShortcuts.swift in Sources */,
+				BDCBBB58A151DD9A018E5767 /* TranscriptionStudioApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -496,82 +387,41 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B626805365C71DF1FA5CDA7D /* Sources */ = {
+		C618941810C95B53B7BD108C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5D18D31ADA325D665CBBDE18 /* TranscriptionStudioiOSApp.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		D196EDC628EDC3A410DE8199 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				322D9C5BE9F0AEA57A83DFAC /* ShareViewController.swift in Sources */,
+				80433BF7BDE22FDCB1E8D454 /* ShareViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		777FFF975EB569AFF7B27FC1 /* PBXTargetDependency */ = {
+		14B675D64E2C759F54DF5A45 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 0D2CD73FCCFDD04FEBC2B5B8 /* ShareExtensionMac */;
-			targetProxy = BA38F158A5A7EF020A5C1B72 /* PBXContainerItemProxy */;
+			target = F3F63C28F18C88FD27210B2E /* ShareExtension */;
+			targetProxy = 98F6F61118191F522C93AB95 /* PBXContainerItemProxy */;
 		};
-		882935F23195C0E845298309 /* PBXTargetDependency */ = {
+		3F5E649078543A420ECBF5AE /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 2CFE63CC32099F3E0E2A79F4 /* BackgroundAssetsExtension */;
-			targetProxy = 32CA54248552695CE628E997 /* PBXContainerItemProxy */;
-		};
-		8CF6D3496FCD7E74803932F0 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 7389A5D54F5F283EF0E2B988 /* ShareExtensioniOS */;
-			targetProxy = BE6E95336A9E2F0AA04203F2 /* PBXContainerItemProxy */;
-		};
-		B05D932BCF323613D190607A /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
+			platformFilters = (
+				ios,
+			);
 			target = A5D699956C221AE61E31A073 /* WidgetExtensioniOS */;
-			targetProxy = A8660AF0D114063ED29396DF /* PBXContainerItemProxy */;
+			targetProxy = 96C62C538DF59D95BD3D54F1 /* PBXContainerItemProxy */;
+		};
+		58FDCD78B1C74B64D65C1140 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilters = (
+				ios,
+			);
+			target = 2CFE63CC32099F3E0E2A79F4 /* BackgroundAssetsExtension */;
+			targetProxy = C1F4D3108B78AB586A3EE37C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		22D3E4B5D388BB14E1BA449B /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Sources/iOSApp/TranscriptionStudioiOS.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X26SC78YDG;
-				ENABLE_DEBUG_DYLIB = YES;
-				ENABLE_ENHANCED_SECURITY = YES;
-				ENABLE_POINTER_AUTHENTICATION = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Sources/iOSApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Transcription Studio";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS;
-				SDKROOT = iphoneos;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
 		36E41DC40C5C6DDC37F845D8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -579,6 +429,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_ENHANCED_SECURITY = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/BackgroundAssetsExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
@@ -663,74 +515,56 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Sources/MacApp/TranscriptionStudio.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Sources/App/TranscriptionStudio.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Sources/App/TranscriptionStudio-macOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X26SC78YDG;
 				ENABLE_DEBUG_DYLIB = YES;
 				ENABLE_ENHANCED_SECURITY = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
 				ENABLE_POINTER_AUTHENTICATION = NO;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Sources/MacApp/Info.plist;
+				INFOPLIST_FILE = Sources/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Transcription Studio";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
-					"@executable_path/../Frameworks",
+					"@executable_path/Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio;
-				SDKROOT = macosx;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio;
+				PRODUCT_NAME = TranscriptionStudio;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
-		64B808B3DDF057BABF7895B0 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Sources/MacApp/TranscriptionStudio.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X26SC78YDG;
-				ENABLE_DEBUG_DYLIB = YES;
-				ENABLE_ENHANCED_SECURITY = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_POINTER_AUTHENTICATION = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Sources/MacApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Transcription Studio";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio;
-				SDKROOT = macosx;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		9C5CF7608A21F8D85790D4DE /* Debug */ = {
+		46AE71BC5A8DD9E283A864C8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Sources/ShareExtension/macOS/ShareExtensionMac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_ENHANCED_SECURITY = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/ShareExtension/iOS/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				"INFOPLIST_FILE[sdk=macosx*]" = Sources/ShareExtension/macOS/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -739,7 +573,12 @@
 				LM_SKIP_METADATA_EXTRACTION = YES;
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.ShareExtension;
-				SDKROOT = iphoneos;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio.ShareExtension;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
@@ -747,6 +586,82 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
+		};
+		64B808B3DDF057BABF7895B0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Sources/App/TranscriptionStudio.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "Sources/App/TranscriptionStudio-macOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_DEBUG_DYLIB = YES;
+				ENABLE_ENHANCED_SECURITY = YES;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Sources/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Transcription Studio";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio;
+				PRODUCT_NAME = TranscriptionStudio;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		995890E3802EAD4D39B2F98D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Sources/ShareExtension/macOS/ShareExtensionMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_ENHANCED_SECURITY = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/ShareExtension/iOS/Info.plist;
+				"INFOPLIST_FILE[sdk=macosx*]" = Sources/ShareExtension/macOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LM_SKIP_METADATA_EXTRACTION = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.ShareExtension;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.fcttechnologies.TranscriptionStudio.ShareExtension;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		9E5683F4F1A695952FF3EA26 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -809,6 +724,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_ENHANCED_SECURITY = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/WidgetExtension/iOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
@@ -834,6 +751,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_ENHANCED_SECURITY = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/WidgetExtension/iOS/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
@@ -853,33 +772,6 @@
 			};
 			name = Release;
 		};
-		C9AF1B50811D9245FE637D64 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Sources/ShareExtension/macOS/ShareExtensionMac.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X26SC78YDG;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Sources/ShareExtension/macOS/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-					"@executable_path/../../../../Frameworks",
-				);
-				LM_SKIP_METADATA_EXTRACTION = YES;
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.ShareExtension;
-				SDKROOT = macosx;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
 		D101796A1FCE03F8A06B6F39 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -887,6 +779,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = X26SC78YDG;
+				ENABLE_ENHANCED_SECURITY = YES;
+				ENABLE_POINTER_AUTHENTICATION = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Sources/BackgroundAssetsExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
@@ -898,94 +792,6 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.BackgroundAssetsExtension;
 				SDKROOT = iphoneos;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		DFEEBE8A948E4B594620DD6C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Sources/ShareExtension/iOS/ShareExtensioniOS.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X26SC78YDG;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Sources/ShareExtension/iOS/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LM_SKIP_METADATA_EXTRACTION = YES;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS.ShareExtension;
-				SDKROOT = iphoneos;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		E29967C055F21BC5CA4208E6 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Sources/ShareExtension/macOS/ShareExtensionMac.entitlements;
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X26SC78YDG;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Sources/ShareExtension/macOS/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-					"@executable_path/../../../../Frameworks",
-				);
-				LM_SKIP_METADATA_EXTRACTION = YES;
-				MACOSX_DEPLOYMENT_TARGET = 27.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.ShareExtension;
-				SDKROOT = macosx;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		F5F4E9FE7675C092A5B0F669 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Sources/iOSApp/TranscriptionStudioiOS.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = X26SC78YDG;
-				ENABLE_DEBUG_DYLIB = YES;
-				ENABLE_ENHANCED_SECURITY = YES;
-				ENABLE_POINTER_AUTHENTICATION = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Sources/iOSApp/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Transcription Studio";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudioiOS;
-				SDKROOT = iphoneos;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -1014,15 +820,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		32E71171126B728093B92E52 /* Build configuration list for PBXNativeTarget "ShareExtensioniOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				9C5CF7608A21F8D85790D4DE /* Debug */,
-				DFEEBE8A948E4B594620DD6C /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
 		46021531B81E9C7A5213A212 /* Build configuration list for PBXProject "TranscriptionStudio" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1041,20 +838,11 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		5A9BF4FE5A539C6A03FA2DDC /* Build configuration list for PBXNativeTarget "ShareExtensionMac" */ = {
+		FC17C9C03D9E08A201E22011 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E29967C055F21BC5CA4208E6 /* Debug */,
-				C9AF1B50811D9245FE637D64 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		E2EB9313859B9013AC48AA6B /* Build configuration list for PBXNativeTarget "TranscriptionStudioiOS" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				22D3E4B5D388BB14E1BA449B /* Debug */,
-				F5F4E9FE7675C092A5B0F669 /* Release */,
+				46AE71BC5A8DD9E283A864C8 /* Debug */,
+				995890E3802EAD4D39B2F98D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -1073,27 +861,19 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = BackgroundAssetsKit;
 		};
+		5E123A608A0FC7F122696924 /* ShareKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ShareKit;
+		};
 		63D4082584CE563BE86432A6 /* TranscriptionMacKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TranscriptionMacKit;
-		};
-		786C7D30FC95C0DB395F7678 /* ShareKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ShareKit;
-		};
-		894A8EA3080D26E50B35DD02 /* ShareKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = ShareKit;
 		};
 		C05CB006EA3756884F9164AC /* GlanceKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GlanceKit;
 		};
 		C2D3913715E95D2F80B01C04 /* TranscriptionKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = TranscriptionKit;
-		};
-		E5025B435ADEF887C6BF75C9 /* TranscriptionKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TranscriptionKit;
 		};
