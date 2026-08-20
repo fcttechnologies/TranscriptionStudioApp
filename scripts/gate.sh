@@ -35,6 +35,7 @@ SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
 SHORTCUT_COUNT_MAC=10
 SHORTCUT_COUNT_IOS=9
 VERIFY_SHORTCUTS="../FCTFoundation/scripts/verify-app-shortcuts.py"
+VERIFY_ICONS="../FCTFoundation/scripts/verify-app-icons.py"
 DD="$(mktemp -d -t ts-gate)"
 trap 'rm -rf "${DD}"' EXIT
 
@@ -168,14 +169,12 @@ linked_frameworks "${MAC_APP}/Contents/MacOS" TranscriptionStudio | grep -q Scre
 linked_frameworks "${IOS_APP}" TranscriptionStudio | grep -q ScreenCaptureKit \
   && fail "iOS build linked ScreenCaptureKit — the macOS-only dependency edge lost its filter"
 
-# One merged asset catalog serves both idioms. A catalog left carrying only the `ios` platform entry
-# leaves the macOS build with no app icon, and actool says so in output the Swift-warning filter
-# above does not catch. CFBundleIconName sits at a different depth per platform — top-level on
-# macOS, nested under CFBundleIcons on iOS — so each is read at its own path.
-echo "==> App icon per platform"
-[ -f "${MAC_APP}/Contents/Resources/AppIcon.icns" ] \
-  || fail "macOS build has no app icon (merged asset catalog is missing the mac idiom entry)"
-plutil -extract CFBundleIcons.CFBundlePrimaryIcon.CFBundleIconName raw -o - "${IOS_APP}/Info.plist" >/dev/null \
-  || fail "iOS build has no app icon"
+# One merged asset catalog serves both idioms. An AppIcon set declaring only one platform's idiom
+# compiles clean and ships the other platform with no icon at all: actool reports it in output the
+# Swift-warning filter above does not catch, and nothing else fails. Only the built bundles tell
+# the truth, so both artifacts are read.
+echo "==> App icon in both artifacts"
+"${VERIFY_ICONS}" "${IOS_APP}" "${MAC_APP}" \
+  || fail "App icon missing — see the message above."
 
 echo "==> PASS: host suite green, both platforms build warning-free, shortcuts registered on both."
