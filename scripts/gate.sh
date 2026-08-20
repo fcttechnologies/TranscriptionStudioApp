@@ -147,10 +147,17 @@ echo "==> Embedded extensions per platform"
 # proof the kit is actually in the macOS product. Under ENABLE_DEBUG_DYLIB the code lives in a
 # sibling dylib rather than the launcher, so both are scanned.
 echo "==> Mac-only kit linked on macOS, absent from iOS"
-mac_links() { otool -L "${MAC_APP}/Contents/MacOS/TranscriptionStudio"* ; }
-mac_links | grep -q ScreenCaptureKit \
+# Only the Mach-O files, named exactly: a glob here also sweeps in the SwiftPM resource bundles,
+# which otool cannot read and which would make the check emit errors it then ignores.
+linked_frameworks() {
+  local dir="$1" name="$2" f
+  for f in "${dir}/${name}" "${dir}/${name}.debug.dylib"; do
+    [ -f "${f}" ] && otool -L "${f}"
+  done
+}
+linked_frameworks "${MAC_APP}/Contents/MacOS" TranscriptionStudio | grep -q ScreenCaptureKit \
   || fail "macOS build did not link ScreenCaptureKit — TranscriptionMacKit is not in the product"
-otool -L "${IOS_APP}/TranscriptionStudio"* | grep -q ScreenCaptureKit \
+linked_frameworks "${IOS_APP}" TranscriptionStudio | grep -q ScreenCaptureKit \
   && fail "iOS build linked ScreenCaptureKit — the macOS-only dependency edge lost its filter"
 
 # One merged asset catalog serves both idioms. A catalog left carrying only the `ios` platform entry

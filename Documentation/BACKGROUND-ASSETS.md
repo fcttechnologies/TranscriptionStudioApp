@@ -40,7 +40,7 @@ the app's launch.
 | Lean shared kit (manifest schema, HF-URL + layout math) | `Sources/BackgroundAssetsKit/` |
 | Downloader extension (`@main BADownloaderExtension`) | `Sources/BackgroundAssetsExtension/` |
 | App-side installer + foreground fallback | `Sources/TranscriptionKit/ASR/BackgroundAssetsModelInstaller.swift` |
-| Launch hook | `Sources/iOSApp/TranscriptionStudioiOSApp.swift` (`.task`) |
+| Launch hook | `Sources/App/TranscriptionStudioApp.swift` (`.task`, iOS branch) |
 | Committed manifest (a copy of the hosted file) | `Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json` |
 | Manifest generator | `scripts/gen-ba-manifest.sh` |
 
@@ -49,7 +49,7 @@ fits its tight memory sandbox.
 
 ## Config (project.yml → generated Info.plist / entitlements)
 
-Host app (`TranscriptionStudioiOS`) Info.plist:
+Host app Info.plist (the iOS slice — `com.fcttechnologies.TranscriptionStudioiOS`):
 - `BAManifestURL` — where the system fetches the manifest.
 - `BAAppGroupID` — `group.com.fcttechnologies.TranscriptionStudio` (shared with the extension).
 - `BAMaxInstallSize` — `1638464446` (uncompressed total; shown on the App Store).
@@ -117,7 +117,7 @@ only the trigger needs the Store path.
    <key>com.apple.developer.background-assets</key>
    <true/>
    ```
-   to both `Sources/iOSApp/TranscriptionStudioiOS.entitlements` and
+   to both `Sources/App/TranscriptionStudio.entitlements` (the iOS set) and
    `Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements`, enable the
    **Background Assets** capability on the App ID in the Developer portal, and set a real
    `DEVELOPMENT_TEAM` so automatic signing can register it and the App Group. Everything else —

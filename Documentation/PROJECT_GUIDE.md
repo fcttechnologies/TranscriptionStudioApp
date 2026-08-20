@@ -25,10 +25,19 @@ capability is genuinely one-platform.
 
 ## Structure
 
-Thin app shells (`Sources/MacApp`, `Sources/iOSApp`, xcodegen targets) over one local
-package: `TranscriptionKit` (shared: engines, capture, jobs, diagnostics, persistence,
-shared UI) + `TranscriptionMacKit` (mac-only: URL ingest, ScreenCaptureKit capture, Mac
-shell). Lean extension-safe libraries sit beside them: `ShareKit` (Share-extension
+One thin app shell (`Sources/App`) built by **one xcodegen target for both platforms** — the
+App Shortcuts provider only registers when it compiles into the app target, and a second
+target is a second place to get that wrong. The platform split lives in build settings
+(`PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]`, the entitlements pair) and `#if os(…)`.
+
+Under it, one local package: `TranscriptionKit` (shared: engines, capture, jobs, diagnostics,
+persistence, shared UI) + `TranscriptionMacKit` (mac-only: URL ingest, ScreenCaptureKit
+capture, Mac shell). `TranscriptionMacKit` uses APIs with no iOS availability, so the app
+target's dependency edge on it carries `destinationFilters: [macOS]` — that filter, not an
+`#if`, is what keeps it from being built for the iOS destination. It stays a package target
+rather than folding into `Sources/App` because `transcribe-cli` links it too.
+
+Lean extension-safe libraries sit beside them: `ShareKit` (Share-extension
 drop-box), `BackgroundAssetsKit` (model pre-download), and `GlanceKit` (Live Activity
 attributes + button intents + pure clock/level math, linked by the app and by
 `WidgetExtensioniOS` — the widget extension rendering the recording/playback Live

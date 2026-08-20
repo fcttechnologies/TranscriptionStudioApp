@@ -18,14 +18,15 @@ and judged, all rights reserved, no licence granted to use, copy, modify or redi
 brew install xcodegen yt-dlp ffmpeg   # yt-dlp/ffmpeg power Mac URL ingest
 scripts/fetch-models.sh               # Sortformer artifacts (mel filterbank + metadata)
 xcodegen generate
-open TranscriptionStudio.xcodeproj    # schemes: TranscriptionStudio (Mac) / TranscriptionStudioiOS
+open TranscriptionStudio.xcodeproj    # one scheme, TranscriptionStudio — pick Mac or iOS from the destination menu
 ```
 
 The Sortformer neural core must be a **locally re-exported** `.aimodel` (the HF-published one
 doesn't load on current toolchains) — recipe in `Documentation/SORTFORMER-STATUS.md`. Without
 it the app runs with SpeakerKit diarization; WhisperKit self-downloads on first use.
 
-Tests: `swift test`; real-model gates `SORTFORMER_MODEL_OK=1 swift test --filter Sortformer`;
+Full gate: `scripts/gate.sh` (host suite, both platforms warning-free, artifact reads).
+Tests alone: `swift test`; real-model gates `SORTFORMER_MODEL_OK=1 swift test --filter Sortformer`;
 concurrency bench `CONCURRENT_BENCH=1 swift test --filter ConcurrentLoadBench`.
 Verification audio: `scripts/make-verification-audio.sh` (writes `TestResources/`).
 

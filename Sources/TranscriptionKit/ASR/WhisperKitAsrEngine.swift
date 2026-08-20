@@ -263,8 +263,8 @@ public actor WhisperKitAsrEngine: AsrEngine {
     /// target's `UIApplicationDelegate` to implement
     /// `application(_:handleEventsForBackgroundURLSession:completionHandler:)` and hand the
     /// stored completion handler to a session reconstructed with WhisperKit's fixed background
-    /// identifier (`"swift-transformers.hub.downloader"`) — that hook lives in the iOS app
-    /// target (`Sources/iOSApp`), outside this package, and isn't wired here.
+    /// identifier (`"swift-transformers.hub.downloader"`) — that hook lives in the app shell
+    /// (`Sources/App`), outside this package, and isn't wired here.
     ///
     /// Investigated and deliberately left unwired (2026-07-15): the identifier is owned by
     /// `Downloader`, an `internal` (non-public) class inside the vendored `ArgmaxCore` module

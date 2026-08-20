@@ -86,7 +86,7 @@ covered by the app builds (`xcodebuild` iOS on a sim, macOS Debug).
 The share-sheet tap itself can't be scripted headlessly. Verify once per platform:
 
 **iOS (media file → transcribe):**
-1. Build+run `TranscriptionStudioiOS` on a device/sim; grant nothing special (App Group is
+1. Build+run the `TranscriptionStudio` scheme on an iOS device/sim; grant nothing special (App Group is
    automatic). Foreground the app once so it's installed.
 2. Open **Files** or **Photos**, pick a video/audio clip, tap **Share**, choose
    **Transcription Studio**. The sheet shows "Sending to Transcription Studio…" briefly.

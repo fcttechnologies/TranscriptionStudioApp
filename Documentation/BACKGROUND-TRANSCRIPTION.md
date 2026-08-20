@@ -36,7 +36,7 @@ If the OS declines the request (e.g. `tooManyPendingTaskRequests`), it falls bac
   `com.fcttechnologies.TranscriptionStudioiOS.transcription.*` (wildcard; the concrete per-job id
   is composed at runtime from `Bundle.main.bundleIdentifier` in `ContinuedTranscriptionTask`).
   Regenerate the Info.plist with `xcodegen generate` after editing.
-- **`Sources/iOSApp/TranscriptionStudioiOS.entitlements`** →
+- **`Sources/App/TranscriptionStudio.entitlements`** (the iOS set) →
   `com.apple.developer.background-tasks.continued-processing.gpu = true` (the Background GPU Access
   capability). Required for background GPU use; a real-device/distribution build needs the
   provisioning profile to carry it. Simulator builds don't validate it.
