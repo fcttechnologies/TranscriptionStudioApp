@@ -1,5 +1,4 @@
 import Foundation
-import ShareKit
 import UniformTypeIdentifiers
 
 #if os(iOS)

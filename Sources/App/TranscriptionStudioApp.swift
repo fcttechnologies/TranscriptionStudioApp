@@ -1,10 +1,6 @@
 import FCTAccount
 import SwiftData
 import SwiftUI
-import TranscriptionKit
-#if os(macOS)
-import TranscriptionMacKit
-#endif
 
 /// The app shell — one target for iPhone, iPad and Mac, a thin window over the shared
 /// `TranscriptionKit`. The Mac-only capabilities (ScreenCaptureKit meeting capture, yt-dlp/ffmpeg

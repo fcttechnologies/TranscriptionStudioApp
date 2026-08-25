@@ -25,7 +25,8 @@ makes it checkable. (The model shipping here is a local re-export; provenance + 
    passes under the env flag (see below), cross-checked against SpeakerKit in the same test.
 4. **Cross-check** — SpeakerKit (Argmax, an independent diarizer) over the same clips;
    large disagreement fails loudly and is inspectable in-app (env-gated with the model gate).
-5. **Concurrent-load bench** — `CONCURRENT_BENCH=1 swift test --filter ConcurrentLoadBench`
+5. **Concurrent-load bench** — `TEST_RUNNER_CONCURRENT_BENCH=1 xcodebuild … test
+   -only-testing:TranscriptionStudioTests/ConcurrentLoadBench`
    measures ASR-alone, diarize-alone, and both-at-once on the long clip with thermal states
    (`[BENCH]` lines). M4 as-measured: ASR RTF 0.046, Sortformer RTF 0.015; concurrent ASR
    ×1.01, diarizer ×1.43, thermal nominal throughout.
@@ -37,8 +38,13 @@ can never be a fallible probe ("try, fall back on failure" is impossible). Tests
 model are therefore opted in by a human who knows the provisioned model loads:
 
 ```
-SORTFORMER_MODEL_OK=1 swift test --filter Sortformer
+TEST_RUNNER_SORTFORMER_MODEL_OK=1 xcodebuild -project TranscriptionStudio.xcodeproj \
+  -scheme TranscriptionStudio -destination 'platform=macOS,arch=arm64' test \
+  -only-testing:TranscriptionStudioTests/SortformerRealModelTests
 ```
+
+(Through `xcodebuild` the env var must carry the `TEST_RUNNER_` prefix to reach the app-hosted
+test process.)
 
 Without the flag those tests skip and the suite stays green. The mel frontend and AOSC math
 are verified independently of the model (gates 1–2, always on), and the full streaming loop +
@@ -64,7 +70,7 @@ drop-box (`group.com.fcttechnologies.TranscriptionStudio`) and pings the host vi
 URL scheme `transcriptionstudio://ingest?id=<uuid>`; the host drains the drop-box (on the ping
 *and* on every foreground, the iOS safety net) and enqueues a real job.
 
-### Automated coverage (`ShareKitTests`, always on)
+### Automated coverage (the shared-item classifier tests, always on)
 
 The pure logic is unit-tested with no share sheet or real App Group container (the drop-box
 takes an injectable container dir):

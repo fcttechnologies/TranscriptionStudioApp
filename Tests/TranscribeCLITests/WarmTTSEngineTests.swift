@@ -4,7 +4,6 @@
 
 import Foundation
 import Testing
-import TranscriptionKit
 @testable import transcribe_cli
 
 @Suite("WarmTTSEngine — model lifecycle")

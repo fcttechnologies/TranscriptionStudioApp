@@ -10,7 +10,7 @@ macOS has no such suspension limit, so there it's a plain passthrough (`#if os(i
 
 ## What runs where
 
-- **`BackgroundExecution.run(job:title:_:)`** (`Sources/TranscriptionKit/Views/App/BackgroundExecution.swift`)
+- **`BackgroundExecution.run(job:title:_:)`** (`Sources/App/Views/App/BackgroundExecution.swift`)
   — the cross-platform entry `AppModel.startTranscription` calls for both the file and URL paths.
   macOS: a bare `Task` wired to `job.task`. iOS: routes through `ContinuedTranscriptionTask`.
 - **`ContinuedTranscriptionTask`** (iOS-only, same file) — one shared coordinator that owns the
@@ -24,7 +24,7 @@ macOS has no such suspension limit, so there it's a plain passthrough (`#if os(i
      tell a running job from a stuck one.
   3. Routes a system-side **Cancel** (task expiration) to `TranscriptionJob.cancel()`.
 - **`JobProgressBridge`** (same file) — the pure fraction→`completedUnitCount` + terminal-state
-  math, unit-tested in `Tests/TranscriptionKitTests/BackgroundExecutionTests.swift` (no task/sim
+  math, unit-tested in `Tests/TranscriptionStudioTests/BackgroundExecutionTests.swift` (no task/sim
   needed).
 
 If the OS declines the request (e.g. `tooManyPendingTaskRequests`), it falls back to a bounded

@@ -7,7 +7,6 @@
 import Foundation
 import Synchronization
 import Testing
-import TranscriptionKit
 @testable import transcribe_cli
 #if canImport(Darwin)
 import Darwin

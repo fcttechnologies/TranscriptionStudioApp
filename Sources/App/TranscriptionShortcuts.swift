@@ -1,5 +1,4 @@
 import AppIntents
-import TranscriptionKit
 
 /// Zero-setup Siri phrases. `\(.applicationName)` binds each phrase to the app.
 ///

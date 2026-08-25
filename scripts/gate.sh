@@ -4,25 +4,28 @@
 #
 # The app ships from ONE app target to iOS and macOS, so every check that reads a built artifact
 # runs once per platform: metadata, entitlements and plist keys are produced per artifact, and a
-# green iOS reading says nothing about the macOS one.
+# green iOS reading says nothing about the macOS one. The unit suite is APP-HOSTED and runs on the
+# macOS destination (native on this Mac, no simulator); `transcribe-cli` carries its own logic
+# suite beside it.
 #
 # This is the Debug loop. Before shipping, build Release on both platforms too and re-read the
-# artifacts: a `#if DEBUG` path that release code still calls compiles clean here and breaks only
-# in the archive. A Release *simulator* build additionally needs
-# `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` — Release defaults to building the x86_64 sim slice too, and
-# the `_CoreSpotlight_FoundationModels` cross-import overlay is absent there.
+# artifacts (scripts/package-mac.sh does the Mac one): a `#if DEBUG` path that release code still
+# calls compiles clean here and breaks only in the archive. A Release *simulator* build
+# additionally needs `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` — Release defaults to building the x86_64
+# sim slice too, and the `_CoreSpotlight_FoundationModels` cross-import overlay is absent there.
 #
-# `swift test` here is the host suite. The real-model and bench suites are env-gated and off by
-# default; run them by hand when touching those paths:
-#   SORTFORMER_MODEL_OK=1 swift test --filter Sortformer
-#   CONCURRENT_BENCH=1    swift test --filter ConcurrentLoadBench
-#   LUXTTS_MODEL_OK=1     swift test --filter LuxTtsLive
+# The real-model and bench suites are env-gated and off by default; run them by hand when touching
+# those paths. Through xcodebuild an env var must be prefixed TEST_RUNNER_ to reach the test host:
+#   TEST_RUNNER_SORTFORMER_MODEL_OK=1 xcodebuild … test -only-testing:TranscriptionStudioTests/SortformerRealModelTests
+#   TEST_RUNNER_CONCURRENT_BENCH=1    xcodebuild … test -only-testing:TranscriptionStudioTests/ConcurrentLoadBench
+#   TEST_RUNNER_LUXTTS_MODEL_OK=1     xcodebuild … test -only-testing:TranscriptionStudioTests/LuxTtsLiveTests
 # The real-engine integration tests read TestResources/*.wav (gitignored) — run
 # scripts/make-verification-audio.sh once before the full suite.
 #
 # Usage:  scripts/gate.sh
-# Env:    SIM_NAME  simulator device name (default "iPhone 17 Pro"). A concurrent lane points
-#                   this at its own simulator; two lanes on one device collide on boot and install.
+# Env:    SIM_NAME  simulator device name for the iOS build leg (default "iPhone 17 Pro"). A
+#         concurrent lane points this at its own simulator; two lanes on one device collide on
+#         boot and install.
 
 set -euo pipefail
 
@@ -34,6 +37,7 @@ SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
 # pinned rather than merely bounded.
 SHORTCUT_COUNT_MAC=10
 SHORTCUT_COUNT_IOS=9
+MIN_APP_TESTS=540
 VERIFY_SHORTCUTS="../FCTFoundation/scripts/verify-app-shortcuts.py"
 VERIFY_ICONS="../FCTFoundation/scripts/verify-app-icons.py"
 DD="$(mktemp -d -t ts-gate)"
@@ -48,9 +52,6 @@ check_warnings() {
   found="$(grep -E '\.swift:[0-9]+:[0-9]+: warning:' "${log}" || true)"
   [ -z "${found}" ] || { echo "${found}"; fail "${label} produced Swift source warnings (log: ${log})"; }
 }
-
-echo "==> Host suite: swift test"
-swift test
 
 # The committed .xcodeproj must be what project.yml currently generates — compared against the
 # file on disk, not against git HEAD, so the check is about drift rather than about being mid-edit.
@@ -76,10 +77,56 @@ build() {
 build ios "platform=iOS Simulator,name=${SIM_NAME}"
 build macos "platform=macOS,arch=arm64"
 
+# The headless CLI builds from the same sources as a separate tool target; it must never rot.
+echo "==> transcribe-cli: build"
+if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
+      -destination "platform=macOS,arch=arm64" -derivedDataPath "${DD}/cli" \
+      -allowProvisioningUpdates build >"${DD}/cli.log" 2>&1; then
+  tail -40 "${DD}/cli.log"
+  fail "transcribe-cli build failed (log: ${DD}/cli.log)"
+fi
+check_warnings "${DD}/cli.log" "transcribe-cli"
+
+# The unit suite is app-hosted, so it runs on a destination rather than on the bare host. The
+# macOS destination hosts it natively on this Mac — no simulator, no device — which keeps the
+# everyday loop fast. It reuses the macOS build above, so this leg is the test run, not a rebuild.
+#
+# The count is asserted, not just the exit status: a target that stops compiling its test sources,
+# or a scheme that stops listing them, reports `** TEST SUCCEEDED **` having executed nothing. Only
+# a floor is pinned — adding tests must never fail the gate, losing them always must.
+echo "==> Unit suite: app-hosted on the macOS destination"
+TEST_LOG="${DD}/tests.log"
+if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
+      -destination "platform=macOS,arch=arm64" -only-testing:TranscriptionStudioTests \
+      -derivedDataPath "${DD}/macos" -allowProvisioningUpdates test >"${TEST_LOG}" 2>&1; then
+  grep -E '✘|error:|failed' "${TEST_LOG}" | head -40
+  fail "unit suite failed (log: ${TEST_LOG})"
+fi
+check_warnings "${TEST_LOG}" "unit suite"
+TEST_COUNT="$(sed -n 's/.*Test run with \([0-9]*\) tests.*/\1/p' "${TEST_LOG}" | tail -1)"
+[ -n "${TEST_COUNT}" ] || fail "could not read a test count from ${TEST_LOG} — the suite may not have run"
+[ "${TEST_COUNT}" -ge "${MIN_APP_TESTS}" ] \
+  || fail "only ${TEST_COUNT} tests ran, expected at least ${MIN_APP_TESTS} — tests stopped being compiled or listed"
+echo "    ${TEST_COUNT} tests passed"
+
+# The CLI's own logic suite rides its scheme.
+echo "==> CLI suite"
+CLI_TEST_LOG="${DD}/clitests.log"
+if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
+      -destination "platform=macOS,arch=arm64" -only-testing:TranscribeCLITests \
+      -derivedDataPath "${DD}/cli" -allowProvisioningUpdates test >"${CLI_TEST_LOG}" 2>&1; then
+  grep -E '✘|error:|failed' "${CLI_TEST_LOG}" | head -20
+  fail "CLI suite failed (log: ${CLI_TEST_LOG})"
+fi
+check_warnings "${CLI_TEST_LOG}" "CLI suite"
+CLI_TEST_COUNT="$(sed -n 's/.*Test run with \([0-9]*\) tests.*/\1/p' "${CLI_TEST_LOG}" | tail -1)"
+[ -n "${CLI_TEST_COUNT}" ] || fail "could not read a test count from ${CLI_TEST_LOG}"
+echo "    ${CLI_TEST_COUNT} tests passed"
+
 IOS_APP="${DD}/ios/Build/Products/Debug-iphonesimulator/TranscriptionStudio.app"
 MAC_APP="${DD}/macos/Build/Products/Debug/TranscriptionStudio.app"
 
-# The App Shortcuts provider must compile into the app target. A provider left in TranscriptionKit
+# The App Shortcuts provider must compile into the app target. A provider left in another target
 # builds, links, and registers NOTHING — silently, at every other layer. Only the built app
 # bundle's mangled provider name tells the truth, so both artifacts are read.
 echo "==> App Shortcuts registered in both artifacts"
@@ -89,12 +136,15 @@ echo "==> App Shortcuts registered in both artifacts"
   || fail "iOS App Shortcuts did not register — see the message above."
 
 # The Mac slice is deliberately NOT sandboxed: it runs Hardened Runtime plus the hardened-process
-# entitlements, because URL ingest shells out to yt-dlp/ffmpeg. The App Group carries the shared
-# store the Share extension writes into, and the keychain group carries the FCT account session.
-# The iOS artifact cannot be checked this way: a simulator build embeds no entitlements at all.
+# entitlements on RELEASE (scripts/package-mac.sh builds that; see project.yml's configs), because
+# URL ingest shells out to yt-dlp/ffmpeg. The Debug artifact carries the base capability set —
+# Sign in with Apple, the App Group (the shared store the Share extension writes into), and the
+# keychain group (the FCT account session); its hardening keys live in the Release entitlements
+# file so the app-hosted test host stays unhardened. The iOS artifact cannot be checked this way:
+# a simulator build embeds no entitlements at all.
 echo "==> macOS entitlements"
 MAC_ENTITLEMENTS="$(codesign -d --entitlements - --xml "${MAC_APP}" 2>/dev/null)"
-for key in com.apple.security.hardened-process com.apple.developer.applesignin \
+for key in com.apple.developer.applesignin \
            com.apple.security.application-groups keychain-access-groups; do
   echo "${MAC_ENTITLEMENTS}" | grep -q "${key}" || fail "macOS build is missing ${key}"
 done
@@ -149,12 +199,12 @@ echo "==> Embedded extensions per platform"
 [ ! -e "${MAC_APP}/Contents/Extensions/BackgroundAssetsExtension.appex" ] \
   || fail "macOS build embedded the iOS-only Background Assets extension"
 
-# TranscriptionMacKit uses APIs with no iOS availability, so the app's dependency edge on it is
-# filtered to macOS. A dropped filter stops the iOS build compiling, but nothing reports the other
-# direction — a filter that silently excluded macOS too would leave a Mac app with no meeting
-# capture and no URL ingest, and it would still build. ScreenCaptureKit in the link list is the
-# proof the kit is actually in the macOS product. Under ENABLE_DEBUG_DYLIB the code lives in a
-# sibling dylib rather than the launcher, so both are scanned.
+# ScreenCaptureKit has no meeting-capture API on iOS, so the Mac-only capture code compiles into
+# the macOS product alone. A dropped guard stops the iOS build compiling, but nothing reports the
+# other direction — a silent exclusion would leave a Mac app with no meeting capture and no URL
+# ingest, and it would still build. ScreenCaptureKit in the link list is the proof the Mac-only
+# code is actually in the product. Under ENABLE_DEBUG_DYLIB the code lives in a sibling dylib
+# rather than the launcher, so both are scanned.
 echo "==> Mac-only kit linked on macOS, absent from iOS"
 # Only the Mach-O files, named exactly: a glob here also sweeps in the SwiftPM resource bundles,
 # which otool cannot read and which would make the check emit errors it then ignores.
@@ -165,9 +215,9 @@ linked_frameworks() {
   done
 }
 linked_frameworks "${MAC_APP}/Contents/MacOS" TranscriptionStudio | grep -q ScreenCaptureKit \
-  || fail "macOS build did not link ScreenCaptureKit — TranscriptionMacKit is not in the product"
+  || fail "macOS build did not link ScreenCaptureKit — the Mac-only capture is not in the product"
 linked_frameworks "${IOS_APP}" TranscriptionStudio | grep -q ScreenCaptureKit \
-  && fail "iOS build linked ScreenCaptureKit — the macOS-only dependency edge lost its filter"
+  && fail "iOS build linked ScreenCaptureKit — the macOS-only source guard lost its filter"
 
 # One merged asset catalog serves both idioms. An AppIcon set declaring only one platform's idiom
 # compiles clean and ships the other platform with no icon at all: actool reports it in output the
@@ -177,4 +227,25 @@ echo "==> App icon in both artifacts"
 "${VERIFY_ICONS}" "${IOS_APP}" "${MAC_APP}" \
   || fail "App icon missing — see the message above."
 
-echo "==> PASS: host suite green, both platforms build warning-free, shortcuts registered on both."
+# The Release Mac archive is the shippable artifact and the ONLY place Hardened Runtime rides:
+# prove it still signs with the hardened-process entitlements (they live in a Release-only
+# entitlements file — see project.yml's configs) and without a sandbox.
+echo "==> Release macOS: build + hardened entitlements"
+if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
+      -configuration Release -destination "platform=macOS,arch=arm64" \
+      -derivedDataPath "${DD}/macos-release" -allowProvisioningUpdates build >"${DD}/macos-release.log" 2>&1; then
+  tail -40 "${DD}/macos-release.log"
+  fail "Release macOS build failed (log: ${DD}/macos-release.log)"
+fi
+check_warnings "${DD}/macos-release.log" "Release macOS"
+REL_APP="${DD}/macos-release/Build/Products/Release/TranscriptionStudio.app"
+REL_ENTITLEMENTS="$(codesign -d --entitlements - --xml "${REL_APP}" 2>/dev/null)"
+for key in com.apple.security.hardened-process com.apple.developer.applesignin \
+           com.apple.security.application-groups keychain-access-groups; do
+  echo "${REL_ENTITLEMENTS}" | grep -q "${key}" || fail "Release macOS app is missing ${key}"
+done
+echo "${REL_ENTITLEMENTS}" | grep -q com.apple.security.app-sandbox \
+  && fail "Release macOS app picked up the sandbox"
+
+echo "==> PASS: ${TEST_COUNT} + ${CLI_TEST_COUNT} tests green, both platforms + CLI built" \
+     "warning-free, shortcuts registered on both platforms, Release Mac hardened."

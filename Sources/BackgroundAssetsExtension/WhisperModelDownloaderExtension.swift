@@ -1,9 +1,7 @@
 import BackgroundAssets
-import BackgroundAssetsKit
 import ExtensionFoundation
 import Foundation
 import OSLog
-import ShareKit
 
 /// The Background Assets downloader extension. The system launches it — before the app's first
 /// launch and periodically after — with the on-disk location of the app's manifest (fetched via

@@ -25,32 +25,36 @@ capability is genuinely one-platform.
 
 ## Structure
 
-One thin app shell (`Sources/App`) built by **one xcodegen target for both platforms** — the
-App Shortcuts provider only registers when it compiles into the app target, and a second
-target is a second place to get that wrong. The platform split lives in build settings
-(`PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]`, the entitlements pair) and `#if os(…)`.
+The app-build standard's Phase 1 shape: **all code lives in the app target**, under
+`Sources/App`, organised by concern (`ASR/`, `Diarization/`, `TTS/`, `Jobs/`, `Sync/`,
+`Intents/`, `Views/`, …) with the app shell (`@main`, the `AppShortcutsProvider`, assets,
+Info.plist, the entitlements pair) beside them. There is no per-app SwiftPM package; the
+only package is **FCTFoundation** (sibling checkout, granular products).
 
-Under it, one local package: `TranscriptionKit` (shared: engines, capture, jobs, diagnostics,
-persistence, shared UI) + `TranscriptionMacKit` (mac-only: URL ingest, ScreenCaptureKit
-capture, Mac shell). `TranscriptionMacKit` uses APIs with no iOS availability, so the app
-target's dependency edge on it carries `destinationFilters: [macOS]` — that filter, not an
-`#if`, is what keeps it from being built for the iOS destination. It stays a package target
-rather than folding into `Sources/App` because `transcribe-cli` links it too.
+Platform-specific code sits behind `#if os(...)` inside its concern folder: the Mac-only
+URL ingest and ScreenCaptureKit meeting capture live in `MacShell/`. Extensions share
+app-target files **by target membership** (a path list in `project.yml`): the Share
+extension compiles `SharedItems/` (Foundation-only, memory-cap safe forever), the widget
+compiles `Glance/`, the Background Assets extension compiles `BackgroundAssets/` layout +
+manifest plus `AppGroup.swift`.
 
-Lean extension-safe libraries sit beside them: `ShareKit` (Share-extension
-drop-box), `BackgroundAssetsKit` (model pre-download), and `GlanceKit` (Live Activity
-attributes + button intents + pure clock/level math, linked by the app and by
-`WidgetExtensioniOS` — the widget extension rendering the recording/playback Live
-Activities). Regenerate the project with `xcodegen generate` after an edit here — the
-`.xcodeproj` is tracked; commit the regenerated result alongside it.
+`transcribe-cli` is a second Xcode **tool target sharing the same sources** by membership
+(everything but the app shell and the CLI's own `@main`). It builds via the
+`transcribe-cli` scheme; `scripts/install-serve.sh` installs it to the stable path the
+24/7 serve LaunchAgent runs.
+
+Tests are **app-hosted** (`@testable import TranscriptionStudio`) in
+`TranscriptionStudioTests`, run on the macOS destination; the CLI has its own logic bundle,
+`TranscribeCLITests`. Regenerate the project with `xcodegen generate` after an edit to
+`project.yml` — the `.xcodeproj` is tracked; commit the regenerated result alongside it.
 
 ## The seams (contract files — coordinate before changing)
 
-- `TranscriptionKit/Audio/AudioChunk.swift` — `AudioChunk` (16k mono f32 + session-relative
+- `Sources/App/Audio/AudioChunk.swift` — `AudioChunk` (16k mono f32 + session-relative
   time + track tag), `CaptureSource`.
-- `TranscriptionKit/ASR/AsrEngine.swift` — `AsrEngine`, `AsrSegment` (Whisper confidence
+- `Sources/App/ASR/AsrEngine.swift` — `AsrEngine`, `AsrSegment` (Whisper confidence
   fields surfaced), `AsrUpdate` (confirmed/unconfirmed).
-- `TranscriptionKit/TTS/TtsEngine.swift` — `TtsEngine`, `SynthesizedSpeech` (mono float PCM
+- `Sources/App/TTS/TtsEngine.swift` — `TtsEngine`, `SynthesizedSpeech` (mono float PCM
   + its own rate, WAV on the way out), `SynthesizedSpeechChunk` + `synthesizeStreaming`
   (ordered incremental audio with latched cancellation; a non-streaming engine gets the
   single-chunk default), `TtsEngineError` (whose `isInvalidRequest` decides a serve 400 from
@@ -59,14 +63,14 @@ Activities). Regenerate the project with `xcodegen generate` after an edit here 
   here and nothing above it changes; `TTSKitTtsEngine` is the only file that imports TTSKit.
   Consumers: `POST /speak` (chunked streaming), the `speak` CLI subcommand, and the in-app
   read-aloud (`ReadAloudController` + `SpeakTranscriptIntent`).
-- `TranscriptionKit/Diarization/DiarizationEngine.swift` — `DiarizationEngine`,
+- `Sources/App/Diarization/DiarizationEngine.swift` — `DiarizationEngine`,
   `SpeakerTurn` (slot + confidence + committed/provisional), `DiarizationResult/Update`.
-- `TranscriptionKit/Fusion/TranscriptFuser.swift` — `SpeakerID`, `AttributedSegment`, the
+- `Sources/App/Fusion/TranscriptFuser.swift` — `SpeakerID`, `AttributedSegment`, the
   attribution function (pure, tested).
-- `TranscriptionKit/Diagnostics/` — `PipelineStage`/`PipelineEvent`/`PipelineRecorder`
+- `Sources/App/Diagnostics/` — `PipelineStage`/`PipelineEvent`/`PipelineRecorder`
   (every stage logs through this), `InspectorStore` (the in-app inspector's model),
   `SystemLoadSampler`.
-- `TranscriptionKit/Mocks/MockEngines.swift` — deterministic fakes for UI work and tests.
+- `Sources/App/Mocks/MockEngines.swift` — deterministic fakes for UI work and tests.
 
 ## Conventions
 

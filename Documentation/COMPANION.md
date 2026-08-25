@@ -48,8 +48,8 @@ covered, and the stale-reclaim path recovers a dropped claim.
 
 ## FCTFoundation integration — **dependency, not copy**
 
-`FCTSync`, `FCTServerSync`, `FCTBlobSync` and `FCTAccount` are SwiftPM product dependencies of
-`TranscriptionKit`, granular rather than the umbrella. Reused, not reimplemented:
+`FCTSync`, `FCTServerSync`, `FCTBlobSync` and `FCTAccount` are granular FCTFoundation product
+dependencies of the app target — never the umbrella. Reused, not reimplemented:
 
 - **`TranscriptionSync`** wraps `SyncEngine` + `BlobStore`; `SyncStatusIndicator` shows a quiet
   syncing/offline/needs-attention glyph in the shell toolbar (invisible when idle), and Settings
@@ -60,7 +60,7 @@ covered, and the stale-reclaim path recovers a dropped claim.
 
 ## What's unit-tested vs. needs two devices
 
-**Unit-tested** (`Tests/TranscriptionKitTests/CompanionDecisionTests.swift`, container-free +
+**Unit-tested** (`Tests/TranscriptionStudioTests/CompanionDecisionTests.swift`, container-free +
 one in-memory-store test):
 
 - `RemoteJobClaim.decide` — claim / skip-fresh / reclaim-stale / skip-local-unclaimed /
@@ -70,8 +70,8 @@ one in-memory-store test):
 - `AppModel.submitLink` on a downloader-less model → persists exactly one `.pendingRemote`
   `.urlTranscription` session with the source URL and no claim marker.
 
-**Needs a real two-device manual check** (real cross-device sync can't be exercised in
-`swift test`):
+**Needs a real two-device manual check** (real cross-device sync can't be exercised in the unit
+suite):
 
 1. Sign both a Mac and an iPhone into the **same FCT account** (Settings → Sign in to sync); launch
    the Mac app (it starts

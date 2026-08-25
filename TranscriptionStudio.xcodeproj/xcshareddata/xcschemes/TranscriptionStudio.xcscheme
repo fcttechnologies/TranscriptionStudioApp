@@ -39,6 +39,17 @@
          </BuildableReference>
       </MacroExpansion>
       <Testables>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "302C02FEE1702F2444B5CF74"
+               BuildableName = "TranscriptionStudioTests.xctest"
+               BlueprintName = "TranscriptionStudioTests"
+               ReferencedContainer = "container:TranscriptionStudio.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
       <CommandLineArguments>
       </CommandLineArguments>

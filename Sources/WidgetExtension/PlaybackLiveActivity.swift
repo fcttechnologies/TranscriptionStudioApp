@@ -1,5 +1,4 @@
 import ActivityKit
-import GlanceKit
 import SwiftUI
 import WidgetKit
 

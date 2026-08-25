@@ -25,9 +25,11 @@ The Sortformer neural core must be a **locally re-exported** `.aimodel` (the HF-
 doesn't load on current toolchains) — recipe in `Documentation/SORTFORMER-STATUS.md`. Without
 it the app runs with SpeakerKit diarization; WhisperKit self-downloads on first use.
 
-Full gate: `scripts/gate.sh` (host suite, both platforms warning-free, artifact reads).
-Tests alone: `swift test`; real-model gates `SORTFORMER_MODEL_OK=1 swift test --filter Sortformer`;
-concurrency bench `CONCURRENT_BENCH=1 swift test --filter ConcurrentLoadBench`.
+Full gate: `scripts/gate.sh` (the app-hosted suite on the macOS destination, the CLI suite,
+both platforms + the CLI built warning-free, artifact reads, Release-Mac hardening check).
+Tests alone (app-hosted on the Mac): `xcodebuild -scheme TranscriptionStudio
+-destination 'platform=macOS,arch=arm64' test`; real-model gates are env-flagged with a
+`TEST_RUNNER_` prefix — see `Documentation/VERIFICATION.md`.
 Verification audio: `scripts/make-verification-audio.sh` (writes `TestResources/`).
 
 ## Headless CLI
@@ -37,10 +39,13 @@ Verification audio: `scripts/make-verification-audio.sh` (writes `TestResources/
 stderr. Transcribe-only (no diarization); the Jarvis `transcribe` tool shells out to it.
 
 ```bash
-swift build -c release --product transcribe-cli
-.build/release/transcribe-cli "https://youtube.com/watch?v=…"        # plain text
-.build/release/transcribe-cli path/to/media.mp4 --json               # segments + timestamps
-.build/release/transcribe-cli --help                                  # all flags
+xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
+  -configuration Release -destination 'platform=macOS,arch=arm64' build
+# binary at <DerivedData>/Build/Products/Release/transcribe-cli — or use scripts/install-serve.sh,
+# which builds release and installs to the stable path:
+~/Library/Application\ Support/TranscriptionStudio/bin/transcribe-cli "https://youtube.com/watch?v=…"   # plain text
+~/Library/Application\ Support/TranscriptionStudio/bin/transcribe-cli path/to/media.mp4 --json          # segments + timestamps
+~/Library/Application\ Support/TranscriptionStudio/bin/transcribe-cli --help                             # all flags
 ```
 
 The WhisperKit model self-provisions on first use (download progress → stderr).
@@ -55,8 +60,8 @@ chunked as `audio/wav`. Both synthesis models self-provision on first use, load 
 engine, and idle out of memory on their own clocks, independently of the recognition model.
 
 ```bash
-.build/release/transcribe-cli speak "Good morning." --out /tmp/hello.wav --voice serena
-.build/release/transcribe-cli speak "Good morning." --out /tmp/hello.wav \
+transcribe-cli speak "Good morning." --out /tmp/hello.wav --voice serena   # from the installed path
+transcribe-cli speak "Good morning." --out /tmp/hello.wav \
     --voice-profile ~/voice-profile.json --voice my-voice
 curl -s -X POST localhost:8000/speak -d '{"text":"Good morning."}' -o /tmp/hello.wav
 ```

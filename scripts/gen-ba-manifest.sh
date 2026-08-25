@@ -4,7 +4,7 @@
 # size — Background Assets fails a download whose delivered size doesn't match, so the sizes
 # must come from the actual files (this script), never an estimate.
 #
-# The output is committed at Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json
+# The output is committed at Sources/App/BackgroundAssets/whisperkit-model-manifest.json
 # and, at ship time, a copy is hosted at the app's BAManifestURL (see Documentation/BACKGROUND-ASSETS.md).
 #
 # Usage: scripts/gen-ba-manifest.sh [path-to-model-variant-dir]
@@ -14,7 +14,7 @@ REPO="argmaxinc/whisperkit-coreml"
 VARIANT="openai_whisper-large-v3-v20240930_turbo"
 DEFAULT_DIR="$HOME/Library/Application Support/TranscriptionStudio/Models/whisperkit/models/$REPO/$VARIANT"
 MODEL_DIR="${1:-$DEFAULT_DIR}"
-OUT="$(cd "$(dirname "$0")/.." && pwd)/Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json"
+OUT="$(cd "$(dirname "$0")/.." && pwd)/Sources/App/BackgroundAssets/whisperkit-model-manifest.json"
 
 if [[ ! -d "$MODEL_DIR" ]]; then
   echo "Model dir not found: $MODEL_DIR" >&2

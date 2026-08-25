@@ -53,7 +53,10 @@ LLVM ERROR: cannot unwrap empty `odiec_module_t`
    byte size and sha256 — the manifest name/schema is `SortformerModelStore`'s contract
    (`{"files":[{"name":...,"bytes":...,"sha256":...}]}`). Without it the store falls back to
    HF-original sizes, fails verification, and **re-downloads the broken HF model over yours**.
-7. Prove it end to end: `SORTFORMER_MODEL_OK=1 swift test --filter Sortformer`.
+7. Prove it end to end: `TEST_RUNNER_SORTFORMER_MODEL_OK=1 xcodebuild -project
+   TranscriptionStudio.xcodeproj -scheme TranscriptionStudio
+   -destination 'platform=macOS,arch=arm64' test
+   -only-testing:TranscriptionStudioTests/SortformerRealModelTests`.
 
 Current staged artifact: exported 2026-07-09 (coreai-torch 0.4.1), `main.mlirb` =
 236,887,041 bytes, sha256 `71a8098…4b0843`; eager-PyTorch vs exported-graph cosine 0.9999

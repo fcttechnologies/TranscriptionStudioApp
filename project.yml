@@ -17,13 +17,22 @@ attributes:
   LastUpgradeCheck: "9999"
   LastSwiftUpdateCheck: "9999"
 
-# All real code lives in the local Swift package (Package.swift in this directory);
-# the app and extension targets are thin shells. Regenerate the project with `xcodegen generate`
-# after an edit here. The .xcodeproj is tracked — commit the regenerated result
-# alongside this file.
+# All code lives in the app target under Sources/App, organised by concern (the app-build
+# standard's Phase 1 shape — there is no per-app package). Extension targets and the headless
+# CLI share app-target source files by target membership: the paths listed below. FCTFoundation
+# is the sibling checkout consumed as a local package; granular products only.
 packages:
-  TranscriptionStudioPackage:
-    path: .
+  FCTFoundation:
+    path: ../FCTFoundation
+  # On-device speech vendors: WhisperKit (ASR) + SpeakerKit (diarizer cross-check) + TTSKit
+  # (synthesis) from the argmax monorepo, and FluidAudio (CoreML LuxTTS voice cloning), pinned
+  # to the revision the cloning bench fixture-verified — move that pin only with a re-listen.
+  argmax-oss-swift:
+    url: https://github.com/argmaxinc/argmax-oss-swift.git
+    from: 1.0.0
+  FluidAudio:
+    url: https://github.com/FluidInference/FluidAudio.git
+    revision: 5390df9752c8fc583596018360c5fd70d6fa6c75
 
 settingGroups:
   fct:
@@ -34,17 +43,16 @@ settingGroups:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-    # Hardening (xcode-security-audit): Enhanced Security v2. Pointer authentication (arm64e) is
-    # OFF: WhisperKit/SpeakerKit ship via the external argmax-oss-swift package; keep it off until
-    # that dep is verified arm64e-universal — a non-arm64e binary package crashes under pointer
-    # authentication.
-    ENABLE_ENHANCED_SECURITY: YES
-    ENABLE_POINTER_AUTHENTICATION: NO
 
 targets:
   # ONE app target for every destination Transcription Studio ships to. The platform split lives in
   # build settings and `#if os(...)`, never in a second target: the AppShortcutsProvider has to
   # compile into the app target, and with two targets that requirement is met once and missed once.
+  #
+  # Isolation: NO default-actor-isolation setting here, deliberately. The target mixes UI with
+  # engine/compute code (WhisperKit/Sortformer pipelines run off main), so a blanket MainActor
+  # default would silently flip engine code onto the main actor; the isolation boundary is carried
+  # by explicit marks instead (`@MainActor` on UI-facing types, plain `actor` on engines).
   TranscriptionStudio:
     type: application
     supportedDestinations: [iOS, macOS]
@@ -53,20 +61,41 @@ targets:
       macOS: "27.0"
     sources:
       - path: Sources/App
+        excludes:
+          # The CLI's two files carry the serve/one-shot command surface; TranscribeCLI.swift
+          # also carries the executable's @main. Never compile them into the app target.
+          - "**/CLI/**"
     dependencies:
-      - package: TranscriptionStudioPackage
-        product: TranscriptionKit
-      # The Mac-only feature kit: yt-dlp/ffmpeg URL ingest (Process, which iOS has no API for),
-      # ScreenCaptureKit meeting capture (SCShareableContent / SCDisplay / SCContentFilter are
-      # API_UNAVAILABLE(ios) even though the framework itself gained an iOS 27 slice), and the Mac
-      # window shell. The filter is what keeps the module from being built for the iOS destination
-      # at all; without it the iOS build compiles it and fails. It stays a package target rather
-      # than folding into Sources/App because `transcribe-cli` depends on it too.
-      - package: TranscriptionStudioPackage
-        product: TranscriptionMacKit
-        destinationFilters: [macOS]
+      # Granular FCTFoundation products only — every one is imported by some file in the target;
+      # a dependency of a dependency is not importable.
+      - package: FCTFoundation
+        product: FCTEntities
+      - package: FCTFoundation
+        product: FCTComponentsUI
+      - package: FCTFoundation
+        product: FCTIntelligence
+      - package: FCTFoundation
+        product: FCTContacts
+      - package: FCTFoundation
+        product: FCTSync
+      - package: FCTFoundation
+        product: FCTServerSync
+      - package: FCTFoundation
+        product: FCTBlobSync
+      - package: FCTFoundation
+        product: FCTAccount
+      - package: FCTFoundation
+        product: FCTGlanceables
       # The Share extension ships on both platforms and is itself multiplatform — no filter.
       - target: ShareExtension
+      - package: argmax-oss-swift
+        product: WhisperKit
+      - package: argmax-oss-swift
+        product: SpeakerKit
+      - package: argmax-oss-swift
+        product: TTSKit
+      - package: FluidAudio
+        product: FluidAudio
       # These two ship on iOS only. Without the filter the macOS product embeds an iOS-only appex
       # and Xcode hard-fails on the mismatched platform content — `platform: iOS` on the extension
       # target itself is necessary and not sufficient, because the dependency edge is what embeds.
@@ -131,7 +160,7 @@ targets:
         # The system reads these before first launch: it downloads the manifest at BAManifestURL,
         # then wakes BackgroundAssetsExtension to schedule the WhisperKit model files it lists.
         # BAManifestURL must resolve, at ship time, to the committed manifest
-        # (Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json). See
+        # (Sources/App/BackgroundAssets/whisperkit-model-manifest.json). See
         # Documentation/BACKGROUND-ASSETS.md.
         BAManifestURL: https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json
         BAAppGroupID: group.com.fcttechnologies.TranscriptionStudio
@@ -177,12 +206,10 @@ targets:
         # the standard three (no upside-down).
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
-        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor   # thin @main shell; the mixed TranscriptionKit package stays nonisolated-by-default
         ENABLE_DEBUG_DYLIB: YES
-        # The Mac slice is deliberately NOT sandboxed: it runs Hardened Runtime plus the
-        # hardened-process entitlements instead, because URL ingest shells out to yt-dlp/ffmpeg
-        # and the app reads the user's own Application Support tree.
-        "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+        # The Mac slice is deliberately NOT sandboxed: it runs Hardened Runtime (Release only —
+        # see the configs block below) plus the hardened-process entitlements, because URL ingest
+        # shells out to yt-dlp/ffmpeg and the app reads the user's own Application Support tree.
         # Sign in with Apple + the shared keychain access group are declared via the entitlements
         # files below — the same keychain group on both platforms, so one session serves both. The
         # keychain group needs no portal registration (unlike an App Group): it is an entitlement
@@ -190,14 +217,83 @@ targets:
         # team. Sign in with Apple DOES need each bundle id registered for it.
         CODE_SIGN_ENTITLEMENTS: Sources/App/TranscriptionStudio.entitlements
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/App/TranscriptionStudio-macOS.entitlements
+      configs:
+        # The unit suite is app-hosted against this app as its test host. Under Hardened Runtime,
+        # library validation admits only same-Team-ID code, and the test bundle's frameworks are
+        # ad-hoc signed — so hardening stays scoped to Release, where the archive actually runs.
+        # The hardened-process entitlement KEYS live here too (not in the .entitlements files):
+        # with those keys in the file, automatic signing embeds a provisioning profile whose
+        # portal-minted entitlements harden even the Debug test host — dyld then kills it loading
+        # the ad-hoc-signed package frameworks (reads exactly like a broken rpath).
+        Release:
+          "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
+          ENABLE_ENHANCED_SECURITY: YES
+          "ENABLE_POINTER_AUTHENTICATION[sdk=macosx*]": NO
+          "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/App/TranscriptionStudio-macOS-release.entitlements
+        Debug:
+          "EMBED_PROVISIONING_PROFILE[sdk=macosx*]": NO
+
+  # The headless transcription CLI (macOS): URL or file → transcript on stdout, plus the 24/7
+  # `--serve` HTTP service behind the Jarvis transcribe tool and /speak voice API. It shares the
+  # app's engine sources by target membership — same files, no module boundary. Everything except
+  # the CLI entry point compiles into both targets; the app's @main shell is excluded here for the
+  # same reason the CLI's @main is excluded there (one @main per executable).
+  transcribe-cli:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/App
+        excludes:
+          - "TranscriptionStudioApp.swift"
+          - "TranscriptionShortcuts.swift"
+          - "Info.plist"
+          - "*.entitlements"
+          - "Assets.xcassets/**"
+          - "MacShell/MacRootView.swift"   # SwiftUI Mac window shell — app-only
+    dependencies:
+      - package: FCTFoundation
+        product: FCTEntities
+      - package: FCTFoundation
+        product: FCTIntelligence
+      - package: FCTFoundation
+        product: FCTContacts
+      - package: FCTFoundation
+        product: FCTSync
+      - package: FCTFoundation
+        product: FCTServerSync
+      - package: FCTFoundation
+        product: FCTBlobSync
+      - package: FCTFoundation
+        product: FCTAccount
+      - package: FCTFoundation
+        product: FCTGlanceables
+      - package: argmax-oss-swift
+        product: WhisperKit
+      - package: argmax-oss-swift
+        product: SpeakerKit
+      - package: argmax-oss-swift
+        product: TTSKit
+      - package: FluidAudio
+        product: FluidAudio
+    settings:
+      groups: [fct]
+      base:
+        PRODUCT_NAME: transcribe-cli
+        # Emits the executable's code as a sibling .debug.dylib in Debug, which is what lets
+        # TranscribeCLITests link `@testable import transcribe_cli` symbols (a plain Mach-O
+        # tool exports nothing test bundles can load against).
+        ENABLE_DEBUG_DYLIB: YES
+        # The CLI links CoreAI directly (macOS 27 system framework, Sortformer diarizer).
+        OTHER_LDFLAGS: "-framework CoreAI"
 
   # The Share extension — one multiplatform target building the same platform-conditional
-  # ShareViewController over the lean ShareKit. Everything that genuinely differs is selected by
-  # SDK: the Info.plist
-  # (macOS takes the dictionary activation form; iOS has no audio-with-max-count key at all, so its
-  # activation must be a predicate string), and the entitlements (a macOS app extension must be
-  # sandboxed even though its host is not). It stages the shared item into the App Group drop-box
-  # and never transcribes — extensions are memory-capped and WhisperKit would blow the budget.
+  # ShareViewController over the shared-item sources (AppGroup, the drop-box, the classifier),
+  # compiled in by membership. Everything that genuinely differs is selected by SDK: the
+  # Info.plist (macOS takes the dictionary activation form; iOS has no audio-with-max-count key at
+  # all, so its activation must be a predicate string), and the entitlements (a macOS app
+  # extension must be sandboxed even though its host is not). It stages the shared item into the
+  # App Group drop-box and never transcribes — extensions are memory-capped and WhisperKit would
+  # blow the budget.
   ShareExtension:
     type: app-extension
     supportedDestinations: [iOS, macOS]
@@ -206,14 +302,13 @@ targets:
       macOS: "27.0"
     sources:
       # Only the shared Swift source compiles; the iOS/ + macOS/ subfolders hold Info.plists +
-      # entitlements referenced via build settings, not bundled resources.
+      # entitlements referenced via build settings, not bundled resources. The SharedItems files
+      # ride in by membership — Foundation-only, extension-safe forever.
       - path: Sources/ShareExtension
         excludes:
           - "macOS/**"
           - "iOS/**"
-    dependencies:
-      - package: TranscriptionStudioPackage
-        product: ShareKit
+      - path: Sources/App/SharedItems
     settings:
       groups: [fct]
       base:
@@ -221,7 +316,6 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/ShareExtension/iOS/Info.plist
         "INFOPLIST_FILE[sdk=macosx*]": Sources/ShareExtension/macOS/Info.plist
-        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
         # No App Intents in this target — skip metadata extraction (silences the processor's
         # "no AppIntents.framework dependency" build notice at its cause).
         LM_SKIP_METADATA_EXTRACTION: YES
@@ -229,10 +323,11 @@ targets:
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/ShareExtension/macOS/ShareExtensionMac.entitlements
 
   # The widget extension (iOS only) — hosts the recording + playback Live Activities (Dynamic
-  # Island + Lock Screen). Links only the lean GlanceKit (attributes + button intents + pure
-  # clock/level math); the heavy TranscriptionKit never enters the extension's memory sandbox.
-  # The intents perform in the app's process (LiveActivityIntent), so the extension stays a
-  # renderer. One SDK, one Info.plist — so it keeps `platform:`, and the app filters its edge.
+  # Island + Lock Screen). Compiles only the lean glance sources (attributes + button intents +
+  # pure clock/level math) by membership; the heavy engine code never enters the extension's
+  # memory sandbox. The intents perform in the app's process (LiveActivityIntent), so the
+  # extension stays a renderer. One SDK, one Info.plist — so it keeps `platform:`, and the app
+  # filters its edge.
   WidgetExtensioniOS:
     type: app-extension
     platform: iOS
@@ -242,23 +337,20 @@ targets:
       - path: Sources/WidgetExtension
         excludes:
           - "iOS/**"
-    dependencies:
-      - package: TranscriptionStudioPackage
-        product: GlanceKit
+      - path: Sources/App/Glance
     settings:
       groups: [fct]
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.WidgetExtension
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/WidgetExtension/iOS/Info.plist
-        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        LM_SKIP_METADATA_EXTRACTION: YES
 
   # The Background Assets downloader extension (iOS only). An ExtensionKit extension — no
   # NSExtension dict; the extension point is declared via EXAppExtensionAttributes in its
   # Info.plist and the entry point via @main. The system launches it before the app's first
-  # launch to pre-download the WhisperKit model. Stays lean (BackgroundAssetsKit + Foundation,
-  # no WhisperKit) to fit the extension's tight memory sandbox. Default (nonisolated) actor
-  # isolation — the BADownloaderExtension callbacks are nonisolated, unlike the MainActor shells.
+  # launch to pre-download the WhisperKit model. Compiles only the lean model-layout/manifest
+  # sources by membership (no WhisperKit), fitting the extension's tight memory sandbox.
   BackgroundAssetsExtension:
     type: extensionkit-extension
     platform: iOS
@@ -268,9 +360,9 @@ targets:
         excludes:
           - "Info.plist"
           - "BackgroundAssetsExtension.entitlements"
-    dependencies:
-      - package: TranscriptionStudioPackage
-        product: BackgroundAssetsKit
+      - path: Sources/App/BackgroundAssets/WhisperKitModelLayout.swift
+      - path: Sources/App/BackgroundAssets/WhisperKitModelManifest.swift
+      - path: Sources/App/SharedItems/AppGroup.swift
     settings:
       groups: [fct]
       base:
@@ -280,6 +372,63 @@ targets:
         # No App Intents in this target — skip metadata extraction (see ShareExtension).
         LM_SKIP_METADATA_EXTRACTION: YES
         CODE_SIGN_ENTITLEMENTS: Sources/BackgroundAssetsExtension/BackgroundAssetsExtension.entitlements
+
+  # The unit suite is app-hosted (`@testable import TranscriptionStudio`) and runs on every
+  # destination the app supports. On the macOS destination it runs natively on the Mac with no
+  # simulator — that is what keeps the everyday loop at host speed. The former swift-test suites
+  # (library, Mac-shell, CLI) all merged into this one bundle: one process, one host.
+  TranscriptionStudioTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, macOS]
+    deploymentTarget:
+      iOS: "27.0"
+      macOS: "27.0"
+    sources:
+      - path: Tests/TranscriptionStudioTests
+    dependencies:
+      - target: TranscriptionStudio
+      # Only the adopter-contract harnesses are declared here. The other FCTFoundation/vendored
+      # modules the test files import resolve through the APP's own link — declaring them here
+      # too would statically link them twice (app + xctest), and duplicate ObjC classes across
+      # the two images misbehave at runtime (a second BlobStore class identity breaks the very
+      # gates under test).
+      - package: FCTFoundation
+        product: FCTServerSyncTesting
+      - package: FCTFoundation
+        product: FCTBlobSyncTesting
+    settings:
+      groups: [fct]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.Tests
+        GENERATE_INFOPLIST_FILE: YES
+        # `$(BUNDLE_EXECUTABLE_FOLDER_PATH)` resolves per destination (the executable sits at the
+        # bundle root on iOS and under Contents/MacOS on macOS), so one setting hosts both.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TranscriptionStudio.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/TranscriptionStudio"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+  # The headless CLI's own unit suite: a plain logic bundle on macOS (no app host — the CLI is
+  # not an app), testing the serve HTTP surface, the warm engines and the speak routes through
+  # `@testable import transcribe_cli`.
+  TranscribeCLITests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/TranscribeCLITests
+    dependencies:
+      - target: transcribe-cli
+      # Declared for MODULE RESOLUTION only: this logic bundle has no app host, so the
+      # vendored C-wrapper modules don't resolve through the target edge alone. Linking is
+      # against the CLI's own .debug.dylib (OTHER_LDFLAGS below), not these products.
+      - package: FluidAudio
+        product: FluidAudio
+    settings:
+      groups: [fct]
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.CLITests
+        GENERATE_INFOPLIST_FILE: YES
+        # Link the CLI's Debug dylib directly: this is a logic bundle (no app host), so the
+        # TEST_HOST machinery that wires an app's .debug.dylib into its tests doesn't apply.
+        OTHER_LDFLAGS: "$(OTHER_LDFLAGS) -dylib_path $(BUILT_PRODUCTS_DIR)/transcribe-cli.debug.dylib"
 
 # One scheme now serves both platforms — pick the destination from the menu.
 schemes:
@@ -291,3 +440,14 @@ schemes:
       config: Debug
     test:
       config: Debug
+      targets:
+        - TranscriptionStudioTests
+  # The headless CLI's own scheme (release builds + install-serve.sh) plus its unit suite.
+  transcribe-cli:
+    build:
+      targets:
+        transcribe-cli: all
+    test:
+      config: Debug
+      targets:
+        - TranscribeCLITests

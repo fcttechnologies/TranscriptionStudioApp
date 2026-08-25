@@ -37,15 +37,16 @@ the app's launch.
 
 | Piece | Path |
 |---|---|
-| Lean shared kit (manifest schema, HF-URL + layout math) | `Sources/BackgroundAssetsKit/` |
+| Lean shared kit (manifest schema, HF-URL + layout math) | `Sources/App/BackgroundAssets/` |
 | Downloader extension (`@main BADownloaderExtension`) | `Sources/BackgroundAssetsExtension/` |
-| App-side installer + foreground fallback | `Sources/TranscriptionKit/ASR/BackgroundAssetsModelInstaller.swift` |
+| App-side installer + foreground fallback | `Sources/App/ASR/BackgroundAssetsModelInstaller.swift` |
 | Launch hook | `Sources/App/TranscriptionStudioApp.swift` (`.task`, iOS branch) |
-| Committed manifest (a copy of the hosted file) | `Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json` |
+| Committed manifest (a copy of the hosted file) | `Sources/App/BackgroundAssets/whisperkit-model-manifest.json` |
 | Manifest generator | `scripts/gen-ba-manifest.sh` |
 
-`BackgroundAssetsKit` stays Foundation-only (no WhisperKit), like `ShareKit`, so the extension
-fits its tight memory sandbox.
+The extension's membership set stays Foundation-only (no WhisperKit), so the extension
+fits its tight memory sandbox. The same rule holds for the Share extension's `SharedItems/`
+membership.
 
 ## Config (project.yml → generated Info.plist / entitlements)
 
@@ -105,7 +106,7 @@ only the trigger needs the Store path.
 
 ## Ship-time steps (turn it on)
 
-1. **Host the manifest.** Publish `Sources/BackgroundAssetsKit/Resources/whisperkit-model-manifest.json`
+1. **Host the manifest.** Publish `Sources/App/BackgroundAssets/whisperkit-model-manifest.json`
    at the `BAManifestURL` (currently the placeholder
    `https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json`). Point
    `BAManifestURL` at the real hosted URL if it differs.

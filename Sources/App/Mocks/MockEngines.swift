@@ -1,0 +1,267 @@
+import Foundation
+
+/// Deterministic fake engines so the UI lane builds real surfaces against real contract
+/// shapes before the model lanes land — and so tests exercise flows without models.
+
+final class MockAsrEngine: AsrEngine, Sendable {
+    init() {}
+
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        for step in 1...4 {
+            try await Task.sleep(for: .milliseconds(150))
+            onProgress(EnginePreparationProgress(phase: "Loading mock model", fraction: Double(step) / 4))
+        }
+    }
+
+    func transcribe(samples: [Float],
+                           track: AudioTrack,
+                           wordTimestamps: Bool) async throws -> [AsrSegment] {
+        let duration = Double(samples.count) / AudioChunk.sampleRate
+        let sentences = [
+            "This is a mock transcription segment.",
+            "The quick brown fox jumps over the lazy dog.",
+            "On-device speech recognition placeholder text.",
+            "Speaker changes are simulated every few seconds."
+        ]
+        var out: [AsrSegment] = []
+        var cursor: TimeInterval = 0
+        var index = 0
+        while cursor < duration {
+            let end = min(cursor + 3.5, duration)
+            out.append(AsrSegment(track: track, start: cursor, end: end,
+                                  text: sentences[index % sentences.count],
+                                  avgLogprob: -0.25, noSpeechProb: 0.02, compressionRatio: 1.4))
+            cursor = end
+            index += 1
+        }
+        return out
+    }
+
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<AsrUpdate, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                var confirmed: [AsrSegment] = []
+                var accumulatedSeconds: TimeInterval = 0
+                var track: AudioTrack = .mixed
+                do {
+                    for try await chunk in chunks {
+                        accumulatedSeconds = max(accumulatedSeconds, chunk.endTime)
+                        track = chunk.track
+                        let live = AsrSegment(track: track,
+                                              start: max(accumulatedSeconds - 2, 0),
+                                              end: accumulatedSeconds,
+                                              text: "…listening (mock)…",
+                                              isConfirmed: false)
+                        if accumulatedSeconds - (confirmed.last?.end ?? 0) > 4 {
+                            confirmed.append(AsrSegment(track: track,
+                                                        start: confirmed.last?.end ?? 0,
+                                                        end: accumulatedSeconds,
+                                                        text: "Mock confirmed sentence \(confirmed.count + 1).",
+                                                        avgLogprob: -0.3, noSpeechProb: 0.05,
+                                                        compressionRatio: 1.5))
+                        }
+                        continuation.yield(AsrUpdate(confirmed: confirmed, unconfirmed: [live]))
+                    }
+                    // Final pass: confirm whatever remains (mirrors WhisperKit's confirm-all-on-
+                    // finish), so the drained stop keeps the tail instead of dropping unconfirmed.
+                    let confirmedEnd = confirmed.last?.end ?? 0
+                    if accumulatedSeconds > confirmedEnd {
+                        confirmed.append(AsrSegment(track: track,
+                                                    start: confirmedEnd,
+                                                    end: accumulatedSeconds,
+                                                    text: "Mock confirmed sentence \(confirmed.count + 1).",
+                                                    avgLogprob: -0.3, noSpeechProb: 0.05,
+                                                    compressionRatio: 1.5))
+                    }
+                    continuation.yield(AsrUpdate(confirmed: confirmed, unconfirmed: []))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+}
+
+/// Deterministic fake `TtsEngine`: a fixed-frequency tone whose length tracks the input, so a
+/// caller can exercise the whole synthesis path — validation, lazy load, audio out — with no
+/// model on disk. `prepareCount` is what a lifecycle test asserts against.
+actor MockTtsEngine: TtsEngine {
+    static let supportedVoices = ["mock", "mock-alt"]
+    static let defaultVoice = "mock"
+    static let supportedLanguages = ["english", "spanish"]
+    static let defaultLanguage = "english"
+
+    let sampleRate: Int
+    /// How many times the model has actually been loaded.
+    private(set) var prepareCount = 0
+
+    init(sampleRate: Int = 24_000) {
+        self.sampleRate = sampleRate
+    }
+
+    nonisolated func validate(text: String, voice: String?, language: String?) throws {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw TtsEngineError.emptyText
+        }
+        if let voice, !voice.isEmpty, !Self.supportedVoices.contains(voice) {
+            throw TtsEngineError.unsupportedVoice(voice, supported: Self.supportedVoices)
+        }
+        if let language, !language.isEmpty, !Self.supportedLanguages.contains(language) {
+            throw TtsEngineError.unsupportedLanguage(language, supported: Self.supportedLanguages)
+        }
+    }
+
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        if prepareCount == 0 { prepareCount += 1 }
+        onProgress(EnginePreparationProgress(phase: "Mock voice ready", fraction: 1))
+    }
+
+    func synthesize(text: String, voice: String?, language: String?) async throws -> SynthesizedSpeech {
+        try validate(text: text, voice: voice, language: language)
+        guard prepareCount > 0 else { throw TtsEngineError.notPrepared }
+        // ~60 ms of audio per character, so the output length tracks the input recognizably.
+        let count = max(1, Int(Double(text.count) * 0.06 * Double(sampleRate)))
+        let frequency = (voice ?? Self.defaultVoice) == Self.defaultVoice ? 220.0 : 330.0
+        let samples = (0..<count).map { index in
+            Float(sin(2 * .pi * frequency * Double(index) / Double(sampleRate)) * 0.3)
+        }
+        return SynthesizedSpeech(samples: samples, sampleRate: sampleRate)
+    }
+
+    /// Real multi-chunk streaming — the same deterministic tone `synthesize` produces, split
+    /// into ordered quarters — so a streaming consumer's incremental path is exercised without
+    /// a model. Honors cancellation between chunks the way the TTSKit engine does.
+    func synthesizeStreaming(text: String, voice: String?, language: String?,
+                                    onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
+        let speech = try await synthesize(text: text, voice: voice, language: language)
+        let chunkLength = max(1, speech.samples.count / 4)
+        var start = 0
+        while start < speech.samples.count {
+            let end = min(start + chunkLength, speech.samples.count)
+            let chunk = SynthesizedSpeechChunk(samples: Array(speech.samples[start..<end]),
+                                               sampleRate: speech.sampleRate)
+            guard onChunk(chunk) else { return }
+            start = end
+        }
+    }
+}
+
+final class MockDiarizationEngine: DiarizationEngine, Sendable {
+    let backendName = "Mock"
+
+    init() {}
+
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        onProgress(EnginePreparationProgress(phase: "Mock diarizer ready", fraction: 1))
+    }
+
+    func diarize(samples: [Float]) async throws -> DiarizationResult {
+        let duration = Double(samples.count) / AudioChunk.sampleRate
+        let turns = Self.alternatingTurns(duration: duration, committed: true)
+        return DiarizationResult(turns: turns,
+                                 frames: Self.frames(for: turns, duration: duration, committedAll: true))
+    }
+
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<DiarizationUpdate, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                var horizon: TimeInterval = 0
+                do {
+                    for try await chunk in chunks {
+                        horizon = max(horizon, chunk.endTime)
+                        let committedHorizon = max(horizon - 5, 0)
+                        var turns = Self.alternatingTurns(duration: committedHorizon, committed: true)
+                        turns += Self.alternatingTurns(duration: horizon, committed: false)
+                            .filter { $0.end > committedHorizon }
+                        continuation.yield(DiarizationUpdate(
+                            turns: turns,
+                            frames: Self.frames(for: turns, duration: horizon, committedAll: false)))
+                    }
+                    let final = Self.alternatingTurns(duration: horizon, committed: true)
+                    continuation.yield(DiarizationUpdate(
+                        turns: final,
+                        frames: Self.frames(for: final, duration: horizon, committedAll: true)))
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Speaker 0 and 1 alternate every 4 seconds.
+    private static func alternatingTurns(duration: TimeInterval, committed: Bool) -> [SpeakerTurn] {
+        guard duration > 0 else { return [] }
+        var out: [SpeakerTurn] = []
+        var cursor: TimeInterval = 0
+        var speaker = 0
+        while cursor < duration {
+            let end = min(cursor + 4, duration)
+            out.append(SpeakerTurn(speakerIndex: speaker, start: cursor, end: end,
+                                   confidence: 0.9, isCommitted: committed))
+            cursor = end
+            speaker = 1 - speaker
+        }
+        return out
+    }
+
+    private static func frames(for turns: [SpeakerTurn],
+                               duration: TimeInterval,
+                               committedAll: Bool) -> SpeakerFrameMatrix {
+        let frameCount = Int(duration / 0.08)
+        var activities = [[Float]](repeating: [0.05, 0.05, 0.05, 0.05], count: frameCount)
+        for turn in turns {
+            let startFrame = max(Int(turn.start / 0.08), 0)
+            let endFrame = min(Int(turn.end / 0.08), frameCount)
+            guard startFrame < endFrame, (0...3).contains(turn.speakerIndex) else { continue }
+            for frame in startFrame..<endFrame {
+                activities[frame][turn.speakerIndex] = 0.92
+            }
+        }
+        let committedCount = committedAll
+            ? frameCount
+            : (turns.filter(\.isCommitted).map { Int($0.end / 0.08) }.max() ?? 0)
+        return SpeakerFrameMatrix(activities: activities,
+                                  committedFrameCount: min(committedCount, frameCount))
+    }
+}
+
+/// Synthesizes a sine-tone chunk stream in real time — drives the record UI with zero
+/// hardware or permissions.
+final class MockCaptureSource: CaptureSource, @unchecked Sendable {
+    let chunks: AsyncThrowingStream<AudioChunk, Error>
+    private let continuation: AsyncThrowingStream<AudioChunk, Error>.Continuation
+    private var task: Task<Void, Never>?
+    private let track: AudioTrack
+
+    init(track: AudioTrack = .mixed) {
+        self.track = track
+        (chunks, continuation) = AsyncThrowingStream.makeStream()
+    }
+
+    func start() async throws {
+        let track = self.track
+        let continuation = self.continuation
+        task = Task {
+            var elapsed: TimeInterval = 0
+            let chunkSeconds = 0.5
+            let sampleCount = Int(AudioChunk.sampleRate * chunkSeconds)
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(chunkSeconds))
+                let samples = (0..<sampleCount).map { index in
+                    Float(sin(2 * .pi * 220 * (elapsed + Double(index) / AudioChunk.sampleRate))) * 0.1
+                }
+                continuation.yield(AudioChunk(track: track, samples: samples, startTime: elapsed))
+                elapsed += chunkSeconds
+            }
+        }
+    }
+
+    func stop() async {
+        task?.cancel()
+        continuation.finish()
+    }
+}
