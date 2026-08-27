@@ -233,6 +233,47 @@ struct TranscriptionSyncLifecycleTests {
                 "and the note names what was actually held, not a floor")
     }
 
+    /// A **recording** the object store refused is stuck for the same reason a judged record is:
+    /// it left the pending set, is never auto-retried, and only a fresh local edit brings it back.
+    /// So both surfaces that give advice about it have to see it — the settings row's
+    /// needs-attention half and the sign-out barrier's count — or the one entry waiting can never
+    /// clear is the one entry that reads as nothing outstanding.
+    ///
+    /// The record layer's own refusal is pinned above; this is the blob layer's, which no app
+    /// suite in the fleet otherwise exercises.
+    @MainActor
+    @Test func aRefusedRecordingUploadIsSurfacedAsStuckOnBothCounts() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        // Staged with the wire down first: the object path only exists once the sweep has minted
+        // the ref, and the refusal has to be armed against that exact path.
+        let sessionID = try device.recordSession(
+            title: "Refused upload", audio: Data("only on this device".utf8)
+        )
+        await device.objects.setOnline(false)
+        await device.enroll()
+        let ref = try #require(try device.session(sessionID)?.audioAsset?.blobRef,
+                               "the staging sweep must have minted the ref")
+
+        // Wire back, this object refused. A refusal is not connectivity, so the entry is judged
+        // and parked rather than left pending — the state waiting cannot change.
+        await device.objects.setRejecting([BlobPath(
+            account: device.accountID,
+            app: TranscriptionSyncSchema.postgresSchema,
+            blobID: ref.id
+        ).objectPath])
+        await device.objects.setOnline(true)
+        await device.sync.syncNow()
+
+        #expect(device.sync.blobCounted.stuck == 1,
+                "the refused recording is the row's needs-attention half")
+        #expect(device.sync.blobCounted.retrying == 0,
+                "and it has left the queued half — the row must not advise waiting for it")
+        #expect(device.sync.unsyncedWork?.stuck == 1,
+                "the sign-out barrier counts it too: these bytes exist nowhere but this device")
+    }
+
     /// `.resumed` re-fires on every foregrounding, so the bootstrap must recognise its own living
     /// engine and just run a cycle. Rebuilding would accumulate a trigger task and observer set
     /// per foreground — invisible from the outside, which is why the build count is the assertion.

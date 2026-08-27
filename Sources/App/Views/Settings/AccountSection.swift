@@ -131,18 +131,22 @@ struct SyncStatusRow: View {
                 LabeledContent("Waiting to upload", value: "\(sync.counted.retrying)")
             }
 
-            // The refused half, which waiting never clears. Said separately because it is the one
-            // the row used to omit: a judged entry leaves the pending set, so a queued-only count
-            // reads zero for a record stranded on this device forever.
-            if sync.counted.stuck > 0 {
-                LabeledContent("Needs attention") {
-                    Text("\(sync.counted.stuck)")
-                        .foregroundStyle(.tint)
-                }
+            // The blob queue's own waiting half. "Syncing" rather than "uploading" because the
+            // queue holds object deletes beside uploads, and a recording the user deleted is not
+            // a recording going up.
+            if sync.blobCounted.retrying > 0 {
+                LabeledContent("Syncing recordings", value: "\(sync.blobCounted.retrying)")
             }
 
-            if sync.blobPendingCount > 0 {
-                LabeledContent("Recordings uploading", value: "\(sync.blobPendingCount)")
+            // Both queues' refused half, which waiting never clears — the same condition and the
+            // same advice whether the server judged a record or the object store refused a
+            // recording. Said separately from the queued counts because a judged entry leaves the
+            // pending set, so a queued-only count reads zero for work stranded here forever.
+            if needsAttentionCount > 0 {
+                LabeledContent("Needs attention") {
+                    Text("\(needsAttentionCount)")
+                        .foregroundStyle(.tint)
+                }
             }
 
             if sync.keptOnSignOut > 0 {
@@ -200,6 +204,8 @@ struct SyncStatusRow: View {
         case .resyncRequired: String(localized: "This device needs to rebuild")
         }
     }
+
+    private var needsAttentionCount: Int { sync.counted.stuck + sync.blobCounted.stuck }
 
     private var needsAttention: Bool {
         switch sync.status {

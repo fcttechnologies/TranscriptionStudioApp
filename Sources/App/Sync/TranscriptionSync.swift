@@ -102,7 +102,10 @@ final class TranscriptionSync {
     /// The record outbox, split by whether waiting will clear it. Two numbers rather than one
     /// because they lead to opposite advice: `retrying` goes by itself, `stuck` never will.
     private(set) var counted: OutboxCensus = OutboxCensus()
-    private(set) var blobPendingCount: Int = 0
+    /// The blob queue, split the same way and for the same reason. Its `retrying` half holds
+    /// queued object *deletes* alongside uploads — `BlobState.counted` reads an entry's state and
+    /// never its kind — so the row that renders it names an act true of both.
+    private(set) var blobCounted: OutboxCensus = OutboxCensus()
     private(set) var lastError: String?
     /// Set when an account switch or deletion discarded local changes the server never saw.
     /// Surfaced rather than swallowed: it is the one moment this app can lose a write.
@@ -498,7 +501,7 @@ final class TranscriptionSync {
             try blobs?.clearLocalData()
             lastSyncedAt = nil
             counted = OutboxCensus()
-            blobPendingCount = 0
+            blobCounted = OutboxCensus()
         } catch {
             // The count the guard above read is the barrier's own, so this reports what is
             // actually held rather than flooring it: the clear can still fail for a reason that
@@ -527,7 +530,7 @@ final class TranscriptionSync {
         self.blobStore = nil
         lastSyncedAt = nil
         counted = OutboxCensus()
-        blobPendingCount = 0
+        blobCounted = OutboxCensus()
         onRemoteChanges?()
     }
 
@@ -557,7 +560,7 @@ final class TranscriptionSync {
         guard let state = engine?.state else { return }
         lastSyncedAt = state.lastSyncedAt
         counted = state.counted
-        blobPendingCount = blobStore.map { $0.counted.total } ?? 0
+        blobCounted = blobStore?.counted ?? OutboxCensus()
     }
 
     // MARK: - Backoff and connectivity
