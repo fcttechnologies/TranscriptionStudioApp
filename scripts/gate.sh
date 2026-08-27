@@ -31,6 +31,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+source "../FCTFoundation/scripts/gate-lib.sh"
+phase_init
+
 SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
 # The promoted set is 10 on macOS — exactly Apple's cap — and 9 on iOS, which has no URL ingest
 # and so no TranscribeLinkIntent. Extras past the cap are dropped with no error, so the count is
@@ -41,17 +44,13 @@ MIN_APP_TESTS=540
 VERIFY_SHORTCUTS="../FCTFoundation/scripts/verify-app-shortcuts.py"
 VERIFY_ICONS="../FCTFoundation/scripts/verify-app-icons.py"
 DD="$(mktemp -d -t ts-gate)"
+# The logs outlive the DerivedData they describe: a leg's log is read AFTER the run, and a failure
+# that names a path inside ${DD} names a path the exit trap has already deleted.
+LOGS="/tmp/ts-gate-logs"
+rm -rf "${LOGS}" && mkdir -p "${LOGS}"
 trap 'rm -rf "${DD}"' EXIT
 
 fail() { echo "==> FAIL: $*"; exit 1; }
-
-# Any Swift *source* warning is a defect. The appintentsmetadataprocessor "Metadata extraction
-# skipped" notices are build-tool output, not compiler warnings, and are excluded.
-check_warnings() {
-  local log="$1" label="$2" found
-  found="$(grep -E '\.swift:[0-9]+:[0-9]+: warning:' "${log}" || true)"
-  [ -z "${found}" ] || { echo "${found}"; fail "${label} produced Swift source warnings (log: ${log})"; }
-}
 
 # The committed .xcodeproj must be what project.yml currently generates — compared against the
 # file on disk, not against git HEAD, so the check is about drift rather than about being mid-edit.
@@ -61,31 +60,39 @@ xcodegen generate >/dev/null
 diff -q "${DD}/project.pbxproj.before" TranscriptionStudio.xcodeproj/project.pbxproj >/dev/null \
   || fail "TranscriptionStudio.xcodeproj was stale — project.yml regenerates it differently. It has
       now been regenerated; review and commit it."
+mark "xcodegen check"
 
-build() {
-  local label="$1" destination="$2" log="${DD}/${1}.log"
-  echo "==> ${label}: build"
-  if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
-        -destination "${destination}" -derivedDataPath "${DD}/${label}" \
-        -allowProvisioningUpdates build >"${log}" 2>&1; then
-    tail -40 "${log}"
-    fail "${label} build failed (log: ${log})"
-  fi
+# Every leg gets its own -derivedDataPath, which is what lets them run concurrently: two
+# xcodebuilds against one DerivedData contend on the same build database.
+start_build() {
+  local label="$1" scheme="$2" action="$3" destination="$4"; shift 4
+  echo "==> ${label}: ${action} — started"
+  leg_start "${label}" "${LOGS}/${label}.log" \
+    xcodebuild -project TranscriptionStudio.xcodeproj -scheme "${scheme}" \
+      -destination "${destination}" -derivedDataPath "${DD}/${label}" \
+      -allowProvisioningUpdates "$@" "${action}"
+}
+
+collect_build() {
+  local label="$1" log="${LOGS}/${1}.log"
+  leg_wait "${label}" || { tail -40 "${log}"; fail "${label} failed (log: ${log})"; }
   check_warnings "${log}" "${label}"
 }
 
-build ios "platform=iOS Simulator,name=${SIM_NAME}"
-build macos "platform=macOS,arch=arm64"
-
-# The headless CLI builds from the same sources as a separate tool target; it must never rot.
-echo "==> transcribe-cli: build"
-if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
-      -destination "platform=macOS,arch=arm64" -derivedDataPath "${DD}/cli" \
-      -allowProvisioningUpdates build >"${DD}/cli.log" 2>&1; then
-  tail -40 "${DD}/cli.log"
-  fail "transcribe-cli build failed (log: ${DD}/cli.log)"
-fi
-check_warnings "${DD}/cli.log" "transcribe-cli"
+# WAVE 1 — the app on both platforms and the headless CLI, at once. They share no state and the
+# box has cores to spare; serially this was the sum of three independent builds.
+#
+# The macOS and CLI legs are `build-for-testing`, not `build`: that produces the same artifacts AND
+# compiles their test bundles, so each suite below is a test RUN rather than a second build of the
+# graph it just built. The headless CLI builds from the same sources as a separate tool target; it
+# must never rot.
+start_build ios   TranscriptionStudio build             "platform=iOS Simulator,name=${SIM_NAME}"
+start_build macos TranscriptionStudio build-for-testing "platform=macOS,arch=arm64"
+start_build cli   transcribe-cli      build-for-testing "platform=macOS,arch=arm64"
+collect_build macos
+collect_build cli
+collect_build ios
+mark "Debug + CLI builds (concurrent)"
 
 # The unit suite is app-hosted, so it runs on a destination rather than on the bare host. The
 # macOS destination hosts it natively on this Mac — no simulator, no device — which keeps the
@@ -94,14 +101,24 @@ check_warnings "${DD}/cli.log" "transcribe-cli"
 # The count is asserted, not just the exit status: a target that stops compiling its test sources,
 # or a scheme that stops listing them, reports `** TEST SUCCEEDED **` having executed nothing. Only
 # a floor is pinned — adding tests must never fail the gate, losing them always must.
-echo "==> Unit suite: app-hosted on the macOS destination"
-TEST_LOG="${DD}/tests.log"
-if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
-      -destination "platform=macOS,arch=arm64" -only-testing:TranscriptionStudioTests \
-      -derivedDataPath "${DD}/macos" -allowProvisioningUpdates test >"${TEST_LOG}" 2>&1; then
-  grep -E '✘|error:|failed' "${TEST_LOG}" | head -40
-  fail "unit suite failed (log: ${TEST_LOG})"
-fi
+# WAVE 2 — both suites beside the Release build. The suites are app-hosted and their wall is
+# mostly async settles rather than CPU, so overlapping them with the one remaining compile is
+# close to free; serially the Release build was 42% of this gate on its own.
+echo "==> Unit suite + CLI suite + Release macOS"
+TEST_LOG="${LOGS}/tests.log"
+CLI_TEST_LOG="${LOGS}/clitests.log"
+leg_start unit-suite "${TEST_LOG}" \
+  xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
+    -destination "platform=macOS,arch=arm64" -only-testing:TranscriptionStudioTests \
+    -derivedDataPath "${DD}/macos" -allowProvisioningUpdates test-without-building
+leg_start cli-suite "${CLI_TEST_LOG}" \
+  xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
+    -destination "platform=macOS,arch=arm64" -only-testing:TranscribeCLITests \
+    -derivedDataPath "${DD}/cli" -allowProvisioningUpdates test-without-building
+start_build macos-release TranscriptionStudio build "platform=macOS,arch=arm64" \
+  -configuration Release
+
+leg_wait unit-suite || { grep -E '✘|error:|failed' "${TEST_LOG}" | head -40; fail "unit suite failed (log: ${TEST_LOG})"; }
 check_warnings "${TEST_LOG}" "unit suite"
 TEST_COUNT="$(sed -n 's/.*Test run with \([0-9]*\) tests.*/\1/p' "${TEST_LOG}" | tail -1)"
 [ -n "${TEST_COUNT}" ] || fail "could not read a test count from ${TEST_LOG} — the suite may not have run"
@@ -110,18 +127,13 @@ TEST_COUNT="$(sed -n 's/.*Test run with \([0-9]*\) tests.*/\1/p' "${TEST_LOG}" |
 echo "    ${TEST_COUNT} tests passed"
 
 # The CLI's own logic suite rides its scheme.
-echo "==> CLI suite"
-CLI_TEST_LOG="${DD}/clitests.log"
-if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
-      -destination "platform=macOS,arch=arm64" -only-testing:TranscribeCLITests \
-      -derivedDataPath "${DD}/cli" -allowProvisioningUpdates test >"${CLI_TEST_LOG}" 2>&1; then
-  grep -E '✘|error:|failed' "${CLI_TEST_LOG}" | head -20
-  fail "CLI suite failed (log: ${CLI_TEST_LOG})"
-fi
+leg_wait cli-suite || { grep -E '✘|error:|failed' "${CLI_TEST_LOG}" | head -20; fail "CLI suite failed (log: ${CLI_TEST_LOG})"; }
 check_warnings "${CLI_TEST_LOG}" "CLI suite"
 CLI_TEST_COUNT="$(sed -n 's/.*Test run with \([0-9]*\) tests.*/\1/p' "${CLI_TEST_LOG}" | tail -1)"
 [ -n "${CLI_TEST_COUNT}" ] || fail "could not read a test count from ${CLI_TEST_LOG}"
 echo "    ${CLI_TEST_COUNT} tests passed"
+collect_build macos-release
+mark "suites + Release build (concurrent)"
 
 IOS_APP="${DD}/ios/Build/Products/Debug-iphonesimulator/TranscriptionStudio.app"
 MAC_APP="${DD}/macos/Build/Products/Debug/TranscriptionStudio.app"
@@ -226,18 +238,13 @@ linked_frameworks "${IOS_APP}" TranscriptionStudio | grep -q ScreenCaptureKit \
 echo "==> App icon in both artifacts"
 "${VERIFY_ICONS}" "${IOS_APP}" "${MAC_APP}" \
   || fail "App icon missing — see the message above."
+mark "artifact checks (Debug)"
 
 # The Release Mac archive is the shippable artifact and the ONLY place Hardened Runtime rides:
 # prove it still signs with the hardened-process entitlements (they live in a Release-only
-# entitlements file — see project.yml's configs) and without a sandbox.
-echo "==> Release macOS: build + hardened entitlements"
-if ! xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
-      -configuration Release -destination "platform=macOS,arch=arm64" \
-      -derivedDataPath "${DD}/macos-release" -allowProvisioningUpdates build >"${DD}/macos-release.log" 2>&1; then
-  tail -40 "${DD}/macos-release.log"
-  fail "Release macOS build failed (log: ${DD}/macos-release.log)"
-fi
-check_warnings "${DD}/macos-release.log" "Release macOS"
+# entitlements file — see project.yml's configs) and without a sandbox. The build itself already
+# ran, beside the suites.
+echo "==> Release macOS: hardened entitlements"
 REL_APP="${DD}/macos-release/Build/Products/Release/TranscriptionStudio.app"
 REL_ENTITLEMENTS="$(codesign -d --entitlements - --xml "${REL_APP}" 2>/dev/null)"
 for key in com.apple.security.hardened-process com.apple.developer.applesignin \
@@ -246,6 +253,8 @@ for key in com.apple.security.hardened-process com.apple.developer.applesignin \
 done
 echo "${REL_ENTITLEMENTS}" | grep -q com.apple.security.app-sandbox \
   && fail "Release macOS app picked up the sandbox"
+mark "artifact checks (Release)"
 
+phase_table
 echo "==> PASS: ${TEST_COUNT} + ${CLI_TEST_COUNT} tests green, both platforms + CLI built" \
      "warning-free, shortcuts registered on both platforms, Release Mac hardened."
