@@ -46,7 +46,7 @@ struct TranscriptionSyncLifecycleTests {
         the session reached the server while its recording was still on the device: the engine's \
         push gate is not wired to the blob store, so the ordering rule is not in force
         """)
-        #expect(device.sync.unsyncedWork > 0, "the held work is surfaced, never inferred")
+        #expect(device.sync.unsyncedWork?.isDrained == false, "the held work is surfaced, never inferred")
 
         // The other side of the same wire: the upload lands, the gate opens, the record goes.
         await device.objects.setOnline(true)
@@ -101,7 +101,7 @@ struct TranscriptionSyncLifecycleTests {
         // Every row still reaches the server: what an over-cap session loses is its audio, not its
         // record — title, transcript and segments are ordinary columns and travel as usual.
         #expect(await device.server.liveCount(in: TranscriptSession.syncTableName) == 3)
-        #expect(device.sync.unsyncedWork == 0, "and nothing is left held")
+        #expect(device.sync.unsyncedWork?.isDrained == true, "and nothing is left held")
 
         #expect(await device.objects.objectCount() == 2, "only the two ordinary recordings uploaded")
     }
@@ -116,7 +116,7 @@ struct TranscriptionSyncLifecycleTests {
         await device.server.setOnline(false)
         try device.recordSession(title: "A's meeting", audio: nil)
         await device.enroll()
-        #expect(device.sync.unsyncedWork > 0, "the switch must be discarding real unpushed work")
+        #expect(device.sync.unsyncedWork?.isDrained == false, "the switch must be discarding real unpushed work")
 
         await device.sync.handle(.switched(from: device.accountID, to: UUID()))
 
@@ -135,7 +135,7 @@ struct TranscriptionSyncLifecycleTests {
         let bytes = Data("recorded, uploaded, acked".utf8)
         try device.recordSession(title: "Fully synced", audio: bytes)
         await device.enroll()
-        #expect(device.sync.unsyncedWork == 0, "the barrier's precondition must actually hold")
+        #expect(device.sync.unsyncedWork?.isDrained == true, "the barrier's precondition must actually hold")
 
         await device.sync.handle(.signedOut)
 
@@ -158,7 +158,7 @@ struct TranscriptionSyncLifecycleTests {
         await device.server.setOnline(false)
         try device.recordSession(title: "Never pushed", audio: nil)
         await device.enroll()
-        #expect(device.sync.unsyncedWork > 0)
+        #expect(device.sync.unsyncedWork?.isDrained == false)
 
         await device.sync.handle(.signedOut)
 
@@ -211,10 +211,18 @@ struct TranscriptionSyncLifecycleTests {
         // The trap, armed: durably failed and out of the pending set, so a pending-only count
         // reads zero while the outbox demonstrably holds both.
         let state = device.syncStateFile.read()
-        try #require(state.failedCount == 2, "both refusals must have parked their entries")
-        try #require(state.pendingCount == 0, "and both must have left the pending set")
+        try #require(state.counted.stuck == 2, "both refusals must have parked their entries")
+        try #require(state.counted.retrying == 0, "and both must have left the pending set")
 
-        #expect(device.sync.unsyncedWork == 2, "refused work is still work the server never took")
+        #expect(device.sync.unsyncedWork?.total == 2, "refused work is still work the server never took")
+
+        // The published half the rows render, which is the *durable* surface. The headline
+        // carries a refused count too, but only until the next cycle overwrites it — one dropped
+        // connection makes it `.offline`, a later clean cycle makes it `.idle`, and both advise
+        // waiting for something waiting can never clear. A queued-only count reads zero here.
+        #expect(device.sync.counted.retrying == 0, "nothing is queued — waiting would change nothing")
+        #expect(device.sync.counted.stuck == 2,
+                "and the row must be able to say two changes need attention")
 
         await device.sync.handle(.signedOut)
 

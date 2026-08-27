@@ -78,9 +78,11 @@ struct AccountSection: View {
     /// happened yet — and only asks when something genuinely could not be uploaded.
     private func preflightSignOut() async -> Bool {
         await sync.syncNow()
-        let outstanding = sync.unsyncedWork
-        guard outstanding > 0 else { return true }
-        outstandingAtSignOut = outstanding
+        // A count that could not be taken lets the sign-out through: the clear it runs into is
+        // itself barrier-gated and keeps the library on anything unpushed, so the refusal is
+        // enforced there rather than duplicated here.
+        guard let outstanding = sync.unsyncedWork, !outstanding.isDrained else { return true }
+        outstandingAtSignOut = outstanding.total
         return await withCheckedContinuation { continuation in
             pendingSignOut = continuation
         }
@@ -125,8 +127,18 @@ struct SyncStatusRow: View {
             }
             .accessibilityIdentifier("settings.syncStatus")
 
-            if sync.pendingCount > 0 {
-                LabeledContent("Waiting to upload", value: "\(sync.pendingCount)")
+            if sync.counted.retrying > 0 {
+                LabeledContent("Waiting to upload", value: "\(sync.counted.retrying)")
+            }
+
+            // The refused half, which waiting never clears. Said separately because it is the one
+            // the row used to omit: a judged entry leaves the pending set, so a queued-only count
+            // reads zero for a record stranded on this device forever.
+            if sync.counted.stuck > 0 {
+                LabeledContent("Needs attention") {
+                    Text("\(sync.counted.stuck)")
+                        .foregroundStyle(.tint)
+                }
             }
 
             if sync.blobPendingCount > 0 {

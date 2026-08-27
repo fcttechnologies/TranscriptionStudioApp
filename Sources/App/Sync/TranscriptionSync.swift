@@ -99,7 +99,9 @@ struct TranscriptionSyncConfiguration {
 final class TranscriptionSync {
     private(set) var status: SyncStatus = .off
     private(set) var lastSyncedAt: Date?
-    private(set) var pendingCount: Int = 0
+    /// The record outbox, split by whether waiting will clear it. Two numbers rather than one
+    /// because they lead to opposite advice: `retrying` goes by itself, `stuck` never will.
+    private(set) var counted: OutboxCensus = OutboxCensus()
     private(set) var blobPendingCount: Int = 0
     private(set) var lastError: String?
     /// Set when an account switch or deletion discarded local changes the server never saw.
@@ -140,17 +142,23 @@ final class TranscriptionSync {
         self.configuration = configuration
     }
 
-    /// Unpushed work across both layers: records the engine has not acked plus recording uploads
-    /// (pending or failed) the object store has not confirmed. The sign-out barrier — while this
-    /// is non-zero the UI surfaces push-or-discard before any clear runs.
-    var unsyncedWork: Int {
-        // The whole outbox, the same predicate the engine's own barrier counts — so this is zero
-        // exactly when the clear would run. A refused record leaves the pending set and is never
-        // auto-retried, so a pending-only count reports nothing to lose for the one entry that
-        // can never go by itself.
-        let records = engine?.state.outbox.count ?? 0
-        let uploads = blobStore.map { $0.pendingCount + $0.failedCount } ?? 0
-        return records + uploads
+    /// Unpushed work across both layers — records the engine has not acked plus recording uploads
+    /// the object store has not confirmed — split by whether waiting will clear them. The sign-out
+    /// barrier: while this holds anything the UI surfaces push-or-discard before any clear runs.
+    ///
+    /// `nil` where there is no engine to ask — a count this device cannot take, which is not the
+    /// same as a zero and must never be spelled as one at the moment a clear is being decided.
+    ///
+    /// Both halves of both layers, because the whole outbox is the same predicate the engine's own
+    /// barrier counts: a refused record leaves the pending set and is never auto-retried, so a
+    /// pending-only count reports nothing to lose for the one entry that can never go by itself.
+    /// A refused upload is `stuck` for the same reason a judged record is.
+    var unsyncedWork: OutboxCensus? {
+        guard let engine else { return nil }
+        var census = engine.state.counted
+        census.retrying += blobStore?.pendingCount ?? 0
+        census.stuck += blobStore?.failedCount ?? 0
+        return census
     }
 
     // MARK: - Bootstrap
@@ -487,7 +495,7 @@ final class TranscriptionSync {
             try engine?.clearSyncedData()
             try blobs?.clearLocalData()
             lastSyncedAt = nil
-            pendingCount = 0
+            counted = OutboxCensus()
             blobPendingCount = 0
         } catch {
             // The count the guard above read is the barrier's own, so this reports what is
@@ -516,7 +524,7 @@ final class TranscriptionSync {
         self.engine = nil
         self.blobStore = nil
         lastSyncedAt = nil
-        pendingCount = 0
+        counted = OutboxCensus()
         blobPendingCount = 0
         onRemoteChanges?()
     }
@@ -546,7 +554,7 @@ final class TranscriptionSync {
     private func refreshCounters() {
         guard let state = engine?.state else { return }
         lastSyncedAt = state.lastSyncedAt
-        pendingCount = state.pendingCount
+        counted = state.counted
         blobPendingCount = blobStore.map { $0.pendingCount + $0.failedCount } ?? 0
     }
 

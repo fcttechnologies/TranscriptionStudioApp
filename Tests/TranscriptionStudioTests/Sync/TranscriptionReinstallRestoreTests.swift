@@ -103,7 +103,7 @@ struct TranscriptionReinstallRestoreTests {
 
         // --- Enrol: stage the recording (rule 7), drain the upload, push every record. ---
         await first.enroll()
-        #expect(first.sync.unsyncedWork == 0, "the seed must push clean, held nothing")
+        #expect(first.sync.unsyncedWork?.isDrained == true, "the seed must push clean, held nothing")
         let sourceRef = try #require(try first.session(sessionID)?.audioAsset?.blobRef)
         #expect(try first.session(sessionID)?.audioData == nil, "the pre-staging column is cleared")
 
@@ -212,6 +212,6 @@ struct TranscriptionReinstallRestoreTests {
         #expect(try restored.fetchCount(FetchDescriptor<TranscriptSession>()) == 1)
         #expect(try restored.fetchCount(FetchDescriptor<StoredSegment>()) == 1)
         #expect(try restored.fetchCount(FetchDescriptor<MacPresence>()) == 1)
-        #expect(second.sync.unsyncedWork == 0, "a restore must push nothing back up")
+        #expect(second.sync.unsyncedWork?.isDrained == true, "a restore must push nothing back up")
     }
 }
