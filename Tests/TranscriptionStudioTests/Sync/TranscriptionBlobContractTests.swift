@@ -35,16 +35,18 @@ struct TranscriptionBlobContractAdapter: BlobContractAdapter {
         try await records.delete(id, in: container)
     }
 
-    func insert(asset: AssetSource, marker: String, in container: ModelContainer) async throws -> UUID {
-        let id = try await records.insert(marker: marker, in: container)
+    func insert(asset: AssetSource, id: UUID, in container: ModelContainer) async throws {
+        // The harness holds the id — the bytes are already staged against it — so the session is
+        // created under it. The asset write is the staging sweep's own, written out rather than
+        // called: the sweep stages and attaches in one pass with no seam to enter at the attach.
         let context = container.mainContext
-        guard let session = try context.fetch(TranscriptSession.descriptor(forSyncIDs: [id])).first else { return id }
+        let session = TranscriptSession(syncID: id)
+        context.insert(session)
         session.audioAsset = asset
         // The two-column invariant: the staged asset and the pre-staging bytes are never both
         // present, and the staging sweep is the only writer that moves a session across.
         session.audioData = nil
         try context.save()
-        return id
     }
 
     func asset(of id: UUID, in container: ModelContainer) throws -> AssetSource? {
