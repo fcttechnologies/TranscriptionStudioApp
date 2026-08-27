@@ -156,8 +156,10 @@ final class TranscriptionSync {
     var unsyncedWork: OutboxCensus? {
         guard let engine else { return nil }
         var census = engine.state.counted
-        census.retrying += blobStore?.pendingCount ?? 0
-        census.stuck += blobStore?.failedCount ?? 0
+        if let blobCensus = blobStore?.counted {
+            census.retrying += blobCensus.retrying
+            census.stuck += blobCensus.stuck
+        }
         return census
     }
 
@@ -482,7 +484,7 @@ final class TranscriptionSync {
         let blobs = self.blobStore
 
         let unpushedRecords = engine?.state.outbox.count ?? 0
-        let undrainedUploads = blobs.map { $0.pendingCount + $0.failedCount } ?? 0
+        let undrainedUploads = blobs.map { $0.counted.total } ?? 0
         guard unpushedRecords + undrainedUploads == 0 else {
             keptOnSignOut = unpushedRecords + undrainedUploads
             self.engine = nil
@@ -555,7 +557,7 @@ final class TranscriptionSync {
         guard let state = engine?.state else { return }
         lastSyncedAt = state.lastSyncedAt
         counted = state.counted
-        blobPendingCount = blobStore.map { $0.pendingCount + $0.failedCount } ?? 0
+        blobPendingCount = blobStore.map { $0.counted.total } ?? 0
     }
 
     // MARK: - Backoff and connectivity
