@@ -253,9 +253,14 @@ struct SearchTranscriptsIntent: AppIntent {
             try await continueInForeground(alwaysConfirm: false)
             await MainActor.run { appModel.returnHome() }
         }
+        // One key with one `%lld`, pluralized by the CATALOG rather than by picking an English
+        // "s" here. A suffix chosen in Swift can only ever be right for English: Spanish needs
+        // "transcripciones", not a letter appended, and Russian selects among three forms by the
+        // count's last digits — neither is reachable from a boolean. The plural variation per
+        // language is the only place that knowledge can live.
         let dialog: IntentDialog = results.isEmpty
             ? "No transcripts match “\(query)”."
-            : "Found \(results.count) transcript\(results.count == 1 ? "" : "s")."
+            : "Found \(results.count) transcripts."
         return .result(value: results, dialog: dialog)
     }
 }

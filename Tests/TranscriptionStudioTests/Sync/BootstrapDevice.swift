@@ -69,6 +69,16 @@ final class BootstrapDevice {
     /// that summarises it.
     var syncStateFile: SyncStateFile { SyncStateFile(url: base.appendingPathComponent("syncstate.json")) }
 
+    /// Where the recording cache lands on disk — the same URL the live configuration hands the
+    /// blob store. Asserting on the directory rather than on an API answer is the point: whether
+    /// bytes are still readable after a sign-out is a question about the filesystem.
+    var blobCacheDirectory: URL { base.appendingPathComponent("cache", isDirectory: true) }
+
+    /// The files actually sitting in that cache right now.
+    var cachedFileCount: Int {
+        (try? FileManager.default.contentsOfDirectory(atPath: blobCacheDirectory.path).count) ?? 0
+    }
+
     /// Record a session the way the app does before any account exists: bytes in the session's
     /// own column, nothing staged.
     ///

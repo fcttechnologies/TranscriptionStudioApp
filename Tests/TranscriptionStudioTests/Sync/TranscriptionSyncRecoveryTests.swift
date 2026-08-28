@@ -172,6 +172,51 @@ struct TranscriptionSyncRecoveryTests {
                 "the true answer must describe a pull that actually landed the rows")
     }
 
+    // MARK: - What a sign-out actually reclaims
+
+    /// A recording is cached on disk permanently on the device that made it, so a sign-out that
+    /// swept the rows and the queues but left the audio would leave the *bulk* of one account's
+    /// data readable to whoever signs in next — the rows are kilobytes and the recordings are not.
+    ///
+    /// Asserted against the filesystem rather than against an API's answer, because the question
+    /// is literally whether the bytes are still there.
+    @MainActor
+    @Test func aCompletedSignOutReclaimsTheRecordingCache() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        try device.recordSession(title: "Cached audio", audio: Data("real recording bytes".utf8))
+        await device.enroll()
+        await device.sync.syncNow()
+
+        try #require(device.cachedFileCount > 0,
+                     "the staging sweep must have written the recording into the cache")
+
+        await device.sync.handle(.signedOut)
+
+        #expect(device.sync.keptOnSignOut == 0, "the barrier let the clear through")
+        #expect(device.cachedFileCount == 0, "and the cached audio went with the rows")
+    }
+
+    /// The barrier's other side: a clear that was refused keeps the library whole, and "whole"
+    /// has to include the audio. Reclaiming the cache here would destroy the one copy of bytes
+    /// the server has never held — which is the exact thing the refusal exists to prevent.
+    @MainActor
+    @Test func aRefusedSignOutKeepsTheRecordingCacheToo() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+
+        try device.recordSession(title: "Never pushed", audio: Data("only copy".utf8))
+        await device.objects.setOnline(false)
+        await device.enroll()
+
+        try #require(device.cachedFileCount > 0)
+        await device.sync.handle(.signedOut)
+
+        #expect(device.sync.keptOnSignOut > 0, "the barrier refused the clear")
+        #expect(device.cachedFileCount > 0, "so the only copy of these bytes is still here")
+    }
+
     // MARK: - Telling the front door its copy is gone
 
     /// A clear is what makes the next sign-in a *restore* rather than a resume onto an empty store,
