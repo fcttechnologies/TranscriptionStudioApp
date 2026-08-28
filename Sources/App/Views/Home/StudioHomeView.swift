@@ -296,17 +296,7 @@ struct StudioHomeView: View {
 
     private func delete(_ session: TranscriptSession) {
         let entity = TranscriptSessionEntity(session)
-        // The record's deletion takes a pre-staging `audioData` with it, but cannot reach a
-        // staged recording on the blob layer: release it first, while the asset is still readable.
-        app.sync?.discardRecording(session.audioAsset)
-        let deletedID = session.id
-        if app.playback.nowPlaying?.sessionID == deletedID { app.playback.unload() }
-        modelContext.delete(session)
-        try? modelContext.save()
-        TranscriptSpotlightIndex.deindex(id: deletedID)
-        // A finished job's row would otherwise linger after its session is gone; a
-        // still-running job has no resultSessionID yet, so it's untouched.
-        app.jobs.removeJobs(forSessionID: deletedID)
+        SessionDeletion.delete(session, in: modelContext, app: app)
         pendingDelete = nil
         Task { await TranscriptionIntentDonations.donateDeleteTranscript(entity) }
     }

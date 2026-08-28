@@ -19,6 +19,11 @@ enum A11yID {
     static let debugTestAccountSignIn = "debug.testAccount.signIn"
     static let debugTestAccountStatus = "debug.testAccount.status"
 
+    // MARK: Debug tools (Settings, Debug builds only)
+    static let debugSeedLibrary = "debug.seedLibrary"
+    static let debugResetLibrary = "debug.resetLibrary"
+    static let debugToolsStatus = "debug.tools.status"
+
     // MARK: Home
     static let homeFeed = "home.feed"
     static let feedEmpty = "home.feed.empty"

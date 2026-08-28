@@ -1,10 +1,9 @@
 import AppIntents
 import SwiftData
 
-/// Delete a saved transcript — mirrors the home feed's delete: releases the staged recording,
-/// deletes the SwiftData session, and de-indexes it from Spotlight. Confirms
-/// with a destructive choice first since this can run from Siri/Shortcuts with no confirmation
-/// UI already on screen.
+/// Delete a saved transcript, through the same `SessionDeletion` transaction the feed's swipe
+/// runs. Confirms with a destructive choice first, since this can arrive from Siri or Shortcuts
+/// with no confirmation UI already on screen.
 struct DeleteTranscriptIntent: AppIntent {
     static let title: LocalizedStringResource = "Delete Transcript"
     static let description = IntentDescription("Delete a saved transcript from Transcription Studio.")
@@ -37,14 +36,7 @@ struct DeleteTranscriptIntent: AppIntent {
             dialog: IntentDialog("Delete \"\(session.title)\"? This action cannot be undone."))
         guard choice.style == .destructive else { throw DeleteTranscriptIntentError.cancelled }
 
-        let deletedID = session.id
-        // Same as the feed's delete: release the staged recording before the record that names it.
-        appModel.sync?.discardRecording(session.audioAsset)
-        context.delete(session)
-        try? context.save()
-        TranscriptSpotlightIndex.deindex(id: deletedID)
-        // Same cleanup as the feed's delete: don't leave the finished job's card behind.
-        appModel.jobs.removeJobs(forSessionID: deletedID)
+        SessionDeletion.delete(session, in: context, app: appModel)
 
         return .result(dialog: "Transcript deleted.")
     }

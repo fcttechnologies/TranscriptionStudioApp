@@ -40,6 +40,9 @@ struct SettingsView: View {
             }
             PermissionsSection(locationCaptureEnabled: $settings.locationCaptureEnabled)
             StorageSection()
+            #if DEBUG
+            DebugToolsSection()
+            #endif
             Section {
                 LabeledContent("Speech processing", value: "On this device")
                 LabeledContent("Library storage", value: "Your FCT account")

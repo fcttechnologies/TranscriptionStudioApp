@@ -15,7 +15,14 @@ enum DemoLibrarySeeder {
     static func seedIfRequested(context: ModelContext) {
         guard ProcessInfo.processInfo.arguments.contains(launchArgument) else { return }
         guard ((try? context.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0) == 0 else { return }
+        seed(context: context)
+    }
 
+    /// Seed unconditionally — the Settings affordance, which a running app reaches and a launch
+    /// argument cannot. Not idempotent on purpose: an agent asking for content a second time wants
+    /// content, and the reset beside it is how the library gets emptied.
+    @MainActor
+    static func seed(context: ModelContext) {
         context.insert(meetingSession())
         context.insert(memoSession())
         try? context.save()
