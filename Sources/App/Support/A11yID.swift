@@ -21,6 +21,7 @@ enum A11yID {
 
     // MARK: Home
     static let homeFeed = "home.feed"
+    static let feedEmpty = "home.feed.empty"
     static let homeActiveWork = "home.activeWork"
     static let homeMiniPlayerPlayback = "home.miniPlayer.playback"
     static let homeMiniPlayerRecording = "home.miniPlayer.recording"

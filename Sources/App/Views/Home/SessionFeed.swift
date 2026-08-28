@@ -91,6 +91,10 @@ struct SessionFeed: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, DesignMetrics.spacingXXL)
+        // Reachable by an agent because the claim it makes is one worth asserting: this surface is
+        // only ever built after the front door's restore has landed, so "no sessions yet" is a
+        // fact about the account rather than about a pull still in flight.
+        .accessibilityIdentifier(A11yID.feedEmpty)
     }
 }
 

@@ -60,7 +60,12 @@ struct DebugTestAccountSignInBar: View {
                     .foregroundStyle(failure == nil ? Color.secondary : Color.red)
                     .accessibilityIdentifier(A11yID.debugTestAccountStatus)
             }
-            .padding(.bottom, DesignMetrics.spacingM)
+            // A surface of its own, so it reads as something laid over the gate rather than as one
+            // of the gate's own controls — whichever corner it is pinned to.
+            .padding(DesignMetrics.spacingM)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DesignMetrics.cornerL,
+                                                               style: .continuous))
+            .padding(DesignMetrics.spacingM)
         }
     }
 }

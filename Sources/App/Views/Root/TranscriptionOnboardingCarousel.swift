@@ -76,8 +76,13 @@ enum TranscriptionOnboardingCarousel {
     /// the carousel draws as a plain screen — a dull page rather than a crash on the first surface
     /// anyone sees.
     @MainActor private static func render(_ kind: OnboardingMockScreen.Kind, scheme: ColorScheme) -> PlatformImage? {
+        // The Mac mock is rendered at a fraction of a real window's point size, not at 1:1. The
+        // carousel fits the image into a ~570pt-wide MacBook lid, so a true 1440-wide capture
+        // arrives at 40% scale and its body text is an illegible smudge — which is what a real
+        // screenshot of a Mac app in a lid actually looks like. Rendering the same 1.6 aspect
+        // smaller makes every glyph 1.44x larger on the page for free.
         #if os(macOS)
-        let size = CGSize(width: 1440, height: 900)
+        let size = CGSize(width: 1000, height: 625)
         #else
         let size = CGSize(width: 402, height: 874)
         #endif
@@ -125,12 +130,12 @@ struct OnboardingMockScreen: View {
         #if os(macOS)
         HStack(spacing: 0) {
             MockFeedColumn(kind: kind)
-                .frame(width: 380)
+                .frame(width: 300)
             Divider()
             MockDetailColumn(kind: kind)
                 .frame(maxWidth: .infinity)
         }
-        .padding(28)
+        .padding(22)
         #else
         MockDetailColumn(kind: kind)
             .padding(20)
@@ -326,10 +331,14 @@ private struct MockAskScreen: View {
                     .font(.caption)
                     .foregroundStyle(.tint)
                 }
+                .frame(maxWidth: 420, alignment: .leading)
                 .padding(DesignMetrics.spacingM)
-                .background(.background.secondary,
+                // A stronger fill than the cards use: this bubble runs nearly the column's width,
+                // and at the scale the carousel draws it a card-weight tint disappears into the
+                // canvas and the answer reads as bare text on the page.
+                .background(.quaternary.opacity(0.7),
                             in: RoundedRectangle(cornerRadius: DesignMetrics.cornerXL, style: .continuous))
-                Spacer(minLength: 60)
+                Spacer(minLength: 40)
             }
             Spacer(minLength: 0)
             HStack {
@@ -394,19 +403,23 @@ private struct MockTranscriptTurn: View {
     var provisional = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: DesignMetrics.spacingM) {
-            RoundedRectangle(cornerRadius: DesignMetrics.turnAccentWidth / 2)
+        // The speaker rule is drawn as a leading overlay on the text, not as a sibling in an
+        // HStack: a bare `RoundedRectangle` is flexible on both axes, so as a sibling it grows to
+        // whatever height the row is offered and drags the turns apart with it.
+        VStack(alignment: .leading, spacing: DesignMetrics.spacingXS) {
+            Text(verbatim: name)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DesignMetrics.speakerColor(slot: speaker))
+            Text(verbatim: line)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.leading, DesignMetrics.spacingM)
+        .overlay(alignment: .leading) {
+            Capsule()
                 .fill(DesignMetrics.speakerColor(slot: speaker))
                 .frame(width: DesignMetrics.turnAccentWidth)
-            VStack(alignment: .leading, spacing: DesignMetrics.spacingXS) {
-                Text(verbatim: name)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(DesignMetrics.speakerColor(slot: speaker))
-                Text(verbatim: line)
-                    .font(.callout)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
         }
         .opacity(provisional ? DesignMetrics.provisionalOpacity : 1)
     }

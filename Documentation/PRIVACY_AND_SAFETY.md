@@ -49,14 +49,13 @@ label and the privacy policy have to say the app uses PCC for long-transcript su
 - **Reminders** — full access, because Reminders has no write-only scope; the app only ever adds.
 - **Face ID / Touch ID** — for the per-session privacy lock (`Documentation/PRIVACY-LOCK.md`).
 
-**Permission copy is out of date and must be corrected before submission.** The usage strings in
-`project.yml`'s `info.properties` still promise a local-only app —
-`NSMicrophoneUsageDescription` says "Nothing leaves your device",
-`NSAudioCaptureUsageDescription` says "Nothing leaves your Mac", and
-`NSLocationWhenInUseUsageDescription` says the location is "kept entirely on this device". All
-three are false: audio syncs as a blob and both coordinate columns ride the wire. A permission
-prompt contradicting the privacy manifest is a rejection, and worse, a promise to the user the app
-does not keep.
+**Every usage string states two facts separately: where the work happens, and where the result is
+kept.** A prompt that collapses them into "nothing leaves your device" contradicts the privacy
+manifest sitting beside it — a rejection, and worse, a promise to the user this app does not keep.
+The recordings sync as blobs and `location_name`/`latitude`/`longitude` are columns on the
+`transcript_session` wire, so no string in `project.yml`'s `info.properties` may claim otherwise.
+The same rule binds the in-app copy: the Settings footer, the permissions footer and anything that
+narrates the intelligence surface, which escalates to Private Cloud Compute for a long transcript.
 
 ## Logging policy (hard rules)
 
