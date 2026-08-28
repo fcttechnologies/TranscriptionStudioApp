@@ -51,6 +51,38 @@ are verified independently of the model (gates 1–2, always on), and the full s
 AOSC compression run end-to-end against a fake graph (`SortformerLoopTests`) — everything
 except the neural forward's *values* is covered without the model.
 
+## The agent walkthrough (macOS, drivable)
+
+The Mac app is drivable end to end by an agent through the accessibility tree, so the front
+door and every surface behind it are verified by *driving* rather than by reasoning about a
+build. Every interactive control carries a stable identifier from `Sources/App/Support/A11yID.swift`
+— that file is the driving surface, and a control missing from it is a control an agent cannot
+reach.
+
+```bash
+xcodebuild -project TranscriptionStudio.xcodeproj -scheme TranscriptionStudio \
+  -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/ts-drive -allowProvisioningUpdates build
+open -n /tmp/ts-drive/Build/Products/Debug/TranscriptionStudio.app
+```
+
+Then read the tree (`UITree` with the app's pid) and click by an element's centre coordinates.
+Two mechanics that cost a cycle each if unknown: **the window must be frontmost before the first
+click lands** (`osascript -e 'tell application "System Events" to set frontmost of (first process
+whose unix id is <pid>) to true'`), and the invisible path-press does not work on this app's
+SwiftUI buttons — use a visible click at the element's centre.
+
+**The front-door pass**, which is the one that has to be walked after any change to
+`Views/Root/` or the sync bootstrap: the carousel's four pages → `debug.testAccount.signIn`
+(reads `FCT_TEST_ACCOUNT_EMAIL`/`FCT_TEST_ACCOUNT_PASSWORD`, signs into the shared test account)
+→ `onboarding.continue` to finish the carousel → **`frontDoor.restoring` must appear** → the feed.
+The restoring stage is the assertion that matters: it proves no app surface is built while the
+account's first pull is in flight. Then `toolbar.settingsToggle` and confirm the sync row reads
+"Up to date" against the real server.
+
+`debug.seedLibrary` and `debug.resetLibrary` in Settings put real content in and take it back out
+without a relaunch, which is what makes a walkthrough repeatable and what store captures are
+driven from.
+
 ## The human loop (Fernando, daily)
 
 1. Record a real meeting or room conversation.
