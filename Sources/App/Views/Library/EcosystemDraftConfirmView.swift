@@ -28,7 +28,7 @@ struct CalendarDraftConfirmView: View {
                 if loaded {
                     Section("Event") {
                         TextField("Title", text: $title)
-                            .accessibilityIdentifier("calendarDraft.title")
+                            .accessibilityIdentifier(A11yID.calendarDraftTitle)
                         DatePicker("Starts", selection: $startDate)
                         DatePicker("Ends", selection: $endDate, in: startDate...)
                     }
@@ -42,7 +42,7 @@ struct CalendarDraftConfirmView: View {
                             Label("Add to Calendar", systemImage: "calendar.badge.plus")
                         }
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || saving)
-                        .accessibilityIdentifier("calendarDraft.add")
+                        .accessibilityIdentifier(A11yID.calendarDraftAdd)
                     } footer: {
                         Text("Nothing is added until you tap Add. Transcription Studio only asks for permission to add — never to read your calendar.")
                     }
@@ -129,7 +129,7 @@ struct ReminderDraftConfirmView: View {
                 if loaded {
                     Section("Reminder") {
                         TextField("Title", text: $title)
-                            .accessibilityIdentifier("reminderDraft.title")
+                            .accessibilityIdentifier(A11yID.reminderDraftTitle)
                         Toggle("Due date", isOn: $hasDueDate)
                         if hasDueDate {
                             DatePicker("Due", selection: $dueDate)
@@ -145,7 +145,7 @@ struct ReminderDraftConfirmView: View {
                             Label("Add Reminder", systemImage: "checklist")
                         }
                         .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || saving)
-                        .accessibilityIdentifier("reminderDraft.add")
+                        .accessibilityIdentifier(A11yID.reminderDraftAdd)
                     } footer: {
                         Text("Nothing is added until you tap Add.")
                     }

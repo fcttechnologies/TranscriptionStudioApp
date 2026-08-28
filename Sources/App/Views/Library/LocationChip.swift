@@ -59,7 +59,7 @@ struct LocationChipView: View {
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel("Open \(chip.name) in Maps")
-        .accessibilityIdentifier("session.location")
+        .accessibilityIdentifier(A11yID.sessionLocation)
     }
 
     /// Rebuild an `MKMapItem` from the persisted coordinate + name and hand it to Maps. Uses the

@@ -29,7 +29,7 @@ struct ActiveWorkSection: View {
                 }
             }
             .animation(reduceMotion ? nil : DesignMetrics.standardSpring, value: jobs.map(\.id))
-            .accessibilityIdentifier("home.activeWork")
+            .accessibilityIdentifier(A11yID.homeActiveWork)
         }
     }
 }

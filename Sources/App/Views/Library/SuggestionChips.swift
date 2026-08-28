@@ -113,13 +113,13 @@ private struct SuggestionChipView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dismiss suggestion: \(detailText)")
-            .accessibilityIdentifier("suggestion.dismiss.\(suggestion.id)")
+            .accessibilityIdentifier(A11yID.suggestionDismiss(suggestion.id))
         }
         .padding(.vertical, DesignMetrics.suggestionChipVPadding)
         .padding(.leading, DesignMetrics.suggestionChipHPadding)
         .padding(.trailing, DesignMetrics.spacingXS)
         .background(.quaternary.opacity(0.6), in: Capsule())
-        .accessibilityIdentifier("suggestion.\(suggestion.id)")
+        .accessibilityIdentifier(A11yID.suggestion(suggestion.id))
     }
 
     /// The resolved day, when one exists — "Thu, Jul 17", the hint that makes the chip specific.

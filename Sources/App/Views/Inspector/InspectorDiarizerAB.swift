@@ -60,7 +60,7 @@ struct InspectorDiarizerAB: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-            .accessibilityIdentifier("inspector.ab.run")
+            .accessibilityIdentifier(A11yID.inspectorABRun)
         }
         if let error = run.error {
             Text(error).font(.caption2).foregroundStyle(.orange)

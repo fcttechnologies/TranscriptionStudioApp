@@ -69,7 +69,7 @@ struct InspectorView: View {
             }
         }
         .background(.background)
-        .accessibilityIdentifier("inspector.panel")
+        .accessibilityIdentifier(A11yID.inspectorPanel)
     }
 }
 

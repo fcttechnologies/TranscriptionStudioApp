@@ -25,10 +25,12 @@ struct PermissionsSection: View {
         } header: {
             Text("Permissions")
         } footer: {
+            // What is captured, and where it ends up — never "everything stays on this device",
+            // which the sync layer makes untrue the moment a recording is staged.
             #if os(macOS)
-            Text("Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Location tagging is off unless you turn it on. Everything stays on this device.")
+            Text("Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Location tagging is off unless you turn it on. What you record is transcribed on this device and stored in your FCT account — a tagged place travels with its session.")
             #else
-            Text("Recording uses the microphone. Location tagging is off unless you turn it on. Everything stays on this device.")
+            Text("Recording uses the microphone. Location tagging is off unless you turn it on. What you record is transcribed on this device and stored in your FCT account — a tagged place travels with its session.")
             #endif
         }
         .onAppear(perform: refresh)
@@ -41,7 +43,7 @@ struct PermissionsSection: View {
         Toggle(isOn: $locationCaptureEnabled) {
             Label("Tag recordings with location", systemImage: "mappin.and.ellipse")
         }
-        .accessibilityIdentifier("settings.permission.location")
+        .accessibilityIdentifier(A11yID.settingsPermissionLocation)
     }
 
     // MARK: Microphone (both platforms)
@@ -54,7 +56,7 @@ struct PermissionsSection: View {
         } label: {
             Label("Microphone", systemImage: micStatus == .denied ? "mic.slash" : "mic")
         }
-        .accessibilityIdentifier("settings.permission.microphone")
+        .accessibilityIdentifier(A11yID.settingsPermissionMicrophone)
         if micStatus == .denied {
             Button("Enable in System Settings…") { openURL(MicrophonePermission.settingsURL) }
         }
@@ -79,7 +81,7 @@ struct PermissionsSection: View {
         } label: {
             Label("Screen Recording", systemImage: "rectangle.dashed.badge.record")
         }
-        .accessibilityIdentifier("settings.permission.screenRecording")
+        .accessibilityIdentifier(A11yID.settingsPermissionScreenRecording)
         switch screenStatus {
         case .granted:
             EmptyView()

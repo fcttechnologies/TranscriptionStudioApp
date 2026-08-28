@@ -74,7 +74,7 @@ struct SessionFeed: View {
         .contentMargins(.vertical, DesignMetrics.spacingM, for: .scrollContent)
         .scrollDismissesKeyboard(.interactively)
         .background(.feedCanvas)
-        .accessibilityIdentifier("home.feed")
+        .accessibilityIdentifier(A11yID.homeFeed)
     }
 
     /// The calendar day a section represents, taken from its (newest-first) sessions — used only
@@ -109,7 +109,7 @@ struct SessionCard: View {
                 .contentShape(RoundedRectangle(cornerRadius: DesignMetrics.cornerL, style: .continuous))
         }
         .buttonStyle(PressableButtonStyle())
-        .accessibilityIdentifier("home.session.\(session.id.uuidString)")
+        .accessibilityIdentifier(A11yID.homeSession(session.id))
     }
 }
 

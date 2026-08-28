@@ -68,7 +68,7 @@ struct LiveRecordingSheet: View {
                 Label(captionMode ? "Hide captions" : "Show captions",
                       systemImage: captionMode ? "captions.bubble.fill" : "captions.bubble")
             }
-            .accessibilityIdentifier("record.captionToggle")
+            .accessibilityIdentifier(A11yID.recordCaptionToggle)
             .help(captionMode ? "Switch back to the transcript" : "Large captions for reading at a distance")
         }
     }
@@ -114,7 +114,7 @@ private struct PreparingView: View {
         .padding(DesignMetrics.spacingXL)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.background)
-        .accessibilityIdentifier("record.preparing")
+        .accessibilityIdentifier(A11yID.recordPreparing)
     }
 }
 
@@ -130,7 +130,7 @@ private struct LiveHeader: View {
                     .font(.system(size: DesignMetrics.elapsedFont, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    .accessibilityIdentifier("record.elapsed")
+                    .accessibilityIdentifier(A11yID.recordElapsed)
                 Spacer()
                 Label(recording.mode.title, systemImage: recording.mode.systemImage)
                     .font(.subheadline.weight(.medium))
@@ -158,7 +158,7 @@ private struct NoticeBar: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, DesignMetrics.spacingL)
                 .padding(.bottom, DesignMetrics.spacingS)
-                .accessibilityIdentifier("record.diarizationUnavailable")
+                .accessibilityIdentifier(A11yID.recordDiarizationUnavailable)
         }
     }
 }
@@ -208,7 +208,7 @@ private struct LiveControls: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
-        .accessibilityIdentifier("record.finishing")
+        .accessibilityIdentifier(A11yID.recordFinishing)
     }
 
     private var controls: some View {
@@ -236,7 +236,7 @@ private struct LiveControls: View {
                     .foregroundStyle(.white)
             }
             .buttonStyle(PressableButtonStyle())
-            .accessibilityIdentifier("record.stop")
+            .accessibilityIdentifier(A11yID.recordStop)
         }
     }
 }

@@ -69,6 +69,6 @@ struct LiveTranscriptView: View {
                 .overlay(Capsule().strokeBorder(.separator, lineWidth: 0.5))
         }
         .buttonStyle(PressableButtonStyle())
-        .accessibilityIdentifier("record.jumpToLive")
+        .accessibilityIdentifier(A11yID.recordJumpToLive)
     }
 }

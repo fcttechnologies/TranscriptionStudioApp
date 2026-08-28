@@ -23,7 +23,7 @@ struct InsertLinkSheet: View {
                         .textFieldStyle(.plain)
                         .focused($fieldFocused)
                         .onSubmit(start)
-                        .accessibilityIdentifier("insertLink.urlField")
+                        .accessibilityIdentifier(A11yID.insertLinkURLField)
                 }
                 .padding(DesignMetrics.spacingM)
                 .cardStyle(cornerRadius: DesignMetrics.cornerM)
@@ -45,7 +45,7 @@ struct InsertLinkSheet: View {
                               action: start)
                     .disabled(!isValid)
                     .opacity(isValid ? 1 : 0.5)
-                    .accessibilityIdentifier("insertLink.start")
+                    .accessibilityIdentifier(A11yID.insertLinkStart)
 
                 Spacer(minLength: 0)
             }

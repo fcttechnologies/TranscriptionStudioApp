@@ -112,6 +112,6 @@ private struct StorageModelRow: View {
             .buttonStyle(.borderless)
             .accessibilityLabel("Delete \(model.displayName)")
         }
-        .accessibilityIdentifier("settings.storage.model.\(model.id)")
+        .accessibilityIdentifier(A11yID.settingsStorageModel(model.id))
     }
 }

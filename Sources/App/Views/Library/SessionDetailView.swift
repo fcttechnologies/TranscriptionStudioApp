@@ -84,7 +84,7 @@ struct SessionDetailView: View {
                         let entity = TranscriptSessionEntity(session)
                         Task { await TranscriptionIntentDonations.donateSummarizeTranscript(entity) }
                     }
-                    .accessibilityIdentifier("session.intelligence")
+                    .accessibilityIdentifier(A11yID.sessionIntelligence)
                 }
                 ToolbarItem {
                     Menu {
@@ -96,16 +96,16 @@ struct SessionDetailView: View {
                                 let entity = TranscriptSessionEntity(session)
                                 Task { await TranscriptionIntentDonations.donateSpeakTranscript(entity) }
                             }
-                            .accessibilityIdentifier("session.speak")
+                            .accessibilityIdentifier(A11yID.sessionSpeak)
                         }
                         Toggle(isOn: confidenceBinding) {
                             Label("Highlight Confidence", systemImage: "text.magnifyingglass")
                         }
-                        .accessibilityIdentifier("session.confidenceToggle")
+                        .accessibilityIdentifier(A11yID.sessionConfidenceToggle)
                         Toggle(isOn: privacyBinding) {
                             Label("Lock with Face ID", systemImage: session.isPrivate ? "lock.fill" : "lock.open")
                         }
-                        .accessibilityIdentifier("session.privacyToggle")
+                        .accessibilityIdentifier(A11yID.sessionPrivacyToggle)
                         Menu {
                             ForEach(TranscriptExport.Format.allCases) { format in
                                 Button(format.displayName) { exportFormat = format }
@@ -116,7 +116,7 @@ struct SessionDetailView: View {
                     } label: {
                         Label("More", systemImage: "ellipsis")
                     }
-                    .accessibilityIdentifier("session.more")
+                    .accessibilityIdentifier(A11yID.sessionMore)
                 }
                 SheetCloseToolbar { dismiss() }
             }
@@ -145,7 +145,7 @@ struct SessionDetailView: View {
         }
         .alert("Rename Session", isPresented: $isRenaming) {
             TextField("Title", text: $draftTitle)
-                .accessibilityIdentifier("session.renameField")
+                .accessibilityIdentifier(A11yID.sessionRenameField)
             Button("Cancel", role: .cancel) {}
             Button("Save") { commitRename() }
         }
@@ -186,7 +186,7 @@ struct SessionDetailView: View {
                 .onTapGesture { beginRenaming() }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint("Rename")
-                .accessibilityIdentifier("session.title")
+                .accessibilityIdentifier(A11yID.sessionTitle)
             HStack(spacing: DesignMetrics.spacingS) {
                 Text(session.createdAt.formatted(date: .abbreviated, time: .shortened))
                 if session.duration > 0 {
@@ -381,7 +381,7 @@ private struct PlaybackBar: View {
                 Text(TimeFormat.clock(playback.currentTime))
                     .contentTransition(.numericText())
                 Slider(value: seekBinding, in: 0...max(playback.duration, 0.1))
-                    .accessibilityIdentifier("session.scrubber")
+                    .accessibilityIdentifier(A11yID.sessionScrubber)
                 Text("−" + TimeFormat.clock(max(playback.duration - playback.currentTime, 0)))
                     .contentTransition(.numericText())
             }
@@ -426,7 +426,7 @@ private struct PlaybackBar: View {
         }
         .buttonStyle(PressableButtonStyle())
         .accessibilityLabel(playback.isPlaying ? "Pause" : "Play")
-        .accessibilityIdentifier("session.playPause")
+        .accessibilityIdentifier(A11yID.sessionPlayPause)
     }
 
     /// The playback-speed menu — a quiet monospaced "1×" that opens the rate picker.
@@ -449,7 +449,7 @@ private struct PlaybackBar: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .accessibilityLabel("Playback speed, \(Self.rateLabel(playback.playbackRate))")
-        .accessibilityIdentifier("session.speed")
+        .accessibilityIdentifier(A11yID.sessionSpeed)
     }
 
     private var rateBinding: Binding<Float> {

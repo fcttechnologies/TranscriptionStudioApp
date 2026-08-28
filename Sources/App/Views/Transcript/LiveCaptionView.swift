@@ -135,7 +135,7 @@ struct LiveCaptionView: View {
                 .glassEffect(.regular.interactive(), in: .capsule)
         }
         .buttonStyle(PressableButtonStyle())
-        .accessibilityIdentifier("caption.jumpToLive")
+        .accessibilityIdentifier(A11yID.captionJumpToLive)
     }
 
     private var sizeControl: some View {
@@ -167,6 +167,6 @@ struct LiveCaptionView: View {
         .padding(.horizontal, DesignMetrics.spacingS)
         .glassEffect(.regular.interactive(), in: .capsule)
         .padding(DesignMetrics.spacingL)
-        .accessibilityIdentifier("caption.sizeControl")
+        .accessibilityIdentifier(A11yID.captionSizeControl)
     }
 }

@@ -69,7 +69,7 @@ struct AskLibraryView: View {
                 TextField("e.g. What did we decide about the budget?", text: $question)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(ask)
-                    .accessibilityIdentifier("askLibrary.question")
+                    .accessibilityIdentifier(A11yID.askLibraryQuestion)
                 Button("Ask", systemImage: "arrow.up.circle.fill") { ask() }
                     .labelStyle(.iconOnly)
                     .font(.title2)

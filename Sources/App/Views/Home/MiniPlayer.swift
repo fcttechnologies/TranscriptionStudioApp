@@ -84,7 +84,7 @@ private struct RecordingMiniPlayer: View {
         .buttonStyle(PressableButtonStyle())
         .glassEffect(.regular.interactive(), in: .capsule)
         .padding(.horizontal, DesignMetrics.spacingL)
-        .accessibilityIdentifier("home.miniPlayer.recording")
+        .accessibilityIdentifier(A11yID.homeMiniPlayerRecording)
         .accessibilityLabel("Recording, \(TimeFormat.clock(recording.elapsed)) elapsed. Opens the live recording.")
     }
 
@@ -164,7 +164,7 @@ private struct SpeakingMiniPlayer: View {
         .buttonStyle(PressableButtonStyle())
         .glassEffect(.regular.interactive(), in: .capsule)
         .padding(.horizontal, DesignMetrics.spacingL)
-        .accessibilityIdentifier("home.miniPlayer.speaking")
+        .accessibilityIdentifier(A11yID.homeMiniPlayerSpeaking)
         .accessibilityLabel("Speaking \(nowSpeaking.title). Opens the transcript.")
     }
 }
@@ -240,7 +240,7 @@ private struct PlaybackMiniPlayer: View {
         .buttonStyle(PressableButtonStyle())
         .glassEffect(.regular.interactive(), in: .capsule)
         .padding(.horizontal, DesignMetrics.spacingL)
-        .accessibilityIdentifier("home.miniPlayer.playback")
+        .accessibilityIdentifier(A11yID.homeMiniPlayerPlayback)
         .accessibilityLabel("Now playing \(nowPlaying.title). Opens the transcript.")
     }
 }
