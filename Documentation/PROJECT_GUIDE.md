@@ -85,6 +85,12 @@ Tests are **app-hosted** (`@testable import TranscriptionStudio`) in
 - Models: WhisperKit self-downloads; Sortformer artifacts via `scripts/fetch-models.sh`
   or the in-app downloader (never bundled in git).
 
+## Privacy
+
+`Documentation/PRIVACY_AND_SAFETY.md` — the data inventory, what leaves the device and where to,
+the permission and logging rules, and the privacy-manifest declarations behind them.
+`Documentation/PRIVACY-LOCK.md` covers the per-session lock.
+
 ## Verification
 
 `Documentation/VERIFICATION.md` — the automated gates that keep "who said what" honest, the
