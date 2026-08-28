@@ -1,0 +1,36 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Ask my last recording in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Open ${target} in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Open the inspector in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Read my last transcript in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Search my transcripts in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Start recording in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Stop recording in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Summarize my last recording in ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Transcribe a file with ${applicationName}" : {
+      "extractionState" : "manual"
+    },
+    "Transcribe a link with ${applicationName}" : {
+      "extractionState" : "manual"
+    }
+  },
+  "version" : "1.0"
+}

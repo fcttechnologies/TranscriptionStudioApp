@@ -43,6 +43,11 @@ settingGroups:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    # Makes swiftc emit the per-source-file .stringsdata the gate's localization drift check reads.
+    # A SwiftPM target with a defaultLocalization sets this itself; an app target does not, and
+    # without it the check has nothing to compare the catalog against and says so rather than
+    # passing.
+    SWIFT_EMIT_LOC_STRINGS: YES
 
 targets:
   # ONE app target for every destination Transcription Studio ships to. The platform split lives in
@@ -113,6 +118,21 @@ targets:
     info:
       path: Sources/App/Info.plist
       properties:
+        # The ten languages this app ships. Declared HERE, in the Info.plist proper: the
+        # `INFOPLIST_KEY_CFBundleLocalizations` build-setting variant is silently ignored, and
+        # without the real key every bundle in the process — the app's catalogs and every
+        # FCTFoundation module's — resolves English whatever it has been translated into.
+        CFBundleLocalizations:
+          - en
+          - es
+          - zh-Hans
+          - fr
+          - de
+          - pt-BR
+          - ja
+          - ko
+          - it
+          - ru
         # Every string below states WHERE the work happens and WHERE the result is kept, as two
         # separate facts. Collapsing them into "nothing leaves your device" is the one thing these
         # must never say: the recordings, the transcripts, a tagged place and a bound speaker's

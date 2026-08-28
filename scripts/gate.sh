@@ -40,7 +40,11 @@ SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
 # pinned rather than merely bounded.
 SHORTCUT_COUNT_MAC=10
 SHORTCUT_COUNT_IOS=9
-MIN_APP_TESTS=540
+MIN_APP_TESTS=560
+# The fleet's localization floor. Every one of these must be declared in CFBundleLocalizations
+# (the INFOPLIST_KEY_ variant is silently ignored) AND carry a real value for every key in both
+# catalogs; the drift leg below proves the second half against the compiler's own extraction set.
+SHIPPED_LANGUAGES="en,es,zh-Hans,fr,de,pt-BR,ja,ko,it,ru"
 VERIFY_SHORTCUTS="../FCTFoundation/scripts/verify-app-shortcuts.py"
 VERIFY_ICONS="../FCTFoundation/scripts/verify-app-icons.py"
 DD="$(mktemp -d -t ts-gate)"
@@ -104,7 +108,7 @@ mark "Debug + CLI builds (concurrent)"
 # WAVE 2 — both suites beside the Release build. The suites are app-hosted and their wall is
 # mostly async settles rather than CPU, so overlapping them with the one remaining compile is
 # close to free; serially the Release build was 42% of this gate on its own.
-echo "==> Unit suite + CLI suite + Release macOS"
+echo "==> Unit suite + CLI suite + Release builds"
 TEST_LOG="${LOGS}/tests.log"
 CLI_TEST_LOG="${LOGS}/clitests.log"
 leg_start unit-suite "${TEST_LOG}" \
@@ -117,6 +121,14 @@ leg_start cli-suite "${CLI_TEST_LOG}" \
     -derivedDataPath "${DD}/cli" -allowProvisioningUpdates test-without-building
 start_build macos-release TranscriptionStudio build "platform=macOS,arch=arm64" \
   -configuration Release
+# The iOS Release leg is here for the one class of break Debug structurally cannot see: a
+# `#if DEBUG` symbol that shipping code still calls compiles clean all day and fails only in the
+# archive. `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` is not an optimisation — Release defaults
+# ONLY_ACTIVE_ARCH to NO, and the x86_64 simulator slice cannot resolve the
+# `_CoreSpotlight_FoundationModels` cross-import overlay, so without the pin this leg does not
+# merely take twice as long, it fails.
+start_build ios-release TranscriptionStudio build "platform=iOS Simulator,name=${SIM_NAME}" \
+  -configuration Release ONLY_ACTIVE_ARCH=YES ARCHS=arm64
 
 leg_wait unit-suite || { grep -E '✘|error:|failed' "${TEST_LOG}" | head -40; fail "unit suite failed (log: ${TEST_LOG})"; }
 check_warnings "${TEST_LOG}" "unit suite"
@@ -133,7 +145,8 @@ CLI_TEST_COUNT="$(sed -n 's/.*Test run with \([0-9]*\) tests.*/\1/p' "${CLI_TEST
 [ -n "${CLI_TEST_COUNT}" ] || fail "could not read a test count from ${CLI_TEST_LOG}"
 echo "    ${CLI_TEST_COUNT} tests passed"
 collect_build macos-release
-mark "suites + Release build (concurrent)"
+collect_build ios-release
+mark "suites + Release builds (concurrent)"
 
 IOS_APP="${DD}/ios/Build/Products/Debug-iphonesimulator/TranscriptionStudio.app"
 MAC_APP="${DD}/macos/Build/Products/Debug/TranscriptionStudio.app"
@@ -256,6 +269,26 @@ linked_frameworks "${IOS_APP}" TranscriptionStudio | grep -q ScreenCaptureKit \
 echo "==> App icon in both artifacts"
 "${VERIFY_ICONS}" "${IOS_APP}" "${MAC_APP}" \
   || fail "App icon missing — see the message above."
+
+# A `Text("…")` added in source reaches the String Catalog only when Xcode's IDE extracts it on
+# build; a command-line xcodebuild never does. So the catalog silently stops covering the UI and
+# every non-English locale ships the raw English key — a failure no build, no test and no artifact
+# check anywhere else in this gate can see. The comparison is against the compiler's OWN extraction
+# set (the .stringsdata swiftc already emitted into the macOS DerivedData), so it costs no build.
+#
+# SCOPE, so a green leg is not read as more than it is: this covers strings declared in THIS
+# repo's sources. FCTFoundation's UI — the account gate, the onboarding carousel's own chrome —
+# resolves through `Bundle.module` against the package's own complete catalogs, so those surfaces
+# are the package's to translate and are not counted here.
+#
+# Both catalogs, table by table rather than as one merged pile: the App Shortcut phrases carry
+# their own, and a phrase sitting in the app's Localizable table is exactly as undelivered as one
+# sitting nowhere. `--require-languages` is what makes the leg about coverage rather than mere
+# presence — a key with no Japanese value ships English to a Japanese phone, and the catalog
+# holding the key is not the same as the catalog carrying the string.
+echo "==> Localization drift (this repo's own sources)"
+check_loc_drift "${DD}/macos" --require-languages "${SHIPPED_LANGUAGES}" \
+  Sources/App/Localizable.xcstrings Sources/App/AppShortcuts.xcstrings
 mark "artifact checks (Debug)"
 
 # The Release Mac archive is the shippable artifact and the ONLY place Hardened Runtime rides:

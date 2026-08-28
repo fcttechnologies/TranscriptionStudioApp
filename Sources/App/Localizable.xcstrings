@@ -83,6 +83,15 @@
     "%lld" : {
 
     },
+    "%lld change(s) hadn't reached the server, so this device kept its library at sign-out." : {
+      "extractionState" : "manual"
+    },
+    "%lld change(s) haven't reached the server. Signing out normally removes this library from this device, because your account can give it back — but these can't come back yet, so this device will keep everything instead. Stay signed in until sync finishes, or sign out and keep the library here." : {
+      "extractionState" : "manual"
+    },
+    "%lld change(s) the server refused" : {
+      "extractionState" : "manual"
+    },
     "%lld percent" : {
 
     },
@@ -139,6 +148,9 @@
     },
     "Answers come only from your own saved transcripts, on-device." : {
 
+    },
+    "Anything with audio in it" : {
+      "extractionState" : "manual"
     },
     "Apple Intelligence unavailable" : {
 
@@ -210,6 +222,12 @@
     "Couldn't delete model" : {
 
     },
+    "Couldn’t reach your account to restore your library. Check your connection and try again." : {
+      "extractionState" : "manual"
+    },
+    "Couldn’t restore your library" : {
+      "extractionState" : "manual"
+    },
     "Date" : {
 
     },
@@ -255,6 +273,9 @@
     "Dismiss suggestion: %@" : {
 
     },
+    "Drop in a file, paste a link, share from another app, or capture a meeting straight off your Mac." : {
+      "extractionState" : "manual"
+    },
     "Drop to transcribe" : {
 
     },
@@ -275,6 +296,9 @@
     },
     "Event" : {
 
+    },
+    "Every transcript is split by speaker. Name someone once and they’re named everywhere." : {
+      "extractionState" : "manual"
     },
     "Export" : {
 
@@ -322,11 +346,17 @@
     "Get Recording Status" : {
 
     },
+    "Getting your transcripts, highlights and speakers from your account." : {
+      "extractionState" : "manual"
+    },
     "Grant Screen Recording…" : {
 
     },
     "Granted — quit and reopen Transcription Studio before starting a meeting." : {
 
+    },
+    "Hide Inspector" : {
+      "extractionState" : "manual"
     },
     "Hide captions" : {
 
@@ -370,8 +400,14 @@
     "Larger captions" : {
 
     },
+    "Last synced" : {
+      "extractionState" : "manual"
+    },
     "Latest Transcript" : {
 
+    },
+    "Library storage" : {
+      "extractionState" : "manual"
     },
     "Link" : {
 
@@ -424,6 +460,12 @@
     "Naming a speaker makes “what did they say” searchable by name. Choosing a contact never grants access to your contacts." : {
 
     },
+    "Needs attention" : {
+      "extractionState" : "manual"
+    },
+    "New Recording" : {
+      "extractionState" : "manual"
+    },
     "New Title" : {
 
     },
@@ -469,6 +511,9 @@
     "Nothing is added until you tap Add. Transcription Studio only asks for permission to add — never to read your calendar." : {
 
     },
+    "Nothing is being spoken right now." : {
+      "extractionState" : "manual"
+    },
     "Nothing is playing right now." : {
 
     },
@@ -480,6 +525,15 @@
     },
     "OK" : {
 
+    },
+    "Off — this device only" : {
+      "extractionState" : "manual"
+    },
+    "Offline — retrying in %llds" : {
+      "extractionState" : "manual"
+    },
+    "Offline — will retry" : {
+      "extractionState" : "manual"
     },
     "On-device" : {
 
@@ -535,6 +589,12 @@
     "Pause a transcript's playback in Transcription Studio." : {
 
     },
+    "Pause speaking" : {
+      "extractionState" : "manual"
+    },
+    "Paused" : {
+      "extractionState" : "manual"
+    },
     "Permissions" : {
 
     },
@@ -577,11 +637,20 @@
     "Re-run cross-check" : {
 
     },
+    "Read a transcript aloud with the on-device voice in Transcription Studio. Defaults to your latest transcript." : {
+      "extractionState" : "manual"
+    },
     "Read back the full text of your most recent transcript." : {
 
     },
+    "Rebuild from the server" : {
+      "extractionState" : "manual"
+    },
     "Record Meeting" : {
 
+    },
+    "Record a conversation, a call or a meeting and watch the transcript arrive. The speech model runs on this device." : {
+      "extractionState" : "manual"
     },
     "Record or run a session to compare backends." : {
 
@@ -637,8 +706,14 @@
     "Renamed to \"%@\"." : {
 
     },
+    "Restoring your library…" : {
+      "extractionState" : "manual"
+    },
     "Resume" : {
 
+    },
+    "Resume speaking" : {
+      "extractionState" : "manual"
     },
     "Review a meeting or event found in a transcript and add it to your calendar." : {
 
@@ -660,6 +735,9 @@
     },
     "Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Location tagging is off unless you turn it on. Everything stays on this device." : {
 
+    },
+    "Room recording uses the microphone. Meeting capture records system audio through ScreenCaptureKit, which macOS gates behind Screen Recording. Location tagging is off unless you turn it on. What you record is transcribed on this device and stored in your FCT account — a tagged place travels with its session." : {
+      "extractionState" : "manual"
     },
     "Run cross-check" : {
 
@@ -697,14 +775,35 @@
     "Settings" : {
 
     },
+    "Settings…" : {
+      "extractionState" : "manual"
+    },
+    "Show Inspector" : {
+      "extractionState" : "manual"
+    },
+    "Show Sessions" : {
+      "extractionState" : "manual"
+    },
     "Show captions" : {
 
+    },
+    "Sign Out and Keep This Library" : {
+      "extractionState" : "manual"
+    },
+    "Sign in again to resume" : {
+      "extractionState" : "manual"
     },
     "Smaller captions" : {
 
     },
+    "Some changes haven't uploaded yet" : {
+      "extractionState" : "manual"
+    },
     "Something went wrong. Please try again." : {
 
+    },
+    "Speak Transcript" : {
+      "extractionState" : "manual"
     },
     "Speaker activity" : {
 
@@ -715,14 +814,29 @@
     "Speaker-attributed transcript will appear here as you speak." : {
 
     },
+    "Speaking" : {
+      "extractionState" : "manual"
+    },
+    "Speaking \"%@\"." : {
+      "extractionState" : "manual"
+    },
+    "Speaking %@. Opens the transcript." : {
+      "extractionState" : "manual"
+    },
     "Speech and diarization models download automatically the first time they're used." : {
 
     },
     "Speech model" : {
 
     },
+    "Speech processing" : {
+      "extractionState" : "manual"
+    },
     "Speech recognition" : {
 
+    },
+    "Speech recognition, speaker identification and synthesis run entirely on this device — your audio is never sent anywhere to be transcribed. Your library is stored in your private FCT account so it reaches your other devices: the transcripts, the highlights, the speakers, any place you tagged, and the recordings themselves. Summaries and transcript questions use Apple Intelligence, which runs on this device and may use Apple's Private Cloud Compute for a long transcript." : {
+      "extractionState" : "manual"
     },
     "Stage latency" : {
 
@@ -742,8 +856,20 @@
     "Stop Recording" : {
 
     },
+    "Stop Speaking" : {
+      "extractionState" : "manual"
+    },
+    "Stop Transcription Studio's on-device voice reading a transcript aloud." : {
+      "extractionState" : "manual"
+    },
+    "Stop speaking" : {
+      "extractionState" : "manual"
+    },
     "Stop the current recording in Transcription Studio and save the transcript." : {
 
+    },
+    "Stopped speaking." : {
+      "extractionState" : "manual"
     },
     "Storage" : {
 
@@ -763,20 +889,32 @@
     "Summarizing on-device…" : {
 
     },
+    "Summarizing…" : {
+      "extractionState" : "manual"
+    },
     "Summary" : {
 
     },
     "Switch back to the transcript" : {
 
     },
+    "Sync" : {
+      "extractionState" : "manual"
+    },
     "Sync error" : {
 
+    },
+    "Sync needs attention" : {
+      "extractionState" : "manual"
     },
     "Syncing" : {
 
     },
     "Syncing recordings" : {
 
+    },
+    "Syncing…" : {
+      "extractionState" : "manual"
     },
     "System load" : {
 
@@ -795,6 +933,9 @@
     },
     "That transcript has no meetings or events to add." : {
 
+    },
+    "That transcript has no text to speak." : {
+      "extractionState" : "manual"
     },
     "That transcript is no longer available." : {
 
@@ -816,6 +957,9 @@
     },
     "Thinking…" : {
 
+    },
+    "This device needs to rebuild" : {
+      "extractionState" : "manual"
     },
     "This link is queued. Open Transcription Studio on your Mac to transcribe it — the result syncs back here." : {
 
@@ -862,8 +1006,20 @@
     "Transcription Studio runs entirely on this device. Nothing is uploaded." : {
 
     },
+    "Transcription and speaker identification run on this device. Your library — the transcripts, the highlights, the speakers and the recordings themselves — is stored in your private FCT account, so it reaches your Mac and your iPhone and survives a new one. Signing out removes it from this device once everything has synced; it comes right back when you sign in again." : {
+      "extractionState" : "manual"
+    },
+    "Try Again" : {
+      "extractionState" : "manual"
+    },
     "Try asking" : {
 
+    },
+    "Try these again" : {
+      "extractionState" : "manual"
+    },
+    "Up to date" : {
+      "extractionState" : "manual"
     },
     "Upload from Photos" : {
 
@@ -873,6 +1029,9 @@
     },
     "Waiting for your Mac" : {
 
+    },
+    "Waiting to upload" : {
+      "extractionState" : "manual"
     },
     "WebVTT (.vtt)" : {
 
@@ -901,6 +1060,9 @@
     "Which transcript to play. Defaults to your latest." : {
 
     },
+    "Which transcript to speak. Defaults to your latest." : {
+      "extractionState" : "manual"
+    },
     "Which transcript to summarize. Defaults to your latest." : {
 
     },
@@ -919,8 +1081,14 @@
     "Which transcript's speakers would you like to name?" : {
 
     },
+    "Who said what" : {
+      "extractionState" : "manual"
+    },
     "Word (.docx)" : {
 
+    },
+    "Words as you speak them" : {
+      "extractionState" : "manual"
     },
     "You don't have any transcripts yet." : {
 
@@ -930,6 +1098,9 @@
     },
     "Your latest transcript is empty." : {
 
+    },
+    "Your library, on every device" : {
+      "extractionState" : "manual"
     },
     "cmpr" : {
 
@@ -969,6 +1140,9 @@
     },
     "“%@” and its transcript will be removed." : {
 
+    },
+    "“What did we decide about the March budget?” Ask Siri, or search every word you’ve ever recorded." : {
+      "extractionState" : "manual"
     }
   },
   "version" : "1.0"

@@ -2,8 +2,14 @@
 
 A native, universal (Mac-first) SwiftUI app: on-device transcription (WhisperKit) of URLs,
 files, and live recordings, with on-device speaker diarization (Streaming Sortformer via
-Core AI), plus on-device synthesis in the other direction. Fully offline. Two jobs: FCT's
-daily transcription driver, and a craft showcase.
+Core AI), plus on-device synthesis in the other direction. Two jobs: FCT's daily
+transcription driver, and a craft showcase.
+
+**Every model runs on the device; the library lives in the user's account.** Those are two
+separate facts and the app never collapses them: no audio is sent anywhere to be transcribed
+or synthesized, and the sessions, transcripts, highlights, speaker bindings, tagged places and
+the recordings themselves are all stored in the signed-in FCT account so they reach the user's
+other devices. Any copy that says otherwise is a defect — see `Documentation/PRIVACY_AND_SAFETY.md`.
 
 ## Platform matrix
 
@@ -84,6 +90,42 @@ Tests are **app-hosted** (`@testable import TranscriptionStudio`) in
 - Swift Testing (`@Test`/`#expect`), in-memory SwiftData per test.
 - Models: WhisperKit self-downloads; Sortformer artifacts via `scripts/fetch-models.sh`
   or the in-app downloader (never bundled in git).
+
+## The front door
+
+`RootView` (`Sources/App/Views/Root/`) is the whole of it, and it is the fleet's sequence with no
+per-app variation: the intro carousel, the required three-provider sign-in that ends it, the
+account's first pull, then the app. Stages 1 and 2 are **`FCTOnboarding`'s `AccountGate`** — this
+app supplies `TranscriptionOnboardingCarousel.items` (four titles, four subtitles, and a picture
+of itself per appearance, rendered from live SwiftUI mocks) and wires the gate; it never authors a
+pager, a dots row, a device frame or a sign-in surface. **Sign-in is required**: there is no
+optional account and no signed-out-but-using-the-app state, and the gate's content closure is not
+called until a session exists, so nothing behind it is constructed, queries the store, or starts a
+task while the gate is up.
+
+`TranscriptionFrontDoor` (`Sources/App/Services/`) owns what comes after. Its one job is that
+**the app is never built while the account's first pull is in flight**: `LibraryRestoreState`
+records, per account id, that this device has pulled this account's library down, and until it
+has, the window shows the restore stage — or its refusal, with a retry — rather than a feed that
+would say "no sessions yet" about a library nobody managed to read. That is what makes the empty
+state a fact rather than a guess, and it is why no surface below needs to guard it. Transcription
+Studio asks the user nothing of its own, so there is no setup stage; if it ever gains one it
+belongs here, after the restore.
+
+## Localization
+
+Ten languages: en, es, zh-Hans, fr, de, pt-BR, ja, ko, it, ru. Two catalogs, both in the app
+target — `Sources/App/Localizable.xcstrings` and `Sources/App/AppShortcuts.xcstrings` (the App
+Shortcut phrases, which are a separate table and just as undelivered sitting in the wrong one).
+The languages are declared in `CFBundleLocalizations` in the Info.plist proper; the
+`INFOPLIST_KEY_` build-setting variant is silently ignored and leaves every bundle in the process
+English.
+
+**A command-line build never merges newly-extracted keys into a catalog** — that merge is
+Xcode-GUI-only — so the gate's drift leg compares both catalogs against the compiler's own
+extraction set and fails on a key that is missing or untranslated. When it reports one, harvest it
+with `../FCTFoundation/scripts/loc-harvest.py` (byte-compatible with Xcode's writer) and translate
+it; never ship the key half-covered.
 
 ## Privacy
 

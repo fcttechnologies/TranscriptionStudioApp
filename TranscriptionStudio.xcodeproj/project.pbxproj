@@ -164,6 +164,7 @@
 		4F5BC04F3CB797F84661E28A /* BackgroundExecution.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645477D915C7913F2A0CE91C /* BackgroundExecution.swift */; };
 		4F62A50FCEA55B70A7833FA1 /* SessionIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D613A1CD3D75FB776887C5DE /* SessionIntelligence.swift */; };
 		4F7F99F8495F37C779FFBFB8 /* RecordingFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 943196472EB93DB3FF926667 /* RecordingFlowTests.swift */; };
+		50B1DBEA2B5EE75587E2BE27 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B47D456BF67B407F6EF93CEF /* AppShortcuts.xcstrings */; };
 		5107BF3D9B4D0B45C3D8A704 /* SuggestionChips.swift in Sources */ = {isa = PBXBuildFile; fileRef = C31DAC6F14BED4EAA368EB0A /* SuggestionChips.swift */; };
 		51322EAC0C7EA40A3BDC4419 /* PlaybackActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1AC1484A079C8265FE8A392 /* PlaybackActivity.swift */; };
 		516179D613752DE43CF2736C /* EventKitBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A1C32A73552A797E3F0E92 /* EventKitBuilder.swift */; };
@@ -400,6 +401,7 @@
 		D8722045898AE75B64025136 /* EventKitActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531AD169F12353E577DD9C33 /* EventKitActions.swift */; };
 		D87801692FE06B1FF32389F2 /* InspectorLoad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD98E47B0CFBCF1970AF293 /* InspectorLoad.swift */; };
 		D8E722BDB3CCECEA019D064B /* SessionIntelligenceSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9AC95073D1411873EBEDC8B /* SessionIntelligenceSheet.swift */; };
+		D9C17493FC769D9F6B5DE602 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B47D456BF67B407F6EF93CEF /* AppShortcuts.xcstrings */; };
 		DAD13DBDE017FBA418007176 /* SpotlightReindexDecisionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AD757BAE9BBEDFCBC7D76F /* SpotlightReindexDecisionTests.swift */; };
 		DB83A728DF40B41436BFA505 /* FCTAccount in Frameworks */ = {isa = PBXBuildFile; productRef = 942A223FB21D76131AE33052 /* FCTAccount */; };
 		DBAC06DF3055A510E66EC703 /* DebugTestAccountSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098F861D9F58A3C69B50BAD5 /* DebugTestAccountSignIn.swift */; };
@@ -742,6 +744,7 @@
 		B348575AE1A2A4CF1FCC1E83 /* TTSKitTtsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSKitTtsEngine.swift; sourceTree = "<group>"; };
 		B3FA4329A9F402854489EEFC /* TranscriptTurnView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptTurnView.swift; sourceTree = "<group>"; };
 		B45972C3986F56BAAAA48A08 /* WhisperKitModelLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperKitModelLayout.swift; sourceTree = "<group>"; };
+		B47D456BF67B407F6EF93CEF /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = AppShortcuts.xcstrings; sourceTree = "<group>"; };
 		B6E0107A922603C96102FB00 /* CapturePermissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePermissions.swift; sourceTree = "<group>"; };
 		B750F66150FCF3568DBEFF37 /* SortformerMelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SortformerMelTests.swift; sourceTree = "<group>"; };
 		B8D676A3A48EE8DF1B57F2C7 /* AudioFileIOTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioFileIOTests.swift; sourceTree = "<group>"; };
@@ -1009,6 +1012,7 @@
 		3010CBE53B7208402A53990C /* App */ = {
 			isa = PBXGroup;
 			children = (
+				B47D456BF67B407F6EF93CEF /* AppShortcuts.xcstrings */,
 				BC0A6FBE775B9F4D36FFB700 /* Assets.xcassets */,
 				DD16216E11A5914F3240534B /* Info.plist */,
 				0966D0B8003D2D5886ED6709 /* Localizable.xcstrings */,
@@ -1845,6 +1849,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D9C17493FC769D9F6B5DE602 /* AppShortcuts.xcstrings in Resources */,
 				B43089750FFF3B0B23512089 /* Localizable.xcstrings in Resources */,
 				2F28D88D321B15B46AF306B9 /* whisperkit-model-manifest.json in Resources */,
 			);
@@ -1854,6 +1859,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				50B1DBEA2B5EE75587E2BE27 /* AppShortcuts.xcstrings in Resources */,
 				D68B424E7AC7F1485A4B1A3D /* Assets.xcassets in Resources */,
 				66400A1EDAFB4E3B349CD163 /* Localizable.xcstrings in Resources */,
 				7A4E719CCB24B2245B6C82B4 /* PrivacyInfo.xcprivacy in Resources */,
@@ -2415,6 +2421,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2441,6 +2448,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.BackgroundAssetsExtension;
 				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2542,6 +2550,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2573,6 +2582,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2610,6 +2620,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2635,6 +2646,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fcttechnologies.transcribe-cli";
 				PRODUCT_NAME = "transcribe-cli";
 				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2665,6 +2677,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2690,6 +2703,7 @@
 				OTHER_LDFLAGS = "$(OTHER_LDFLAGS) -dylib_path $(BUILT_PRODUCTS_DIR)/transcribe-cli.debug.dylib";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.CLITests;
 				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2771,6 +2785,7 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2797,6 +2812,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.WidgetExtension;
 				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2822,6 +2838,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.fcttechnologies.transcribe-cli";
 				PRODUCT_NAME = "transcribe-cli";
 				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2846,6 +2863,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.WidgetExtension;
 				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2871,6 +2889,7 @@
 				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.BackgroundAssetsExtension;
 				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
@@ -2896,6 +2915,7 @@
 				OTHER_LDFLAGS = "$(OTHER_LDFLAGS) -dylib_path $(BUILT_PRODUCTS_DIR)/transcribe-cli.debug.dylib";
 				PRODUCT_BUNDLE_IDENTIFIER = com.fcttechnologies.TranscriptionStudio.CLITests;
 				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
