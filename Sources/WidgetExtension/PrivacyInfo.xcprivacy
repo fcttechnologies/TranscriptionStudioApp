@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The widget extension's own manifest: a bundle's required-reason declarations never inherit
+	     from the app that embeds it, so this declares for the appex alone. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Nothing collected here. The extension renders the recording and playback Live Activities
+	     from the attributes ActivityKit hands it; its button intents perform in the app's process
+	     (`LiveActivityIntent`), so this bundle reads no store and opens no network connection. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- No required reason API. The extension compiles only the lean glance sources
+	     (`Sources/WidgetExtension` plus `Sources/App/Glance`) and links no package, so nothing in
+	     this bundle touches user defaults, file timestamps, disk space, system boot time or the
+	     active-keyboards list. -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

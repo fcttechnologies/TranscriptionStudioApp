@@ -211,6 +211,24 @@ echo "==> Embedded extensions per platform"
 [ ! -e "${MAC_APP}/Contents/Extensions/BackgroundAssetsExtension.appex" ] \
   || fail "macOS build embedded the iOS-only Background Assets extension"
 
+# A privacy manifest is a plain resource, and a bundle's declarations never inherit from the app
+# that embeds it: every bundle Transcription Studio ships needs its own. A manifest authored into a
+# directory that is not on the target's source paths appears in no artifact and no build reports
+# it — it documents intent while satisfying nothing, so all six are read out of the built products.
+# The file sits at the bundle root on iOS and under Contents/Resources on macOS.
+echo "==> Privacy manifest in every shipped bundle"
+for manifest in "${IOS_APP}/PrivacyInfo.xcprivacy" \
+                "${IOS_APP}/PlugIns/ShareExtension.appex/PrivacyInfo.xcprivacy" \
+                "${IOS_APP}/PlugIns/WidgetExtensioniOS.appex/PrivacyInfo.xcprivacy" \
+                "${IOS_APP}/Extensions/BackgroundAssetsExtension.appex/PrivacyInfo.xcprivacy" \
+                "${MAC_APP}/Contents/Resources/PrivacyInfo.xcprivacy" \
+                "${MAC_APP}/Contents/PlugIns/ShareExtension.appex/Contents/Resources/PrivacyInfo.xcprivacy"; do
+  [ -f "${manifest}" ] || { fail "missing ${manifest}"; continue; }
+  plutil -lint "${manifest}" >/dev/null || fail "${manifest} is not a valid property list"
+  [ "$(plutil -extract NSPrivacyTracking raw -o - "${manifest}" 2>/dev/null)" = "false" ] \
+    || fail "${manifest} does not declare NSPrivacyTracking = false"
+done
+
 # ScreenCaptureKit has no meeting-capture API on iOS, so the Mac-only capture code compiles into
 # the macOS product alone. A dropped guard stops the iOS build compiling, but nothing reports the
 # other direction — a silent exclusion would leave a Mac app with no meeting capture and no URL

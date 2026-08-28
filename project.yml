@@ -261,6 +261,9 @@ targets:
           - "TranscriptionShortcuts.swift"
           - "Info.plist"
           - "*.entitlements"
+          # A privacy manifest is a bundle resource. This target is a Mach-O tool with no bundle,
+          # so sweeping it in would only add a copy-file step producing nothing.
+          - "PrivacyInfo.xcprivacy"
           - "Assets.xcassets/**"
           - "MacShell/MacRootView.swift"   # SwiftUI Mac window shell — app-only
           # The front door (account gate, intro carousel, restore stage). App-only, and the one

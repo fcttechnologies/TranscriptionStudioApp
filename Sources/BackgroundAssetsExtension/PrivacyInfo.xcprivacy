@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The Background Assets extension's own manifest: a bundle's required-reason declarations
+	     never inherit from the app that embeds it, so this declares for the appex alone. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Nothing collected here. The extension only schedules downloads of the WhisperKit model
+	     files listed in the manifest and writes them into the App Group container. Its network
+	     traffic is outbound fetches of public model weights; it reads nothing about the person
+	     using the device and uploads nothing. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- No required reason API. The extension compiles `WhisperModelDownloaderExtension` plus the
+	     model layout/manifest sources and `AppGroup`, and links no package. It reads a downloaded
+	     file's SIZE (`FileManager.attributesOfItem(atPath:)[.size]`) to verify a download, which
+	     is not one of the covered file-timestamp APIs; nothing here touches a file timestamp,
+	     user defaults, disk space, system boot time or the active-keyboards list. -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

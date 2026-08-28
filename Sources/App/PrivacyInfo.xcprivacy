@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Transcription Studio tracks nobody: no analytics SDK, no advertising identifier, and
+	     nothing this app collects is joined to data from another company.
+	     Documentation/PRIVACY_AND_SAFETY.md carries the data inventory this declares.
+
+	     A manifest covers ONE bundle. The share, widget and Background Assets extensions carry
+	     their own, because a bundle's required-reason declarations never inherit from the app
+	     that embeds it. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- The app is not local-only. Every session syncs to the user's own FCT account: the
+	     transcript and its extracted highlights cross as records (TranscriptionSyncSchema), and
+	     the recording itself crosses as a blob — TranscriptionSync.stageAuthoredAudio moves the
+	     bytes out of TranscriptSession.audioData into BlobStore, which uploads them through
+	     SupabaseStorageTransport. All of it is custody so the user's own devices stay in step —
+	     App Functionality — and all of it is linked to the account identity by construction,
+	     since the account id is what every synced row and blob is scoped by. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array>
+		<!-- The FCT account's own email address: Sign in with Apple's relayed or real address, or
+		     the address on an email/password account (FCTAccount's StoredSession.displayEmail). -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- The account id every synced row and blob is scoped by. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- The per-install device identifier and device name behind the companion presence
+		     heartbeat (`MacPresence.deviceIDString` / `deviceName`, a UUID minted by
+		     `CompanionDevice`), and the same id on `TranscriptSession.claimedBy` — which device
+		     is awake and which one claimed a job. Not an advertising identifier; nothing reads
+		     it outside the user's own account. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- The recording itself. Every session's audio leaves the device as a blob owned by the
+		     session row (`TranscriptSession.audioAsset`), fetched back on demand when another of
+		     the user's devices plays it. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeAudioData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Names of people other than the user: speakers bound to a name
+		     (`SpeakerAssignment.displayName`), people named in a transcript
+		     (`TranscriptPerson.name`), an action item's owner (`TranscriptActionItem.owner`) and a
+		     meeting's attendees (`TranscriptEvent.attendees`). -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Address-book data: binding a diarized speaker to a contact syncs that contact's
+		     `CNContact.identifier` alongside the name (`SpeakerAssignment.contactIdentifier`), so
+		     the same binding re-resolves on the user's other devices. No other contact field
+		     leaves the device, and no list of contacts is ever uploaded. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeContacts</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- The words themselves and everything read off them: session titles, the full transcript
+		     (`TranscriptSession.fullText`, `StoredSegment.text` and its word timings), the source
+		     URL of an ingested link, and the extracted highlights — decisions, action items and
+		     events (`TranscriptDecision`, `TranscriptActionItem`, `TranscriptEvent`,
+		     `TranscriptPlace`). -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- The opt-in recording-location tag, off by default. When it is on,
+		     `RecordingLocationProvider` takes one fix from `CLLocationUpdate.liveUpdates()` and
+		     `RecordingArchiver` stores the full-resolution latitude/longitude on the session; both
+		     columns ride the wire (`TranscriptSession.syncRow`) so the Maps chip works on the
+		     user's other devices. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!-- CA92.1 — the app's own defaults suite, nothing shared: the model and voice choices
+		     (`AppSettings`), the live-caption size step (`@AppStorage` in `LiveCaptionView`), the
+		     per-install companion device id (`CompanionDevice`), the first-launch bootstrap flag
+		     (`LibraryBootstrap`) and FCTAccount's `AccountController` session preferences. The App
+		     Group is used for its file container (the ingest drop box, the SwiftData store), not
+		     for a shared defaults suite. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+		<!-- C617.1 — file metadata inside the app's own containers, never sent off-device.
+		     `LuxTtsCloningEngine.preparedPrompt` keys its prompt cache on the modification date of
+		     a voice reference clip in Application Support, and FCTMetrics reads the modification
+		     date of the MetricKit payload files it wrote into the App Group container. FCTMetrics
+		     is linked through FCTServerSync and FCTAccount, and a Swift package ships no manifest
+		     of its own, so the bundle that embeds the code declares it. -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
