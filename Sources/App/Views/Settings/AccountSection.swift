@@ -2,32 +2,34 @@ import FCTAccount
 import FCTServerSync
 import SwiftUI
 
-/// Transcription Studio's palette and copy, carried into the account module's sheet without the
-/// module knowing what this app is.
+/// Transcription Studio's palette and copy, carried into the account module's surfaces without the
+/// module knowing what this app is. Used by the front-door gate, which is the only place this app
+/// ever asks anyone to sign in.
 @MainActor
 enum TranscriptionAccountAppearance {
     static let standard = AccountAppearance(
-        title: String(localized: "Keep your transcripts on every device"),
+        title: String(localized: "Your library, on every device"),
         footnote: String(
             localized: """
-            Transcription Studio works without an account, and transcription always runs on this \
-            device. Signing in keeps your library — transcripts, highlights, and the recordings \
-            themselves — in step across your Mac and iPhone. Signing out removes them from this \
-            device once everything has synced; they come right back when you sign in again.
+            Transcription and speaker identification run on this device. Your library — the \
+            transcripts, the highlights, the speakers and the recordings themselves — is stored \
+            in your private FCT account, so it reaches your Mac and your iPhone and survives a \
+            new one. Signing out removes it from this device once everything has synced; it comes \
+            right back when you sign in again.
             """
         )
     )
 }
 
 /// The account + sync block Settings drops in: the shipped `AccountSettingsSection` with this
-/// app's sync status inside it, its sign-out pre-flight, and — with no account — the
-/// non-blocking sign-in row. The app is whole without an account; this is settings-first, never
-/// a wall.
+/// app's sync status inside it, and its sign-out pre-flight.
+///
+/// There is no sign-in row here. Settings does not exist until a session does — `AccountGate` at
+/// the root is what makes that structural rather than a rule — so the only account states this
+/// surface can be in are signed-in and signing out.
 struct AccountSection: View {
     let account: AccountController
     let sync: TranscriptionSync
-
-    @Binding var signInPresented: Bool
 
     /// Held while the sign-out pre-flight waits for the user's answer. `beforeSignOut` is an
     /// `async` hook and a confirmation dialog is a view, so the continuation is what joins them.
@@ -58,19 +60,6 @@ struct AccountSection: View {
             in until sync finishes, or sign out and keep the library here.
             """)
         }
-
-        if account.state.account == nil {
-            Section {
-                Button {
-                    signInPresented = true
-                } label: {
-                    Label("Sign in to sync", systemImage: "person.crop.circle")
-                }
-                .accessibilityIdentifier("settings.signIn")
-            } footer: {
-                Text("Transcription Studio works without an account. Signing in keeps your transcripts and recordings in step across your devices.")
-            }
-        }
     }
 
     /// Sign-out is the one act with no way back: after `.signedOut` there is no token left to
@@ -96,18 +85,6 @@ struct AccountSection: View {
     }
 }
 
-extension View {
-    /// The sign-in sheet, presented by the same surface that shows ``AccountSection``.
-    func transcriptionSignInSheet(isPresented: Binding<Bool>, account: AccountController) -> some View {
-        sheet(isPresented: isPresented) {
-            AccountSignInView(controller: account, appearance: TranscriptionAccountAppearance.standard)
-                #if os(iOS)
-                .presentationDetents([.medium, .large])
-                #endif
-        }
-    }
-}
-
 /// The sync state, said out loud.
 ///
 /// R3: an empty library and an unreachable server look identical and mean opposite things, so
@@ -116,6 +93,7 @@ struct SyncStatusRow: View {
     let sync: TranscriptionSync
 
     @State private var isResyncing = false
+    @State private var isRetrying = false
 
     var body: some View {
         Group {
@@ -125,7 +103,7 @@ struct SyncStatusRow: View {
             } label: {
                 Text("Sync")
             }
-            .accessibilityIdentifier("settings.syncStatus")
+            .accessibilityIdentifier(A11yID.settingsSyncStatus)
 
             if sync.counted.retrying > 0 {
                 LabeledContent("Waiting to upload", value: "\(sync.counted.retrying)")
@@ -147,6 +125,7 @@ struct SyncStatusRow: View {
                     Text("\(needsAttentionCount)")
                         .foregroundStyle(.tint)
                 }
+                retryRefusedButton
             }
 
             if sync.keptOnSignOut > 0 {
@@ -190,6 +169,34 @@ struct SyncStatusRow: View {
                     .foregroundStyle(.tertiary)
             }
         }
+    }
+
+    /// The way back from a refusal, beside the count that reports it. A row reading "3 changes the
+    /// server refused" with nothing next to it is a dead end, and the refusal blocks its own
+    /// recovery: the drained-outbox barrier counts stuck entries, so a poisoned outbox refuses both
+    /// the full resync and the sign-out, leaving deleting the app as the only route back.
+    ///
+    /// One button for both wires, because that is how the count above reads them — a judged record
+    /// and a refused recording pose the same question. Here that matters more than in any other app
+    /// in the fleet: the recordings ride the blob layer, so the bytes a refusal strands are the
+    /// audio itself.
+    @ViewBuilder
+    private var retryRefusedButton: some View {
+        Button {
+            isRetrying = true
+            Task {
+                await sync.retryRefused()
+                isRetrying = false
+            }
+        } label: {
+            if isRetrying {
+                ProgressView()
+            } else {
+                Text("Try these again")
+            }
+        }
+        .disabled(isRetrying)
+        .accessibilityIdentifier(A11yID.settingsRetryRefused)
     }
 
     private var headline: String {

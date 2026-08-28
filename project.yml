@@ -84,6 +84,10 @@ targets:
         product: FCTBlobSync
       - package: FCTFoundation
         product: FCTAccount
+      # The front door: the intro carousel and the required sign-in that ends it. The app supplies
+      # its pages and nothing else — no pager, no dots, no sign-in surface of its own.
+      - package: FCTFoundation
+        product: FCTOnboarding
       - package: FCTFoundation
         product: FCTGlanceables
       # The Share extension ships on both platforms and is itself multiplatform — no filter.
@@ -109,13 +113,19 @@ targets:
     info:
       path: Sources/App/Info.plist
       properties:
+        # Every string below states WHERE the work happens and WHERE the result is kept, as two
+        # separate facts. Collapsing them into "nothing leaves your device" is the one thing these
+        # must never say: the recordings, the transcripts, a tagged place and a bound speaker's
+        # name are all stored in the user's FCT account (TranscriptionSync + TranscriptionSyncSchema).
         NSMicrophoneUsageDescription: >-
-          Transcription Studio records from your microphone to transcribe and
-          identify speakers — entirely on this device. Nothing leaves your device.
+          Transcription Studio records from your microphone. Speech recognition and
+          speaker identification run entirely on this device; the recording and its
+          transcript are stored in your private FCT account so they reach your other devices.
         # macOS only (ScreenCaptureKit meeting capture); inert in the iOS build.
         NSAudioCaptureUsageDescription: >-
-          Transcription Studio captures system audio to transcribe meetings and
-          calls — entirely on this device. Nothing leaves your Mac.
+          Transcription Studio captures system audio to transcribe meetings and calls.
+          Transcription runs entirely on this Mac; the recording and its transcript are
+          stored in your private FCT account so they reach your other devices.
         # Ecosystem actions (Phase 3). Calendar is write-only — the app only ever *adds* an
         # event you review and confirm; it never reads your calendar. Reminders has no write-only
         # scope, so it requests the minimal available (full). Contacts is read-only, used to match
@@ -128,18 +138,21 @@ targets:
           your reminders.
         NSContactsUsageDescription: >-
           Transcription Studio matches names in your transcripts to your contacts so
-          speakers and mentions show real names — read only, entirely on this device.
+          speakers and mentions show real names. It only reads your contacts; the name
+          you bind to a speaker is saved with that transcript in your FCT account.
         # Per-session privacy lock: Face ID / Touch ID (passcode fallback) gates opening a
         # session you've marked private.
         NSFaceIDUsageDescription: >-
           Transcription Studio uses Face ID to unlock sessions you've marked private, so
           only you can open them.
         # Opt-in recording-location tag (off by default). Captured once at recording start and
-        # reverse-geocoded to a coarse place name stored with the session — entirely on this
-        # device; the location is never uploaded.
+        # reverse-geocoded to a coarse place name stored with the session — which then travels
+        # with that session to the account (`location_name`/`latitude`/`longitude` are columns on
+        # the transcript_session wire).
         NSLocationWhenInUseUsageDescription: >-
-          Transcription Studio can tag a recording with the place you made it, so you can find
-          it by location later — captured only while recording and kept entirely on this device.
+          Transcription Studio can tag a recording with the place you made it, so you can find it
+          by location later. It's captured only while recording, and the tag is saved with that
+          session in your private FCT account so it reaches your other devices.
         # iOS-only keys below; each is inert in the macOS build.
         UIBackgroundModes:
           - audio
@@ -250,6 +263,9 @@ targets:
           - "*.entitlements"
           - "Assets.xcassets/**"
           - "MacShell/MacRootView.swift"   # SwiftUI Mac window shell — app-only
+          # The front door (account gate, intro carousel, restore stage). App-only, and the one
+          # place FCTOnboarding is imported — a headless tool has no front door to open.
+          - "Views/Root/**"
     dependencies:
       - package: FCTFoundation
         product: FCTEntities

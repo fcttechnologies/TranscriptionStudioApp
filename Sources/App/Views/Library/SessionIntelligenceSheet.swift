@@ -79,7 +79,10 @@ struct SessionIntelligenceSheet: View {
             case .idle, .loading:
                 HStack(spacing: DesignMetrics.spacingS) {
                     ProgressView()
-                    Text("Summarizing on-device…").foregroundStyle(.secondary)
+                    // Not "on-device": a transcript past the on-device context window escalates to
+                    // Private Cloud Compute, and a spinner is the wrong place to make a claim
+                    // about where the work is running.
+                    Text("Summarizing…").foregroundStyle(.secondary)
                 }
                 .padding(.vertical, DesignMetrics.spacingS)
             case .text(let value):
@@ -101,7 +104,7 @@ struct SessionIntelligenceSheet: View {
                 TextField("e.g. What did we decide about the budget?", text: $question)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(askQuestion)
-                    .accessibilityIdentifier("intelligence.question")
+                    .accessibilityIdentifier(A11yID.intelligenceQuestion)
                 Button("Ask", systemImage: "arrow.up.circle.fill") { askQuestion() }
                     .labelStyle(.iconOnly)
                     .font(.title2)

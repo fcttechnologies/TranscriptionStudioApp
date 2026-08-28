@@ -28,16 +28,14 @@ struct StudioHomeView: View {
     @Environment(\.modelContext) private var modelContext
     // Optional so previews/tests that host this view without the app-root injection still resolve.
     @Environment(TranscriptionSync.self) private var sync: TranscriptionSync?
-    @Environment(LibraryBootstrap.self) private var bootstrap: LibraryBootstrap?
     // The feed itself is a native `@Query(sectionBy:)` in `SessionFeed` (live for local writes).
     // `storeObserver` supplies the cross-device freshness a bare `@Query` misses: its
-    // `remoteGeneration` re-identifies the feed on a change the sync applier landed, and its
-    // `changeToken` (local + applied) drives the first-launch bootstrap gate below (which must
-    // also react to the first pull that populates the library).
+    // `remoteGeneration` re-identifies the feed on a change the sync applier landed.
+    //
+    // This view never reasons about an empty library meaning anything: it is constructed only
+    // after the front door's restore stage has landed the account's first pull, so an empty feed
+    // here is genuinely empty (`TranscriptionFrontDoor`).
     @State private var storeObserver: SessionStoreObserver?
-    // Whether the library has any sessions — the bootstrap "Syncing…" gate reads this. Recomputed
-    // by a cheap count on every store change so it, too, reflects a remote import immediately.
-    @State private var isLibraryEmpty = true
 
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
@@ -90,21 +88,10 @@ struct StudioHomeView: View {
                 .environment(app)
         }
         .withToast()
-        .overlay { bootstrapOverlay }
         .task {
             if storeObserver == nil {
                 storeObserver = SessionStoreObserver(container: modelContext.container)
             }
-            refreshLibraryEmptiness()
-            bootstrap?.beginIfNeeded()
-        }
-        // A cheap count on every store change (a local save or an applied remote change) keeps
-        // the bootstrap gate current; the feed itself refreshes via its own `@Query` + the remote
-        // re-identify above.
-        .onChange(of: storeObserver?.changeToken) { _, _ in refreshLibraryEmptiness() }
-        .onChange(of: isLibraryEmpty) { _, isEmpty in
-            // The library arrived (or was never empty) — reveal the feed, don't sit behind the gate.
-            if !isEmpty { bootstrap?.markReady() }
         }
         .dropDestination(for: URL.self) { urls, _ in
             for url in urls { startFile(url) }
@@ -170,7 +157,7 @@ struct StudioHomeView: View {
         Button("Ask your library", systemImage: "sparkle.magnifyingglass") {
             app.activeSheet = .askLibrary
         }
-        .accessibilityIdentifier("toolbar.askLibrary")
+        .accessibilityIdentifier(A11yID.toolbarAskLibrary)
     }
 
     /// A quiet sync-status glyph (syncing/offline/needs-attention; invisible when idle).
@@ -183,14 +170,14 @@ struct StudioHomeView: View {
             app.activeSheet = .inspector
         }
         .keyboardShortcut("i", modifiers: .command)
-        .accessibilityIdentifier("toolbar.inspectorToggle")
+        .accessibilityIdentifier(A11yID.toolbarInspectorToggle)
     }
 
     private var settingsButton: some View {
         Button("Settings", systemImage: "gearshape") {
             app.activeSheet = .settings
         }
-        .accessibilityIdentifier("toolbar.settingsToggle")
+        .accessibilityIdentifier(A11yID.toolbarSettingsToggle)
     }
 
     /// The "+" menu — and, while a recording runs, the Stop button it becomes.
@@ -208,7 +195,7 @@ struct StudioHomeView: View {
             }
             .tint(.red)
             .disabled(app.recording.phase == .finishing)
-            .accessibilityIdentifier("toolbar.stop")
+            .accessibilityIdentifier(A11yID.toolbarStop)
         } else {
             Menu {
                 Button("Start Recording", systemImage: "mic") {
@@ -235,22 +222,7 @@ struct StudioHomeView: View {
             } label: {
                 Label("Add", systemImage: "plus")
             }
-            .accessibilityIdentifier("toolbar.compose")
-        }
-    }
-
-    /// First-launch "restoring your library…" state, shown over an empty feed while the first
-    /// pull is still landing — so a fresh install doesn't read as "you have nothing".
-    @ViewBuilder
-    private var bootstrapOverlay: some View {
-        if bootstrap?.phase == .syncing, isLibraryEmpty {
-            ContentUnavailableView {
-                Label("Restoring your library…", systemImage: "arrow.triangle.2.circlepath")
-            } description: {
-                Text("Getting your transcripts from your account.")
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(.feedCanvas)
+            .accessibilityIdentifier(A11yID.toolbarCompose)
         }
     }
 
@@ -288,14 +260,6 @@ struct StudioHomeView: View {
     }
 
     // MARK: Feed data
-
-    /// Recompute whether the library is empty (a fresh count reads the store's current state,
-    /// including rows the sync applier merged in — which a bare `@Query` misses). Drives only the
-    /// bootstrap gate; the feed's own `@Query` renders the sessions.
-    private func refreshLibraryEmptiness() {
-        let count = (try? modelContext.fetchCount(FetchDescriptor<TranscriptSession>())) ?? 0
-        isLibraryEmpty = count == 0
-    }
 
     /// Resolve one session by id from the view context — for the open-transcript sheet.
     private func fetchSession(id: UUID) -> TranscriptSession? {

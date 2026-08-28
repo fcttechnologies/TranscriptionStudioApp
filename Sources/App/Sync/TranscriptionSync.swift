@@ -132,6 +132,10 @@ final class TranscriptionSync {
     /// Server-applied writes bypass every app write seam, so the Spotlight index hears about them
     /// only here.
     @ObservationIgnored var onRemoteChanges: (@MainActor () -> Void)?
+    /// Fired when this device's copy of the library was wiped — sign-out, account switch, or a
+    /// deletion. The front door forgets that this device ever restored, so the next sign-in pulls
+    /// the library down again rather than opening onto an empty store.
+    @ObservationIgnored var onLocalDataCleared: (@MainActor () -> Void)?
     /// The account the engine is built from — the controller's credentials in production, a fake
     /// in the bootstrap tests.
     @ObservationIgnored var currentAccount: () -> (any SyncAccount)? = { nil }
@@ -230,6 +234,57 @@ final class TranscriptionSync {
             publish(result)
             scheduleRetry(after: result)
         } while syncAgain
+    }
+
+    /// The account's first pull on this device, awaited — the front door's restore stage. Answers
+    /// whether the library actually came down, so a refusal can be shown as a refusal instead of
+    /// resolving into a feed that says "no sessions yet" about a library nobody managed to read.
+    ///
+    /// The wait at the top is the part that matters: the engine is built from the account's event
+    /// stream, which races this caller, and `syncNow()` folds a concurrent request into the running
+    /// cycle and returns at once — so calling it while a cycle was already in flight would hand
+    /// back a verdict about a pull that had not happened.
+    func restoreAccountData(waitingUpTo timeout: Duration = .seconds(30)) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while engine == nil || syncInFlight {
+            guard ContinuousClock.now < deadline else { return false }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        await syncNow()
+        return status == .idle
+    }
+
+    /// **The one way back from a refusal**, across both wires: everything the server judged and
+    /// every object the store refused goes back to pending, then a cycle runs.
+    ///
+    /// One explicit action, never a loop. The engine is right that a refused payload must not
+    /// retry itself — the server judged that payload. It is only right about the *payload*, though:
+    /// a refusal caused by the server's own state (a key collision, a column its schema had not
+    /// learned) is repaired somewhere this device cannot see, on rows nobody is editing, so nothing
+    /// local will ever change and nothing will ever re-queue them. And a refusal blocks its own
+    /// recovery — the drained-outbox barrier counts stuck entries, so a device holding them can
+    /// neither rebuild from the server nor sign out, and the only remaining move is deleting the
+    /// app.
+    ///
+    /// Both wires together, because the row that reports refusals reports one number: a judged
+    /// record and a refused recording give a person the same problem and the same question, and an
+    /// action that silently fixed one of the two would be worse than none. That matters more here
+    /// than anywhere in the fleet — the recordings themselves ride the blob layer, so the bytes a
+    /// refusal strands are the audio.
+    @discardableResult
+    func retryRefused() async -> Int {
+        var requeued = engine?.retryFailed() ?? 0
+        requeued += blobStore?.retryFailed() ?? 0
+        engine?.resetBackoff()
+        blobStore?.resetBackoff()
+        await syncNow()
+        return requeued
+    }
+
+    /// What the refused uploads were and why, for a surface that names them rather than only
+    /// counting them. Empty when there is no blob store to ask.
+    var refusedUploads: [BlobOutboxEntry] {
+        blobStore?.failedEntries() ?? []
     }
 
     /// Coalesce a burst of triggers into one cycle: a finishing transcription saves its session,
@@ -492,6 +547,8 @@ final class TranscriptionSync {
             keptOnSignOut = unpushedRecords + undrainedUploads
             self.engine = nil
             self.blobStore = nil
+            // Nothing was cleared, so this device's library is still the account's — the next
+            // sign-in resumes onto it rather than restoring it.
             return
         }
 
@@ -513,6 +570,7 @@ final class TranscriptionSync {
         self.engine = nil
         self.blobStore = nil
         onRemoteChanges?()
+        if keptOnSignOut == 0 { onLocalDataCleared?() }
     }
 
     /// Every synced row, the sync state, the upload queue and the whole recording cache — gone.
@@ -532,6 +590,7 @@ final class TranscriptionSync {
         counted = OutboxCensus()
         blobCounted = OutboxCensus()
         onRemoteChanges?()
+        onLocalDataCleared?()
     }
 
     /// An engine with no account behind it, for the one job that outlives the credentials: wiping

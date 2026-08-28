@@ -23,9 +23,14 @@ final class BootstrapDevice {
     private let storeURL: URL
     private let base: URL
 
+    /// - Parameter transportLatency: a delay in front of every record round trip. The field serves
+    ///   slow answers as often as failed ones, and a cycle that is merely *slow* is the case a
+    ///   concurrency guard gets wrong — it makes an in-flight cycle wide enough for a second caller
+    ///   to arrive inside it.
     init(server: FakeSyncServer = FakeSyncServer(),
          objects: FakeBlobObjectStore = FakeBlobObjectStore(),
-         accountID: UUID = UUID()) throws {
+         accountID: UUID = UUID(),
+         transportLatency: Duration = .zero) throws {
         self.server = server
         self.objects = objects
         self.accountID = accountID
@@ -40,7 +45,11 @@ final class BootstrapDevice {
             stateFileURL: { base.appendingPathComponent("syncstate.json") },
             blobStateFileURL: { base.appendingPathComponent("blobstate.json") },
             blobCacheDirectory: { base.appendingPathComponent("cache", isDirectory: true) },
-            makeTransport: { _ in FakeTransport(server: server) },
+            makeTransport: { _ -> any SyncTransport in
+                let fake = FakeTransport(server: server)
+                guard transportLatency != .zero else { return fake }
+                return LaggingTransport(wrapping: fake, delay: transportLatency)
+            },
             makeBlobTransport: { _ in FakeBlobTransport(store: objects) },
             // `LocalSaveTrigger` observes saves process-wide, so a test process would wake one
             // suite's engine on another suite's writes. Each harness supplies its own trigger set;
@@ -84,6 +93,30 @@ final class BootstrapDevice {
         sync.quiesceForTesting()
         TestStoreFactory.removeStore(at: storeURL)
         try? FileManager.default.removeItem(at: base)
+    }
+}
+
+/// A server that answers correctly, slowly. The third failure the field serves — beside
+/// unreachable and refused — and the only one that gives a second caller a window to arrive inside
+/// a cycle that has already started.
+nonisolated struct LaggingTransport: SyncTransport {
+    let wrapped: any SyncTransport
+    let delay: Duration
+
+    init(wrapping wrapped: any SyncTransport, delay: Duration) {
+        self.wrapped = wrapped
+        self.delay = delay
+    }
+
+    func push(schemaVersion: String, records: [PushRecord]) async throws -> [PushVerdict] {
+        try await Task.sleep(for: delay)
+        return try await wrapped.push(schemaVersion: schemaVersion, records: records)
+    }
+
+    func pull(schemaVersion: String, table: String, cursor: Int64, pageLimit: Int) async throws -> PullEnvelope {
+        try await Task.sleep(for: delay)
+        return try await wrapped.pull(schemaVersion: schemaVersion, table: table,
+                                      cursor: cursor, pageLimit: pageLimit)
     }
 }
 

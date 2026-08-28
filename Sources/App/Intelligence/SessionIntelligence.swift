@@ -50,10 +50,12 @@ enum IntelligenceError: Error, Equatable {
     case emptyTranscript
 }
 
-/// On-device transcript intelligence: summaries and grounded Q&A over a transcript, powered by
-/// Apple's Foundation Models. Everything runs locally — transcript text never leaves the
-/// device and is never logged. Availability is gated at runtime; on hardware without Apple
-/// Intelligence every call degrades to a thrown `IntelligenceError.unavailable` (never a crash).
+/// Transcript intelligence: summaries and grounded Q&A over a transcript, powered by Apple's
+/// Foundation Models. The default tier is on-device; a transcript that overflows the live
+/// on-device context window escalates to Apple's Private Cloud Compute, so for that one request
+/// the trimmed transcript body does leave the device (`plannedTier`, `generate`). Nothing is ever
+/// logged either way. Availability is gated at runtime; on hardware without Apple Intelligence
+/// every call degrades to a thrown `IntelligenceError.unavailable` (never a crash).
 ///
 /// The status source is injectable so the gate can be tested on any machine.
 struct SessionIntelligence: Sendable {
