@@ -83,6 +83,7 @@
 		290B5DA134420B5BF594402C /* ActivityLevels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E6BBE2F91C69A8E07C5C93 /* ActivityLevels.swift */; };
 		29161B74A6FD21E97D6FD695 /* AccountSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D453B2898AB120A611072E05 /* AccountSection.swift */; };
 		29448D2EB10D9A8DBB11CB3D /* HighlightsExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5287A4988C570D6C8181EE31 /* HighlightsExtractor.swift */; };
+		2999086BA377795D93443D51 /* SessionWriteShapeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86E1BDA087EA879FC08A6D8E /* SessionWriteShapeTests.swift */; };
 		29D9FE4F716AEA959BE2B100 /* SessionFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5387A8451EE8B73FC355D81 /* SessionFeed.swift */; };
 		2A4FB8AF120A216FDF41D5D8 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B35ACDE6F50AA891A0FF0FB /* Log.swift */; };
 		2AC730725C8457DBBDEB1A19 /* BiometricAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 074CBE0B4CF424BC09BD6670 /* BiometricAuthenticator.swift */; };
@@ -697,6 +698,7 @@
 		81C0C354E8F0E7DA65239FC0 /* PlaybackIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackIntents.swift; sourceTree = "<group>"; };
 		8375E08D7572F172A69DC890 /* CompanionDecisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionDecisionTests.swift; sourceTree = "<group>"; };
 		8534DBABF88EDC8C4DB1B1F4 /* AppIntentExecutionPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentExecutionPolicyTests.swift; sourceTree = "<group>"; };
+		86E1BDA087EA879FC08A6D8E /* SessionWriteShapeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionWriteShapeTests.swift; sourceTree = "<group>"; };
 		8857F026CB4BECEA4B983330 /* ShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8889DE19A8BBAD0AA178A868 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		88E3FA542195CAF20B097F4C /* ExportedTranscriptEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportedTranscriptEntity.swift; sourceTree = "<group>"; };
@@ -1362,6 +1364,7 @@
 			isa = PBXGroup;
 			children = (
 				A2BA8AFAA89C846B8AB24A9B /* BootstrapDevice.swift */,
+				86E1BDA087EA879FC08A6D8E /* SessionWriteShapeTests.swift */,
 				9E2A96524191D6B50D864A9C /* TranscriptionBlobContractTests.swift */,
 				C0F20889D97355E4CE9FC447 /* TranscriptionReinstallRestoreTests.swift */,
 				0687E920CD519C447769EB69 /* TranscriptionReservedColumnsTests.swift */,
@@ -2341,6 +2344,7 @@
 				E6879528AFD1DB5E99E53934 /* SessionActivityTests.swift in Sources */,
 				C2722B71E613911CA0CCECAF /* SessionIntelligenceEscalationTests.swift in Sources */,
 				AF0665543AB875812086B723 /* SessionIntelligenceMessageMappingTests.swift in Sources */,
+				2999086BA377795D93443D51 /* SessionWriteShapeTests.swift in Sources */,
 				EF9BD06BD070184960B7ED40 /* ShareKitTests.swift in Sources */,
 				4E01F2F4CA7A77B2E0DFF45C /* ShellAndToastTests.swift in Sources */,
 				5B29FAB29D86039CF5E13796 /* SiriIntelligenceTests.swift in Sources */,
