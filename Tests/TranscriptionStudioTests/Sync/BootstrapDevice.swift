@@ -27,10 +27,17 @@ final class BootstrapDevice {
     ///   slow answers as often as failed ones, and a cycle that is merely *slow* is the case a
     ///   concurrency guard gets wrong — it makes an in-flight cycle wide enough for a second caller
     ///   to arrive inside it.
+    /// - Parameter transport: the wire itself, for a suite that has to watch the round trip rather
+    ///   than only its result. Overrides `transportLatency`.
+    /// - Parameter triggers: the change triggers the engine listens on beside the bootstrap's own
+    ///   manual pulse. Empty by default, so a suite drives cycles explicitly; a suite about the
+    ///   trigger path supplies its own.
     init(server: FakeSyncServer = FakeSyncServer(),
          objects: FakeBlobObjectStore = FakeBlobObjectStore(),
          accountID: UUID = UUID(),
-         transportLatency: Duration = .zero) throws {
+         transportLatency: Duration = .zero,
+         transport: (any SyncTransport)? = nil,
+         triggers: [any HistoryChangeTrigger] = []) throws {
         self.server = server
         self.objects = objects
         self.accountID = accountID
@@ -46,15 +53,16 @@ final class BootstrapDevice {
             blobStateFileURL: { base.appendingPathComponent("blobstate.json") },
             blobCacheDirectory: { base.appendingPathComponent("cache", isDirectory: true) },
             makeTransport: { _ -> any SyncTransport in
+                if let transport { return transport }
                 let fake = FakeTransport(server: server)
                 guard transportLatency != .zero else { return fake }
                 return LaggingTransport(wrapping: fake, delay: transportLatency)
             },
             makeBlobTransport: { _ in FakeBlobTransport(store: objects) },
             // `LocalSaveTrigger` observes saves process-wide, so a test process would wake one
-            // suite's engine on another suite's writes. Each harness supplies its own trigger set;
-            // this one drives cycles explicitly.
-            makeTriggers: { _ in [] }
+            // suite's engine on another suite's writes. Each harness names the trigger set it
+            // wants; none of them is the shipping one.
+            makeTriggers: { _ in triggers }
         ))
         sync.attachForTesting(container: container)
         let account = FakeAccount(accountID: accountID)

@@ -290,12 +290,23 @@ final class TranscriptionSync {
     /// Coalesce a burst of triggers into one cycle: a finishing transcription saves its session,
     /// then hundreds of segments, then the extraction pass's highlights, and each save is a round
     /// trip if nothing gathers them.
+    ///
+    /// **What the cancel takes is the WAIT, never a cycle already running.** The task releases its
+    /// own handle before it starts syncing, so a later trigger finds nothing to tear down and
+    /// coalesces through `syncAgain` instead. Cancelling the task while it sat inside `syncNow()`
+    /// would cancel the request underneath it — and the trigger that does that is the cycle's *own*
+    /// applier, since `LocalSaveTrigger` fires on the applied save. The first pull after a sign-in
+    /// is the worst of it: every page of the library that lands schedules a debounce that kills the
+    /// restore that produced it, so the restore converges only by starting over, and on a slow link
+    /// it can outlive its own timeout and report an unreachable account that answered every time.
     private func scheduleDebouncedSync() {
         debounceTask?.cancel()
         debounceTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled else { return }
-            await self?.syncNow()
+            guard !Task.isCancelled, let self else { return }
+            // Past the wait this cycle is no longer cancellable by a later trigger.
+            self.debounceTask = nil
+            await self.syncNow()
         }
     }
 
