@@ -71,6 +71,7 @@ struct AskLibraryView: View {
                     .onSubmit(ask)
                     .accessibilityIdentifier(A11yID.askLibraryQuestion)
                 Button("Ask", systemImage: "arrow.up.circle.fill") { ask() }
+                    .accessibilityIdentifier(A11yID.askLibrarySubmit)
                     .labelStyle(.iconOnly)
                     .font(.title2)
                     .buttonStyle(.borderless)

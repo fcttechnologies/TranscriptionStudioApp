@@ -35,6 +35,7 @@ struct StorageSection: View {
         .onAppear(perform: refresh)
         .confirmationDialog("Delete this model?", item: $pendingDeletion, titleVisibility: .visible) { model in
             Button("Delete \(model.displayName)", role: .destructive) { delete(model) }
+                .accessibilityIdentifier(A11yID.settingsStorageConfirmDelete)
         } message: { model in
             if isSelected(model) {
                 Text("\(model.displayName) is your currently selected model. Deleting it frees \(model.bytes.formatted(.byteCount(style: .file))) and it will re-download automatically the next time it's needed.")
@@ -44,6 +45,7 @@ struct StorageSection: View {
         }
         .alert("Couldn't delete model", item: $deletionError) { _ in
             Button("OK", role: .cancel) {}
+                .accessibilityIdentifier(A11yID.settingsStorageDismiss)
         } message: { message in
             Text(message)
         }

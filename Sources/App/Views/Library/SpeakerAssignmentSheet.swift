@@ -78,9 +78,11 @@ struct SpeakerAssignmentSheet: View {
                 Text(name).foregroundStyle(.secondary)
                 Button("Clear", role: .destructive) { clear(slot) }
                     .buttonStyle(.borderless)
+                    .accessibilityIdentifier(A11yID.speakerClear)
             } else {
                 Button("Choose contact") { picking = SlotBox(id: slot) }
                     .buttonStyle(.borderless)
+                    .accessibilityIdentifier(A11yID.speakerChooseContact)
             }
         }
     }

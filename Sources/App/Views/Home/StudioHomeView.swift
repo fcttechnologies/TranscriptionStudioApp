@@ -79,7 +79,9 @@ struct StudioHomeView: View {
         // menu confirm against the exact session that's pending, never a stale shared Bool.
         .confirmationDialog("Delete this session?", item: $pendingDelete, titleVisibility: .visible) { session in
             Button("Delete", role: .destructive) { delete(session) }
+                .accessibilityIdentifier(A11yID.confirmDeleteSession)
             Button("Cancel", role: .cancel) { pendingDelete = nil }
+                .accessibilityIdentifier(A11yID.confirmDeleteCancel)
         } message: { session in
             Text("“\(session.title)” and its transcript will be removed.")
         }
@@ -201,24 +203,29 @@ struct StudioHomeView: View {
                 Button("Start Recording", systemImage: "mic") {
                     app.requestRecording(mode: .room)
                 }
+                .accessibilityIdentifier(A11yID.composeStartRecording)
                 if capabilities.meetingCapture {
                     Button("Record Meeting", systemImage: "person.2.wave.2") {
                         app.requestRecording(mode: .meeting)
                     }
+                    .accessibilityIdentifier(A11yID.composeRecordMeeting)
                 }
                 Divider()
                 #if os(iOS)
                 Button("Upload from Photos", systemImage: "photo.on.rectangle") {
                     photosPickerPresented = true
                 }
+                .accessibilityIdentifier(A11yID.composeUploadFromPhotos)
                 #endif
                 Button("Choose a File…", systemImage: "folder") {
                     isImporting = true
                 }
+                .accessibilityIdentifier(A11yID.composeChooseFile)
                 // Both platforms: the Mac transcribes the link locally, iOS queues it for the Mac.
                 Button("Insert Link…", systemImage: "link") {
                     app.activeSheet = .insertLink
                 }
+                .accessibilityIdentifier(A11yID.composeInsertLink)
             } label: {
                 Label("Add", systemImage: "plus")
             }

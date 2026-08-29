@@ -54,6 +54,7 @@ struct DebugToolsSection: View {
         .confirmationDialog(Text(verbatim: "Delete every session on this account?"),
                             isPresented: $confirmingReset, titleVisibility: .visible) {
             Button(role: .destructive) { reset() } label: { Text(verbatim: "Delete Everything") }
+                .accessibilityIdentifier(A11yID.debugResetConfirm)
             Button(role: .cancel) {} label: { Text(verbatim: "Cancel") }
         } message: {
             Text(verbatim: "This deletes every transcript and recording, here and on every other "

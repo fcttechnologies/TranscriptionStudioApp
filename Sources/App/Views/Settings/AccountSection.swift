@@ -51,7 +51,9 @@ struct AccountSection: View {
             titleVisibility: .visible
         ) {
             Button(String(localized: "Sign Out and Keep This Library")) { answerSignOut(true) }
+                .accessibilityIdentifier(A11yID.signOutKeepLibrary)
             Button(String(localized: "Cancel"), role: .cancel) { answerSignOut(false) }
+                .accessibilityIdentifier(A11yID.signOutCancel)
         } message: {
             Text("""
             \(outstandingAtSignOut) change(s) haven't reached the server. Signing out normally \

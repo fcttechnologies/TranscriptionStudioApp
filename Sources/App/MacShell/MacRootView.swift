@@ -24,19 +24,23 @@ struct AppCommands: Commands {
                 app.requestRecording(mode: .room)
             }
             .keyboardShortcut("n", modifiers: .command)
+            .accessibilityIdentifier(A11yID.commandNewRecording)
         }
         // Settings is a sheet over the home view (not a Settings scene), so ⌘, is wired here.
         CommandGroup(replacing: .appSettings) {
             Button("Settings…") { app.activeSheet = .settings }
                 .keyboardShortcut(",", modifiers: .command)
+                .accessibilityIdentifier(A11yID.commandSettings)
         }
         CommandGroup(after: .sidebar) {
             Button("Show Sessions") { app.returnHome() }
                 .keyboardShortcut("l", modifiers: .command)
+                .accessibilityIdentifier(A11yID.commandShowSessions)
             Button(app.activeSheet == .inspector ? "Hide Inspector" : "Show Inspector") {
                 app.activeSheet = app.activeSheet == .inspector ? nil : .inspector
             }
             .keyboardShortcut("i", modifiers: [.command, .option])
+            .accessibilityIdentifier(A11yID.commandToggleInspector)
             Divider()
         }
     }

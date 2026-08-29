@@ -71,6 +71,7 @@ struct SessionIntelligenceSheet: View {
                 Spacer()
                 if case .text = summary {
                     Button("Regenerate", systemImage: "arrow.clockwise") { generateSummary() }
+                        .accessibilityIdentifier(A11yID.intelligenceRegenerate)
                         .labelStyle(.iconOnly)
                         .buttonStyle(.borderless)
                 }
@@ -106,6 +107,7 @@ struct SessionIntelligenceSheet: View {
                     .onSubmit(askQuestion)
                     .accessibilityIdentifier(A11yID.intelligenceQuestion)
                 Button("Ask", systemImage: "arrow.up.circle.fill") { askQuestion() }
+                    .accessibilityIdentifier(A11yID.intelligenceSubmit)
                     .labelStyle(.iconOnly)
                     .font(.title2)
                     .buttonStyle(.borderless)

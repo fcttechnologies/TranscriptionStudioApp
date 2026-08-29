@@ -74,6 +74,7 @@ private struct RecordingMiniPlayer: View {
                     }
                     .buttonStyle(PressableButtonStyle())
                     .accessibilityLabel(recording.isPaused ? "Resume" : "Pause")
+                    .accessibilityIdentifier(A11yID.miniPlayerRecordPauseToggle)
                 }
             }
             .padding(.horizontal, DesignMetrics.spacingL)
@@ -143,6 +144,7 @@ private struct SpeakingMiniPlayer: View {
                     }
                     .buttonStyle(PressableButtonStyle())
                     .accessibilityLabel(readAloud.phase == .paused ? "Resume speaking" : "Pause speaking")
+                    .accessibilityIdentifier(A11yID.miniPlayerSpeakPauseToggle)
                 }
                 Button {
                     readAloud.stop()

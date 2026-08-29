@@ -59,6 +59,7 @@ struct PermissionsSection: View {
         .accessibilityIdentifier(A11yID.settingsPermissionMicrophone)
         if micStatus == .denied {
             Button("Enable in System Settings…") { openURL(MicrophonePermission.settingsURL) }
+                .accessibilityIdentifier(A11yID.settingsOpenMicrophoneSettings)
         }
     }
 

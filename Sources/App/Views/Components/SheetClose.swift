@@ -14,10 +14,12 @@ struct SheetCloseToolbar: ToolbarContent {
         #if os(macOS)
         ToolbarItem(placement: .cancellationAction) {
             Button(role: .close) { dismiss() }
+                .accessibilityIdentifier(A11yID.sheetClose)
         }
         #else
         ToolbarItem(placement: .topBarTrailing) {
             Button(role: .close) { dismiss() }
+                .accessibilityIdentifier(A11yID.sheetClose)
         }
         #endif
     }

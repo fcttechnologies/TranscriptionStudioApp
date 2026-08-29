@@ -23,20 +23,46 @@ enum A11yID {
     static let debugSeedLibrary = "debug.seedLibrary"
     static let debugResetLibrary = "debug.resetLibrary"
     static let debugToolsStatus = "debug.tools.status"
+    static let debugResetConfirm = "debug.resetLibrary.confirm"
 
     // MARK: Home
     static let homeFeed = "home.feed"
     static let feedEmpty = "home.feed.empty"
+
+    // MARK: Shared chrome
+    /// Every sheet's close button, from the one shared toolbar.
+    static let sheetClose = "sheet.close"
     static let homeActiveWork = "home.activeWork"
     static let homeMiniPlayerPlayback = "home.miniPlayer.playback"
     static let homeMiniPlayerRecording = "home.miniPlayer.recording"
     static let homeMiniPlayerSpeaking = "home.miniPlayer.speaking"
+    static let miniPlayerRecordPauseToggle = "home.miniPlayer.recordPauseToggle"
+    static let miniPlayerSpeakPauseToggle = "home.miniPlayer.speakPauseToggle"
 
     static func homeSession(_ id: UUID) -> String { "home.session.\(id.uuidString)" }
+
+    // MARK: Mac menu-bar commands
+    static let commandNewRecording = "command.newRecording"
+    static let commandSettings = "command.settings"
+    static let commandShowSessions = "command.showSessions"
+    static let commandToggleInspector = "command.toggleInspector"
 
     // MARK: Toolbar
     static let toolbarAskLibrary = "toolbar.askLibrary"
     static let toolbarCompose = "toolbar.compose"
+
+    // MARK: The compose menu's items
+    static let composeStartRecording = "compose.startRecording"
+    static let composeRecordMeeting = "compose.recordMeeting"
+    static let composeChooseFile = "compose.chooseFile"
+    static let composeInsertLink = "compose.insertLink"
+    static let composeUploadFromPhotos = "compose.uploadFromPhotos"
+
+    // MARK: Destructive confirmations
+    static let confirmDeleteSession = "confirm.deleteSession"
+    static let confirmDeleteCancel = "confirm.deleteSession.cancel"
+    static let signOutKeepLibrary = "confirm.signOutKeepLibrary"
+    static let signOutCancel = "confirm.signOut.cancel"
     static let toolbarInspectorToggle = "toolbar.inspectorToggle"
     static let toolbarSettingsToggle = "toolbar.settingsToggle"
     static let toolbarStop = "toolbar.stop"
@@ -66,6 +92,10 @@ enum A11yID {
     static let sessionSpeak = "session.speak"
     static let sessionSpeed = "session.speed"
     static let sessionTitle = "session.title"
+    static let sessionRenameSave = "session.rename.save"
+    static let sessionRenameCancel = "session.rename.cancel"
+    static let speakerClear = "speaker.clear"
+    static let speakerChooseContact = "speaker.chooseContact"
 
     static func suggestion(_ id: String) -> String { "suggestion.\(id)" }
     static func suggestionDismiss(_ id: String) -> String { "suggestion.dismiss.\(id)" }
@@ -76,7 +106,10 @@ enum A11yID {
 
     // MARK: Intelligence
     static let askLibraryQuestion = "askLibrary.question"
+    static let askLibrarySubmit = "askLibrary.submit"
     static let intelligenceQuestion = "intelligence.question"
+    static let intelligenceSubmit = "intelligence.submit"
+    static let intelligenceRegenerate = "intelligence.regenerate"
 
     // MARK: Ecosystem drafts
     static let calendarDraftAdd = "calendarDraft.add"
@@ -94,6 +127,11 @@ enum A11yID {
     static let settingsPermissionScreenRecording = "settings.permission.screenRecording"
     static let settingsSyncStatus = "settings.syncStatus"
     static let settingsRetryRefused = "settings.retryRefused"
+    static let settingsWordTimestamps = "settings.wordTimestamps"
+    static let settingsAutoFollow = "settings.autoFollowTranscript"
+    static let settingsOpenMicrophoneSettings = "settings.permission.microphone.open"
+    static let settingsStorageConfirmDelete = "settings.storage.confirmDelete"
+    static let settingsStorageDismiss = "settings.storage.dismissError"
 
     static func settingsStorageModel(_ id: String) -> String { "settings.storage.model.\(id)" }
 }

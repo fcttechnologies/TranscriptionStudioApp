@@ -147,7 +147,9 @@ struct SessionDetailView: View {
             TextField("Title", text: $draftTitle)
                 .accessibilityIdentifier(A11yID.sessionRenameField)
             Button("Cancel", role: .cancel) {}
+                .accessibilityIdentifier(A11yID.sessionRenameCancel)
             Button("Save") { commitRename() }
+                .accessibilityIdentifier(A11yID.sessionRenameSave)
         }
         .modifier(PlayheadTracker(playback: app.playback, lineStarts: currentLineStarts,
                                   playingLineID: $playingLineID))

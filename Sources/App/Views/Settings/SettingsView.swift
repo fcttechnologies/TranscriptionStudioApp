@@ -21,6 +21,7 @@ struct SettingsView: View {
             Section {
                 LabeledContent("Speech model", value: settings.whisperModel.displayName)
                 Toggle("Capture word-level timestamps", isOn: $settings.wordTimestamps)
+                    .accessibilityIdentifier(A11yID.settingsWordTimestamps)
             } header: {
                 Text("Speech recognition")
             } footer: {
@@ -37,6 +38,7 @@ struct SettingsView: View {
             }
             Section("Transcript") {
                 Toggle("Auto-follow the live transcript", isOn: $settings.autoFollowTranscript)
+                    .accessibilityIdentifier(A11yID.settingsAutoFollow)
             }
             PermissionsSection(locationCaptureEnabled: $settings.locationCaptureEnabled)
             StorageSection()
