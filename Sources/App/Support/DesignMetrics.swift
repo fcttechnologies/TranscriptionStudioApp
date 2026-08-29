@@ -35,8 +35,11 @@ enum DesignMetrics {
     static let staggerStep: Double = 0.045
 
     // MARK: Surfaces
-    /// Inset ring width on the dark-mode card seam (VillainArc idiom).
+    /// Hairline width of the card's seam (VillainArc idiom).
     static let surfaceRingWidth: CGFloat = 0.5
+    /// The card seam's hairline opacity — laid over the fill as white in dark mode and black in
+    /// light, so a card carries its own edge on any background. Matches the system separator.
+    static let surfaceSeamOpacity: Double = 0.10
     static let cardShadowRadius: CGFloat = 10
     static let cardShadowY: CGFloat = 4
     static let cardShadowOpacity: Double = 0.10

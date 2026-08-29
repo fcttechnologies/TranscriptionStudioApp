@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// The app's card surface — a rounded fill with a hairline seam in dark mode (the VillainArc
-/// idiom: a faint ring around a near-black fill reads as a raised card without a heavy shadow).
+/// The app's card surface — a rounded fill with a hairline seam (the VillainArc idiom: a faint
+/// ring around the fill reads as a raised card without a heavy shadow). The seam is drawn in
+/// both appearances, because a card's own edge is the only thing that separates it from a
+/// same-colored backdrop, and a light-mode card fill and a light-mode window are both white.
 /// One place owns the material so every surface in the app matches.
 private struct CardStyle: ViewModifier {
     @Environment(\.colorScheme) private var colorScheme
@@ -14,13 +16,17 @@ private struct CardStyle: ViewModifier {
         content
             .background {
                 if colorScheme == .dark {
-                    shape.fill(.white.opacity(0.10))
+                    shape.fill(.white.opacity(DesignMetrics.surfaceSeamOpacity))
                         .overlay {
                             shape.inset(by: DesignMetrics.surfaceRingWidth)
                                 .fill(Color(white: 0.11))
                         }
                 } else {
                     shape.fill(.background)
+                        .overlay {
+                            shape.strokeBorder(.black.opacity(DesignMetrics.surfaceSeamOpacity),
+                                               lineWidth: DesignMetrics.surfaceRingWidth)
+                        }
                 }
             }
             .clipShape(shape)
@@ -44,13 +50,15 @@ extension View {
 }
 
 extension ShapeStyle where Self == Color {
-    /// The home feed's canvas — the grouped background the card surfaces sit on, so cards
-    /// read as raised in light mode too (white-on-white has no seam).
+    /// The home feed's canvas — the grouped background the card surfaces sit on, a step off the
+    /// card fill in both appearances so the cards read as raised. On macOS that step is
+    /// `underPageBackgroundColor`: `windowBackgroundColor` is pure white in Light Aqua, the same
+    /// value the card fills with, which would leave the feed's cards with no tonal separation.
     static var feedCanvas: Color {
         #if os(iOS)
         Color(.systemGroupedBackground)
         #else
-        Color(nsColor: .windowBackgroundColor)
+        Color(nsColor: .underPageBackgroundColor)
         #endif
     }
 }
