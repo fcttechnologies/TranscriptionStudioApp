@@ -31,7 +31,7 @@ struct InsertLinkSheet: View {
                     .strokeBorder(.separator, lineWidth: 0.5))
 
                 Text(transcribesLocally
-                     ? "The audio is downloaded and transcribed entirely on this Mac."
+                     ? "The audio is downloaded and transcribed on this Mac, then stored in your FCT account."
                      : "iOS can't download links itself — this is queued and transcribed on your Mac, then synced back here.")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -2,8 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Transcription Studio tracks nobody: no analytics SDK, no advertising identifier, and
-	     nothing this app collects is joined to data from another company.
+	<!-- Transcription Studio tracks nobody: no third-party analytics or tracking SDKs, no
+	     advertising identifier, and nothing this app collects is joined to data from another
+	     company. (FCTMetrics rides in through FCTServerSync/FCTAccount but is never started —
+	     `Diag.start` is called nowhere here — so every diagnostics call is a no-op and the layer
+	     uploads nothing. If it is ever turned on, this manifest gains the diagnostics types.)
 	     Documentation/PRIVACY_AND_SAFETY.md carries the data inventory this declares.
 
 	     A manifest covers ONE bundle. The share, widget and Background Assets extensions carry

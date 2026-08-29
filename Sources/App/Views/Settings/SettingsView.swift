@@ -46,8 +46,11 @@ struct SettingsView: View {
             DebugToolsSection()
             #endif
             Section {
-                LabeledContent("Speech processing", value: "On this device")
-                LabeledContent("Library storage", value: "Your FCT account")
+                // `LabeledContent(_:value:)` renders its value through `Text(_: S)`, which does not
+                // localize — so a privacy disclosure written that way ships English to every
+                // locale. The trailing-closure form takes a `LocalizedStringKey` and does.
+                LabeledContent("Speech processing") { Text("On this device") }
+                LabeledContent("Library storage") { Text("Your FCT account") }
                 LabeledContent("Version", value: "0.1.0")
             } footer: {
                 // Two different facts, said separately, because collapsing them is how a privacy

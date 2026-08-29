@@ -288,15 +288,18 @@ struct GetLatestTranscriptIntent: AppIntent {
 
 // MARK: - Ask (Foundation Models Q&A)
 
-/// Ask a question about your transcripts, answered on-device by Apple Intelligence. With **no**
-/// transcript given, it searches the **whole library** — "what did Sergio and I decide at the last
-/// meeting?" resolves to the right session and answers from it (Flagship A, Siri semantic Q&A). Give
-/// a specific transcript and it answers grounded in just that one. Degrades gracefully to a spoken
-/// explanation when Apple Intelligence isn't available.
+/// Ask a question about your transcripts, answered by Apple Intelligence. With **no** transcript
+/// given, it searches the **whole library** — "what did Sergio and I decide at the last meeting?"
+/// resolves to the right session and answers from it (Flagship A, Siri semantic Q&A), entirely on
+/// this device: `TranscriptLibraryAssistant` runs on the default `SystemLanguageModel` and never
+/// escalates. Give a specific transcript and it answers grounded in just that one through
+/// `SessionIntelligence`, which *does* escalate to Private Cloud Compute past the on-device context
+/// budget — so the two branches make different claims and the description says both. Degrades
+/// gracefully to a spoken explanation when Apple Intelligence isn't available.
 struct AskTranscriptIntent: AppIntent {
     static let title: LocalizedStringResource = "Ask a Transcript"
     static let description = IntentDescription(
-        "Ask a question about your transcripts. With no transcript chosen, Apple Intelligence searches your whole library on-device; choose one to ask about just that transcript.")
+        "Ask a question about your transcripts. With no transcript chosen, Apple Intelligence searches your whole library on this device; choose one and it answers from just that transcript, using Apple's Private Cloud Compute if the transcript is long.")
 
     @Parameter(title: "Question", description: "What you want to know about your transcripts.")
     var question: String
@@ -339,12 +342,14 @@ struct AskTranscriptIntent: AppIntent {
 
 // MARK: - Summarize (Foundation Models)
 
-/// Summarize a transcript, answered on-device by Apple Intelligence. Defaults to the latest
-/// recording, mirroring `AskTranscriptIntent`'s degrade-gracefully behavior.
+/// Summarize a transcript with Apple Intelligence. Runs on this device and escalates to Private
+/// Cloud Compute for a transcript past the on-device context budget (`SessionIntelligence.generate`),
+/// so the description cannot say "on-device" flatly. Defaults to the latest recording, mirroring
+/// `AskTranscriptIntent`'s degrade-gracefully behavior.
 struct SummarizeTranscriptIntent: AppIntent {
     static let title: LocalizedStringResource = "Summarize Transcript"
     static let description = IntentDescription(
-        "Summarize a transcript. Apple Intelligence summarizes on-device from the transcript.")
+        "Summarize a transcript. Apple Intelligence summarizes on this device, using Apple's Private Cloud Compute if the transcript is long.")
 
     @Parameter(title: "Transcript", description: "Which transcript to summarize. Defaults to your latest.")
     var session: TranscriptSessionEntity?

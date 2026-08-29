@@ -5,12 +5,12 @@ import UniformTypeIdentifiers
 /// The file `ExportTranscriptIntent` hands back — a transcript rendered to a real file on disk,
 /// modeled as a `FileEntity` (rather than a bare `IntentFile`) so it carries an ownership signal.
 ///
-/// An exported transcript is the one moment a transcript's content *leaves the app's boundary* —
-/// saved out, AirDropped, handed to another app. Everything inside TS is private to the person,
-/// but an export is data being shared outward, so this conforms to `OwnershipProvidingEntity` and
-/// reports `.shared`: Siri and Apple Intelligence then confirm before an *automated* export/share
-/// (e.g. a hands-free Shortcut that exports and sends), instead of silently moving transcript
-/// content off-device — matching TS's "nothing leaves your device without you knowing" posture.
+/// An exported transcript is the one moment a transcript's content *leaves the person's own
+/// custody* — saved out, AirDropped, handed to another app. Everything else stays scoped to their
+/// private FCT account; an export hands it to another party, so this conforms to
+/// `OwnershipProvidingEntity` and reports `.shared`: Siri and Apple Intelligence then confirm
+/// before an *automated* export/share (e.g. a hands-free Shortcut that exports and sends), rather
+/// than passing transcript content outward with no prompt.
 /// As a `FileEntity` it still saves/shares/AirDrops like any other Shortcuts file result.
 struct ExportedTranscriptFileEntity: FileEntity, OwnershipProvidingEntity {
     static var typeDisplayRepresentation: TypeDisplayRepresentation {

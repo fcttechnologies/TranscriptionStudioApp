@@ -104,8 +104,9 @@ final class AppSettings {
         didSet { defaults.set(showConfidence, forKey: Keys.showConfidence) }
     }
     /// Tag a live recording with the coarse place it was made (reverse-geocoded to a short place
-    /// name, captured once at recording start). **Off by default** — location never leaves the
-    /// device without an explicit opt-in, matching the app's "nothing leaves your device" pitch.
+    /// name, captured once at recording start). **Off by default**, because turning it on puts the
+    /// place on the wire: `location_name`, `latitude` and `longitude` are columns on
+    /// `transcript_session`, so a tagged place travels to the account with the session it tags.
     var locationCaptureEnabled: Bool {
         didSet { defaults.set(locationCaptureEnabled, forKey: Keys.locationCaptureEnabled) }
     }
