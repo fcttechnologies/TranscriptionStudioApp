@@ -307,5 +307,6 @@ echo "${REL_ENTITLEMENTS}" | grep -q com.apple.security.app-sandbox \
 mark "artifact checks (Release)"
 
 phase_table
-echo "==> PASS: ${TEST_COUNT} + ${CLI_TEST_COUNT} tests green, both platforms + CLI built" \
-     "warning-free, shortcuts registered on both platforms, Release Mac hardened."
+echo "==> PASS: ${TEST_COUNT} + ${CLI_TEST_COUNT} tests green, Debug + Release on both platforms" \
+     "and the CLI built warning-free, shortcuts + privacy manifests in every artifact," \
+     "ten languages complete, Release Mac hardened."
