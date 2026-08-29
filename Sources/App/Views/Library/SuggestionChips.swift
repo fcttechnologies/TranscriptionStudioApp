@@ -32,7 +32,10 @@ struct SuggestedActionsRow: View {
                         }
                     }
                 }
-                .scrollIndicators(.hidden)
+                // `.never`, not `.hidden`: hidden is advisory, and macOS overrides it back to a
+                // visible scroller whenever the pointing device wants persistent bars — which
+                // draws a full-width horizontal bar under the chips that reads as a divider rule.
+                .scrollIndicators(.never)
                 // Bleed the scroll viewport out to the reading column's edge so chips glide
                 // under the margin instead of clipping mid-column; the margins keep the
                 // resting content aligned with the header above.
