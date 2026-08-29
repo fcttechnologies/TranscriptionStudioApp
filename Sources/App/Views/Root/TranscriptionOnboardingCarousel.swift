@@ -29,7 +29,7 @@ enum TranscriptionOnboardingCarousel {
             (
                 String(localized: "Words as you speak them", comment: "Onboarding page 1 title"),
                 String(
-                    localized: "Record a conversation, a call or a meeting and watch the transcript arrive. The speech model runs on this device.",
+                    localized: "Watch the transcript arrive as you speak — on this device.",
                     comment: "Onboarding page 1 subtitle"
                 ),
                 .record
@@ -37,7 +37,7 @@ enum TranscriptionOnboardingCarousel {
             (
                 String(localized: "Who said what", comment: "Onboarding page 2 title"),
                 String(
-                    localized: "Every transcript is split by speaker. Name someone once and they’re named everywhere.",
+                    localized: "Split by speaker. Name someone once and it sticks.",
                     comment: "Onboarding page 2 subtitle"
                 ),
                 .speakers
@@ -45,7 +45,7 @@ enum TranscriptionOnboardingCarousel {
             (
                 String(localized: "Anything with audio in it", comment: "Onboarding page 3 title"),
                 String(
-                    localized: "Drop in a file, paste a link, share from another app, or capture a meeting straight off your Mac.",
+                    localized: "A file, a link, a share sheet, or a meeting off your Mac.",
                     comment: "Onboarding page 3 subtitle"
                 ),
                 .ingest
@@ -53,7 +53,7 @@ enum TranscriptionOnboardingCarousel {
             (
                 String(localized: "Ask your library", comment: "Onboarding page 4 title"),
                 String(
-                    localized: "“What did we decide about the March budget?” Ask Siri, or search every word you’ve ever recorded.",
+                    localized: "Ask Siri, or search every word you’ve ever recorded.",
                     comment: "Onboarding page 4 subtitle"
                 ),
                 .ask

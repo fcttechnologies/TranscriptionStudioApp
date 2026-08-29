@@ -26,19 +26,12 @@ struct RootView: View {
         ) {
             SignedInRootView()
         }
-        .overlay(alignment: debugBarAlignment) { debugTestAccountBar }
-    }
-
-    /// The gate fills the screen on iOS, so the bottom is empty room. On macOS it is a fixed 760x620
-    /// panel centred in the window, and the window's bottom edge is a few points under the panel's
-    /// own Continue button — so a bar pinned there lands on top of the CTA. The recess above the
-    /// panel is the space that is actually free.
-    private var debugBarAlignment: Alignment {
-        #if os(macOS)
-        .topTrailing
-        #else
-        .bottom
-        #endif
+        // Top-trailing on BOTH platforms, because the bottom is where the gate's own Continue
+        // button lives on both: the iOS gate fills the screen and puts the CTA at the bottom edge,
+        // and the macOS panel is centred with its CTA a few points above the window's. A bar
+        // pinned to the bottom lands on top of the CTA either way — which is what driving each
+        // platform showed, one after the other.
+        .overlay(alignment: .topTrailing) { debugTestAccountBar }
     }
 
     /// The one-tap sign-in an agent driving a Debug build uses. It rides over the gate rather than
