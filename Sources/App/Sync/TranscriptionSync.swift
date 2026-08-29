@@ -635,14 +635,26 @@ final class TranscriptionSync {
 
     // MARK: - Backoff and connectivity
 
+    /// Wait out the backoff, then run one cycle.
+    ///
+    /// **What the cancel takes is the WAIT, never a cycle already running** — the debounce's rule
+    /// one layer up, and sharper here, because this task's own cycle calls straight back in: the
+    /// `scheduleRetry` below is the last statement of `syncNow()`'s loop body. A retry still
+    /// holding its handle would cancel *itself* at the end of its first pass, on any result and a
+    /// success included, and the second pass would run torn down — the staging sweep, the blob
+    /// drain and the pull all cancelled. That pass is where a library this size actually lands:
+    /// the retry is the cycle a device coming back from offline has been waiting on, and it was
+    /// the only one that ever cancelled it.
     private func scheduleRetry(after result: SyncStatus) {
         retryTask?.cancel()
         retryTask = nil
         guard case .offline(let delay) = result else { return }
         retryTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled else { return }
-            await self?.syncNow()
+            guard !Task.isCancelled, let self else { return }
+            // Past the wait this cycle is no longer cancellable by a later `scheduleRetry`.
+            self.retryTask = nil
+            await self.syncNow()
         }
     }
 
