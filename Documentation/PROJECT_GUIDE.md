@@ -91,6 +91,26 @@ Tests are **app-hosted** (`@testable import TranscriptionStudio`) in
 - Models: WhisperKit self-downloads; Sortformer artifacts via `scripts/fetch-models.sh`
   or the in-app downloader (never bundled in git).
 
+### Two measurements that settle arguments before they start
+
+- **Store writes stay on the main context; no path here earns an off-main seam.** A
+  transcription job persists **once**, at completion — the whole segment set assigned and saved
+  in one transaction, the live transcript held in memory until then — so there is no per-segment
+  write and no hot loop of the kind that seam exists to fix. The only path that grows with
+  session length is that single bulk save, measured at **128 ms for 2,000 segments** on the M4
+  (a three-hour meeting at conversational density, longer than anything real), landing once while
+  the UI is already transitioning rather than as scroll jank. `SessionWriteShapeTests` pins the
+  shape, and the two writers already off-main — the staging sweep and the sync applier — mint
+  their own `ModelContext(container)`. Revisit only if one transaction becomes many, which that
+  suite catches.
+- **A sync cycle is one push plus a cursor pull of every table, so waking the engine is never
+  cheap.** Counted on the wire (`PresenceSyncCostTests`): an idle cycle is **9** round trips and
+  makes no push at all, because the push is skipped when the outbox is empty; a cycle with
+  anything dirty is **10**. That is why `MacPresence` sits in `LocalSaveTrigger`'s ignore list and
+  `PresenceHeartbeat` sends its row through `TranscriptionSync.pushOnly()` — a heartbeat has to
+  reach the server but has nothing to learn, and a full cycle cost 600 round trips an hour per
+  open Mac against 60. Any future timer-driven row belongs on the same path.
+
 ## The front door
 
 `RootView` (`Sources/App/Views/Root/`) is the whole of it, and it is the fleet's sequence with no
