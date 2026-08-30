@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 #if canImport(Darwin)
 import Darwin
 #endif
@@ -387,7 +388,8 @@ final class TranscribeServer: @unchecked Sendable {
     /// still answers in the same `{"error": …}` JSON shape every other route uses. A failure
     /// *after* audio has been sent can't change the status line anymore, so the connection is
     /// closed without the terminal chunk and the truncated transfer is the client's error
-    /// signal. A client that disconnects mid-stream cancels the synthesis.
+    /// signal — and is logged here, because that wire signal is the only one the client gets
+    /// and it carries no reason. A client that disconnects mid-stream cancels the synthesis.
     private func handleSpeak(_ req: HTTPRequest, fd: Int32) {
         guard let obj = try? JSONSerialization.jsonObject(with: req.body) as? [String: Any] else {
             sendJSON(fd, status: 400, body: ["error": "expected a JSON body: {text, voice?, language?}"])
@@ -427,6 +429,7 @@ final class TranscribeServer: @unchecked Sendable {
                 queue.consumerGone()
                 return
             }
+            var sent = 1
             while true {
                 switch queue.next() {
                 case .chunk(let chunk):
@@ -434,11 +437,19 @@ final class TranscribeServer: @unchecked Sendable {
                         queue.consumerGone()
                         return
                     }
+                    sent += 1
                 case .finished:
                     sendChunkedEnd(fd)
                     return
-                case .failed:
-                    return  // no terminal chunk: the truncated transfer is the error signal
+                case .failed(let error):
+                    // The 200 head is already out, so the truncated transfer stays the client's
+                    // error signal — but it names no reason, so this is the only place the
+                    // reason exists at all.
+                    Logger.tts.error("""
+                        /speak failed after \(sent, privacy: .public) chunks had been streamed; \
+                        the client sees a truncated transfer: \(humanError(error), privacy: .public)
+                        """)
+                    return
                 }
             }
         }

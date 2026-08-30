@@ -55,6 +55,26 @@ private final class MidStreamFailingEngine: TtsEngine, Sendable {
     }
 }
 
+/// Streams the first and third sentences of a three-sentence utterance and nothing for the
+/// second — the shape the cloning engine now presents when the model can't synthesize a chunk.
+private final class ChunkSkippingEngine: TtsEngine, Sendable {
+    let first: [Float] = Array(repeating: 0.3, count: 4_800)
+    let third: [Float] = Array(repeating: -0.3, count: 2_400)
+
+    nonisolated func validate(text: String, voice: String?, language: String?) throws {}
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {}
+    func synthesize(text: String, voice: String?, language: String?) async throws -> SynthesizedSpeech {
+        SynthesizedSpeech(samples: first + third, sampleRate: 24_000)
+    }
+
+    func synthesizeStreaming(text: String, voice: String?, language: String?,
+                             onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
+        _ = onChunk(SynthesizedSpeechChunk(samples: first, sampleRate: 24_000))
+        // the second sentence is skipped: no chunk, no error
+        _ = onChunk(SynthesizedSpeechChunk(samples: third, sampleRate: 24_000))
+    }
+}
+
 /// Streams small chunks forever (bounded by a generous cap) until the consumer cancels;
 /// records whether the cancellation ever arrived.
 private final class EndlessTtsEngine: TtsEngine, Sendable {
@@ -253,6 +273,29 @@ struct SpeakStreamingTests {
 
         #expect(received.range(of: Data("200 OK".utf8)) != nil)      // audio had started
         #expect(received.suffix(5) != Data("0\r\n\r\n".utf8))        // …but never completed
+    }
+
+    /// A chunk the engine skipped is not a truncation: the transfer terminates properly and the
+    /// decoded body is the surviving chunks back to back, so a client reads a complete WAV
+    /// rather than an error.
+    @Test func aSkippedChunkStillYieldsACompleteTerminatedBody() async throws {
+        let engine = ChunkSkippingEngine()
+        let port = try await startServer(engine: engine)
+
+        let client = try RawSpeakClient(port: port, body: ["text": "One. 🫶 Three."])
+        var raw = Data()
+        client.readToEOF(into: &raw)
+        client.close()
+        #expect(raw.suffix(5) == Data("0\r\n\r\n".utf8))   // the terminal chunk: a complete body
+
+        // Decoded, the gap left no marker and no silence between the survivors.
+        var request = URLRequest(url: try #require(URL(string: "http://127.0.0.1:\(port)/speak")))
+        request.httpMethod = "POST"
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["text": "One. 🫶 Three."])
+        let (body, _) = try await URLSession.shared.data(for: request)
+        #expect(body == StreamingWav.header(sampleRate: 24_000)
+                + StreamingWav.pcm16Data(engine.first)
+                + StreamingWav.pcm16Data(engine.third))
     }
 
     /// A client that stops listening cancels the synthesis — the engine sees `false` and stops

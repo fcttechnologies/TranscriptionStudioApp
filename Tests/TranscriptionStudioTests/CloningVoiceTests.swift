@@ -187,6 +187,21 @@ struct SentenceChunkerTests {
         #expect(SentenceChunker.sentences(in: "").isEmpty)
     }
 
+    /// A note signed off with an emoji, or trailing a bare symbol, leaves a final chunk that is
+    /// non-empty as a String and yet has nothing for the model to say. Splitting on terminators
+    /// alone can't tell those apart from the speakable ones, which is why the engine survives a
+    /// chunk it can't synthesize instead of the chunker trying to predict one.
+    @Test func aTrailingSymbolBecomesItsOwnChunk() {
+        #expect(SentenceChunker.sentences(in: "Go have a good Sunday. 🫶")
+                == ["Go have a good Sunday.", "🫶"])
+        #expect(SentenceChunker.sentences(in: "Here is the price. $")
+                == ["Here is the price.", "$"])
+        // Not every unwordy chunk is unspeakable, which is the other half of why this can't be
+        // filtered here: an ellipsis splits into bare periods and the model says all three.
+        #expect(SentenceChunker.sentences(in: "All done for today. ...")
+                == ["All done for today.", ".", ".", "."])
+    }
+
     @Test func halvesSplitAtTheMiddleWordBoundary() throws {
         let (first, second) = try #require(SentenceChunker.halves(of: "one two three four five"))
         #expect(first == "one two")

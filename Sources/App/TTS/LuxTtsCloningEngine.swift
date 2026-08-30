@@ -141,6 +141,10 @@ actor LuxTtsCloningEngine: TtsEngine {
     /// moment it's generated, so a consumer starts hearing the first sentence (~2 s in)
     /// while the rest is still being made. `onChunk` returning `false` stops before the
     /// next sentence — nothing to latch, the loop is ours.
+    ///
+    /// A chunk the model can't synthesize is logged and skipped rather than failing the
+    /// utterance: the sentence unit means one unspeakable fragment would otherwise cost every
+    /// sentence after it. A text where *every* chunk fails still throws.
     func synthesizeStreaming(text: String, voice: String?, language: String?,
                                     onChunk: @escaping @Sendable (SynthesizedSpeechChunk) -> Bool) async throws {
         try validate(text: text, voice: voice, language: language)
@@ -153,8 +157,24 @@ actor LuxTtsCloningEngine: TtsEngine {
 
         let started = Date()
         var totalSamples = 0
-        for sentence in sentences {
-            let samples = try await synthesizeChunk(sentence, prompt: prompt, manager: manager)
+        var skipped = 0
+        for (index, sentence) in sentences.enumerated() {
+            let samples: [Float]
+            do {
+                samples = try await synthesizeChunk(sentence, prompt: prompt, manager: manager)
+            } catch {
+                // The model is the authority on what it can say: a fragment it can't tokenize —
+                // a sentence that is only an emoji, or a bare "$" — costs that fragment and not
+                // the rest of the utterance. The `totalSamples` guard below is the floor: a text
+                // the model fails on *entirely* still throws rather than answering with silence.
+                skipped += 1
+                Logger.tts.error("""
+                    LuxTTS skipped chunk \(index + 1, privacy: .public)/\(sentences.count, privacy: .public) \
+                    (\(sentence.count, privacy: .public) chars): \(humanReadable(error), privacy: .public) — \
+                    "\(sentence, privacy: .private)"
+                    """)
+                continue
+            }
             totalSamples += samples.count
             guard onChunk(SynthesizedSpeechChunk(samples: samples,
                                                  sampleRate: LuxTtsConstants.outputSampleRate)) else {
@@ -169,7 +189,8 @@ actor LuxTtsCloningEngine: TtsEngine {
         Logger.tts.info("""
             Cloned \(audioSeconds, format: .fixed(precision: 2), privacy: .public)s of speech \
             in \(Date().timeIntervalSince(started), format: .fixed(precision: 2), privacy: .public)s \
-            (voice \(reference.id, privacy: .public), \(sentences.count, privacy: .public) chunks)
+            (voice \(reference.id, privacy: .public), \
+            \(sentences.count - skipped, privacy: .public)/\(sentences.count, privacy: .public) chunks)
             """)
     }
 
