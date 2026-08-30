@@ -66,7 +66,12 @@ struct TranscriptionSyncConfiguration {
             // The cross-process rung is what makes a Share-extension or App-Intent write reach the
             // server without waiting for the app's next foreground — on the platforms where it fires.
             makeTriggers: { container in
-                var triggers: [any HistoryChangeTrigger] = [LocalSaveTrigger()]
+                // `MacPresence` is a heartbeat row, not a user edit: it is rewritten every
+                // 60s whether or not anything happened, and waking the engine costs a whole
+                // cycle. `PresenceHeartbeat` sends its own row through `pushOnly()` instead.
+                var triggers: [any HistoryChangeTrigger] = [
+                    LocalSaveTrigger(ignoring: [TranscriptionSync.heartbeatEntityName])
+                ]
                 if let remote = try? RemoteHistoryChangeTrigger(container: container) {
                     triggers.append(remote)
                 }
@@ -218,6 +223,33 @@ final class TranscriptionSync {
     /// A cycle already in flight is not joined by a second one; the request is remembered and the
     /// loop runs again once — the applier's own save fires `LocalSaveTrigger`, so every pull that
     /// lands rows asks for another cycle, which is correct and would otherwise re-enter.
+    /// The SwiftData entity whose saves are a heartbeat rather than an edit. Named once, because
+    /// the trigger's ignore list and the writer that compensates for it have to agree or a write
+    /// silently stops reaching the server.
+    static let heartbeatEntityName = "MacPresence"
+
+    /// Send what is queued without pulling anything back.
+    ///
+    /// The presence heartbeat's own path. A beat genuinely has to reach the server — that is the
+    /// entire point of the row — but it has nothing to *learn*, and a full cycle would spend a
+    /// cursor pull on all nine tables to deliver one column. Sharing `syncInFlight` with
+    /// ``syncNow()`` keeps a beat from opening a second wire beside a real cycle; a beat that
+    /// arrives mid-cycle is simply dropped, because the cycle it collided with pushes the row
+    /// anyway.
+    func pushOnly() async {
+        guard let engine, !syncInFlight else { return }
+        syncInFlight = true
+        defer { syncInFlight = false }
+        do {
+            _ = try engine.drain()
+            try await engine.push()
+        } catch {
+            // A beat is best-effort by contract: the next one carries the same row, and a real
+            // cycle would surface the failure as status. Never publish a status from here — a
+            // heartbeat must not be able to paint the UI offline.
+        }
+    }
+
     func syncNow() async {
         guard let engine else { return }
         if syncInFlight {

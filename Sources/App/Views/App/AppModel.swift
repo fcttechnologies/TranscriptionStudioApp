@@ -373,7 +373,8 @@ final class AppModel {
         let deviceID = CompanionDevice.identifier
 
         let heartbeat = PresenceHeartbeat(modelContext: modelContext, deviceID: deviceID,
-                                          deviceName: CompanionDevice.name)
+                                          deviceName: CompanionDevice.name,
+                                          send: { [weak self] in await self?.sync?.pushOnly() })
         heartbeat.start()
         presenceHeartbeat = heartbeat
 

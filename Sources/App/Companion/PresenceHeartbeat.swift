@@ -12,10 +12,20 @@ final class PresenceHeartbeat {
     private let deviceID: String
     private let deviceName: String
     private let interval: TimeInterval
+    /// What carries the beat to the server. The engine no longer wakes on a presence save (see
+    /// `TranscriptionSync.heartbeatEntityName`), so without this the row would never leave.
+    private let send: () async -> Void
     private var task: Task<Void, Never>?
 
+    /// The beat interval. 60s against the 180s freshness window `MacPresenceStatus` reads is
+    /// three beats per observable state change — the margin that makes "did my Mac just come
+    /// online" answerable, and the reason widening it is not the fix for what a beat costs.
+    static let defaultInterval: TimeInterval = 60
+
     init(modelContext: ModelContext, deviceID: String, deviceName: String,
-                interval: TimeInterval = 60) {
+                interval: TimeInterval = PresenceHeartbeat.defaultInterval,
+                send: @escaping () async -> Void = {}) {
+        self.send = send
         self.modelContext = modelContext
         self.deviceID = deviceID
         self.deviceName = deviceName
@@ -24,12 +34,14 @@ final class PresenceHeartbeat {
 
     func start() {
         beat()
+        Task { [send] in await send() }
         let interval = self.interval
         task = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(interval))
                 guard let self, !Task.isCancelled else { return }
                 self.beat()
+                await self.send()
             }
         }
     }
@@ -41,7 +53,7 @@ final class PresenceHeartbeat {
 
     /// Upsert this device's presence row (one per device — matched by `deviceIDString`, a plain
     /// attribute; `id` is the record's cross-device name and stays stable across beats).
-    private func beat() {
+    func beat() {
         let deviceID = self.deviceID
         let descriptor = FetchDescriptor<MacPresence>(
             predicate: #Predicate { $0.deviceIDString == deviceID })
