@@ -35,11 +35,10 @@ source "../FCTFoundation/scripts/gate-lib.sh"
 phase_init
 
 SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
-# The promoted set is 10 on macOS — exactly Apple's cap — and 9 on iOS, which has no URL ingest
-# and so no TranscribeLinkIntent. Extras past the cap are dropped with no error, so the count is
-# pinned rather than merely bounded.
+# The promoted set is 10 on both platforms — exactly Apple's cap. Extras past the cap are dropped
+# with no error, so the count is pinned rather than merely bounded.
 SHORTCUT_COUNT_MAC=10
-SHORTCUT_COUNT_IOS=9
+SHORTCUT_COUNT_IOS=10
 MIN_APP_TESTS=564
 # The fleet's localization floor. Every one of these must be declared in CFBundleLocalizations
 # (the INFOPLIST_KEY_ variant is silently ignored) AND carry a real value for every key in both

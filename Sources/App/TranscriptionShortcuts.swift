@@ -11,9 +11,14 @@ import AppIntents
 /// Apple caps a provider at 10 promoted shortcuts (`AppShortcutContract.systemLimit`) and drops
 /// the rest with no error. `DeleteTranscriptIntent`, `ExportTranscriptIntent`, `OpenLibraryIntent`
 /// and `GetRecordingStatusIntent` therefore stay reachable through the Shortcuts app and Spotlight
-/// without a canned phrase, which frees room for `OpenInspectorIntent` (every platform) and
-/// `TranscribeLinkIntent` (macOS only — URL ingest doesn't exist on iOS). The promoted set is
-/// exactly 10 on macOS and 9 on iOS; the gate pins both counts from the artifacts.
+/// without a canned phrase, which frees room for `OpenInspectorIntent` and `TranscribeLinkIntent`.
+/// The promoted set is exactly 10 on both platforms; the gate pins the count from the artifacts.
+///
+/// `TranscribeLinkIntent` is promoted on iOS too even though URL ingest is Mac-only: the intent
+/// already answers there with a spoken `unavailableOnThisDevice` by design, and it was reachable
+/// from Shortcuts on iOS regardless. Gating only the PHRASE left the shared `AppShortcuts`
+/// catalog carrying a key the iOS artifact could never register, which is a real warning about a
+/// stray key and must stay one.
 struct TranscriptionShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -97,7 +102,6 @@ struct TranscriptionShortcuts: AppShortcutsProvider {
             shortTitle: "Open Inspector",
             systemImageName: "gauge.with.dots.needle.bottom.50percent")
 
-        #if os(macOS)
         AppShortcut(
             intent: TranscribeLinkIntent(),
             phrases: [
@@ -106,6 +110,5 @@ struct TranscriptionShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Transcribe Link",
             systemImageName: "link")
-        #endif
     }
 }
