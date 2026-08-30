@@ -9,7 +9,7 @@
 // The Sortformer version of this gate is env-gated (SORTFORMER_MODEL_OK=1): its model does not
 // specialize on the current toolchain and the failure is an *uncatchable* process abort, so it
 // cannot be auto-probed — a human sets the flag only once a re-exported model is known to load.
-// See Documentation/SORTFORMER-STATUS.md.
+// See Documentation/SORTFORMER-MODEL.md.
 
 import AVFoundation
 import Foundation

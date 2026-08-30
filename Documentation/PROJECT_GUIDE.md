@@ -155,10 +155,12 @@ the permission and logging rules, and the privacy-manifest declarations behind t
 
 ## Verification
 
-`Documentation/VERIFICATION.md` — the automated gates that keep "who said what" honest, the
-device passes host tests can't reach, and Fernando's daily testing loop. The diarizer's neural
-core is a model export whose fidelity is never assumed; `Documentation/SORTFORMER-STATUS.md`
-carries its provenance and the recipe to regenerate it.
+`Documentation/VERIFICATION.md` — the automated gates that keep "who said what" honest, and the
+accessibility surface that makes the built app drivable. The diarizer's neural core is a model
+export whose fidelity is never assumed; `Documentation/SORTFORMER-MODEL.md` carries its
+provenance and the recipe to regenerate it. Checks a person has to run by hand are not facts
+about this code and live in the workspace, at
+`~/Jarvis/projects/transcription-studio/device-checks.md`.
 
 ## Building from a fresh clone / worktree
 

@@ -101,7 +101,7 @@ struct SortformerModelStore: Sendable {
     /// True only when a locally re-exported model is staged — its `sortformer_manifest.json` is
     /// present and decodes. The published HF model has NO local manifest and FATALLY (uncatchably)
     /// aborts the process on load on the current toolchain, so this is the gate for whether it's
-    /// even safe to attempt Sortformer at all (see the file header + Documentation/SORTFORMER-STATUS.md).
+    /// even safe to attempt Sortformer at all (see the file header + Documentation/SORTFORMER-MODEL.md).
     var hasLocalManifest: Bool {
         guard let data = try? Data(contentsOf: manifestURL) else { return false }
         return (try? JSONDecoder().decode(SortformerManifest.self, from: data)) != nil

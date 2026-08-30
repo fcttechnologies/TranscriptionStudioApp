@@ -3,7 +3,7 @@
 # runtime downloader; this is the dev/CI shortcut). WhisperKit downloads its own models.
 #
 # ⚠️ The HF-published .aimodel does NOT load on current toolchains (stale IR — see
-# Documentation/SORTFORMER-STATUS.md); it still provides the mel filterbank + metadata,
+# Documentation/SORTFORMER-MODEL.md); it still provides the mel filterbank + metadata,
 # and the model dir is a starting point for the documented local re-export. A provisioned
 # re-export (marked by sortformer_manifest.json) is never touched by this script.
 set -euo pipefail

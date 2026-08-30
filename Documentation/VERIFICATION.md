@@ -1,9 +1,9 @@
-# Verification — how we know "who said what" is right
+# Verification — the gates in this repo
 
 The #1 requirement: the app is 100% testable and loggable. The diarizer's neural core is a
 Core AI export of NVIDIA's Sortformer whose fidelity is never assumed — everything below
 makes it checkable. (The model shipping here is a local re-export; provenance + regeneration:
-`SORTFORMER-STATUS.md`.)
+`SORTFORMER-MODEL.md`.)
 
 ## Automated gates (run with the test suite)
 
@@ -83,16 +83,6 @@ account's first pull is in flight. Then `toolbar.settingsToggle` and confirm the
 without a relaunch, which is what makes a walkthrough repeatable and what store captures are
 driven from.
 
-## The human loop (Fernando, daily)
-
-1. Record a real meeting or room conversation.
-2. The live transcript shows who-said-what with per-segment confidence; provisional
-   labels are visually distinct from committed ones.
-3. Open the Inspector: per-frame speaker-activity heatmap (the model's raw sigmoids),
-   ASR confidence table, per-stage latencies, thermal/CPU under load.
-4. **Click any segment to play its audio** — ear vs. label in one click.
-5. Diarizer A/B: run the same session through SpeakerKit and compare timelines.
-
 ## Share extension (share-to-transcribe)
 
 The Share extension makes the app a share-sheet target: **macOS** accepts a web **link** →
@@ -119,160 +109,9 @@ takes an injectable container dir):
 Both extension targets compile under warnings-as-errors and embed into their app's PlugIns —
 covered by the app builds (`xcodebuild` iOS on a sim, macOS Debug).
 
-### Manual device/sim check (not automatable — needs a real share action)
+---
 
-The share-sheet tap itself can't be scripted headlessly. Verify once per platform:
-
-**iOS (media file → transcribe):**
-1. Build+run the `TranscriptionStudio` scheme on an iOS device/sim; grant nothing special (App Group is
-   automatic). Foreground the app once so it's installed.
-2. Open **Files** or **Photos**, pick a video/audio clip, tap **Share**, choose
-   **Transcription Studio**. The sheet shows "Sending to Transcription Studio…" briefly.
-3. Expect: the app comes forward (or, if the open didn't land, reopen it manually — the
-   foreground drain catches it) and a new transcription job appears in the library, running
-   to a saved session. Confirm the session's audio matches the shared clip.
-
-**macOS (link → transcribe):**
-1. Build+install the signed app: `scripts/package-mac.sh` (automatic signing registers the
-   App Group). Launch it once.
-2. In **Safari**, on any YouTube/TikTok/media page, click **Share → Transcription Studio**
-   (enable it once under the Share menu's *Edit Extensions* if not shown).
-3. Expect: the app comes forward and a "Link · <host>" job appears, downloads + transcribes
-   on-device, and lands as a saved session.
-
-**Signing note:** the App Group + the extension's provisioning are minted by automatic signing
-with `-allowProvisioningUpdates` (already how `package-mac.sh` builds). First run may need the
-app foregrounded once so the extension is registered with the system.
-
-### Manual device check — Live Activities + system media player (iOS)
-
-The activity *lifecycle* is verifiable on a simulator (unified log: `subsystem CONTAINS
-"glanceables"` shows started/active/ended; `chronod` registers the widget extension's two
-activity descriptors), and `-TSSeedDemoLibrary` (DEBUG launch argument) seeds two playable
-sessions to drive it. What the beta simulator does NOT render is the Dynamic Island / Lock
-Screen presentation itself — verify on a device:
-
-1. Play a session's audio → the **playback Live Activity** appears (Dynamic Island compact:
-   waveform + remaining countdown; Lock Screen: kind tile, title, self-advancing progress,
-   play/pause button) AND the Lock Screen / Control Center shows the app as a real media
-   player (title, kind, scrubber, ±15s, speed — AirPods controls included). Pause from the
-   Lock Screen player and from the activity's button; both must reflect in-app.
-2. Start a recording → the **recording Live Activity** (red state dot, running elapsed clock,
-   live level trace, pause + stop buttons). Pause/resume from the island; Stop must end the
-   run, persist the session, and dismiss the activity.
-3. Let playback run out on its own → the activity ends by itself; closing the mini-player
-   clears the Lock Screen player (no stale now-playing info or dead commands).
-
-### Manual two-device check — cross-device feed refresh (iPhone ↔ Mac)
-
-The feed re-renders on a change the sync applier lands (a `TranscriptSession` created on another
-device) without a relaunch. A bare SwiftData `@Query` does not reliably re-evaluate off the
-applier's background save, so the feed drives itself from an explicit fetch refreshed by
-`SessionStoreObserver` (`HistoryObserver` for applied changes + `ModelContext.didSave` for local
-saves). The remote path can only be confirmed with two devices signed into the same FCT account —
-a single sim/process never exercises a real cross-device pull.
-
-Verify once (both devices signed into the same FCT account via Settings → Sign in to sync,
-network up):
-
-1. Launch the app on **both** the iPhone and the Mac; let each finish its initial sync (the sync
-   glyph settles to idle). Leave **both foregrounded, side by side** — do not force-quit either.
-2. On the **iPhone**, create a new session (record a short clip, or import a file) and let it save.
-3. Expect: within a few seconds (the realtime nudge, or the next foreground pull), the new session
-   appears at the top of the
-   **Mac** feed on its own — no relaunch, no force-quit. The Mac's scroll position and day sections
-   are preserved (the row diffs in; the whole list does not rebuild).
-4. Reverse it: create on the Mac, watch it land on the iPhone.
-5. Edits/deletes propagate the same way — delete on one device, the row leaves the other's feed.
-
-If the row only appears after force-quitting and relaunching the receiving device, the remote
-refresh path has regressed.
-
-### Manual two-device check — Spotlight index freshness
-
-Launch-time `reindexAll` keeps this device's named Spotlight index current with its own writes;
-`SpotlightIndexObserver` is what keeps it current with the *other* device's while the app runs.
-One simulator can't exercise it (there is no second device to pull from). With both devices
-signed into the same FCT account, the app installed and synced, and the receiving app already
-foregrounded (**not** relaunched — a relaunch runs `reindexAll` and proves nothing):
-
-1. Create or rename a session on the Mac. On the iPhone, once sync lands (a few seconds), pull
-   down Spotlight and search its title — it appears without a relaunch.
-2. Delete a session on the Mac; confirm it drops out of the iPhone's Spotlight results, again
-   without a relaunch.
-3. Repeat both, reversed.
-
-## The assistant layer — device checks (Apple Intelligence)
-
-Foundation Models and Siri runtime behaviour run only on an Apple-Intelligence-eligible device
-with Apple Intelligence enabled. Everything below is a device check; the build lane proves only
-the code path (documented API usage, deterministic logic unit-tested, clean builds).
-
-### Extraction
-
-1. Record or import a short meeting with a clear decision and a dated action item ("let's ship
-   Friday; Sergio, send the deck by next Tuesday"). Let it finish transcribing.
-2. Extraction runs off the critical path: the transcript appears immediately and highlights fill
-   in a moment later (`session.highlightsStatus` → `.ready`).
-3. Confirm the extracted models persist and are queryable — the session's decisions, action items
-   (with owner and resolved due date), events, people and places are populated.
-4. Turn Apple Intelligence **off** and record again → the status degrades to `.unavailable`
-   silently: no highlights, and no error surface.
-
-### Library Q&A
-
-5. With several transcripts saved, tap **Ask your library** and ask a cross-session question.
-   Confirm it retrieves from the *right* session(s) and answers from their content.
-6. Via Siri/Shortcuts, run **Ask a Transcript** with **no** transcript chosen → it searches the
-   whole library. Choose a specific transcript → it answers grounded in that one only.
-7. **Named-index scoping — the one real runtime unknown.** Sessions are donated into a *named*
-   Core Spotlight index, never the system default, because only a named index carries a
-   data-protection class; `CoreSpotlightSource` exposes no index-name parameter, and the
-   `searchableIndexDelegate` hydrates full transcript text for matched ids rather than scoping
-   the search. Confirm library Q&A actually retrieves named-index content. If it does not, the
-   fallback is to additionally donate a metadata-only copy into the default index, keeping the
-   full-text hydration delegate as-is — do **not** inflate the persisted named index.
-8. **Safety boundary.** The assistant is read-only by construction (its tools are vetted
-   `.readOnly`) and must never create, edit or delete. Ask it to "delete my last transcript" —
-   it should explain that it can only answer questions.
-
-## Ecosystem actions — device checks
-
-Permission prompts, real Calendar/Reminders writes, the system contact picker and Siri phrasing
-all run only on a device; some also need Apple Intelligence for the upstream extraction.
-
-### Calendar (write-only) and Reminders
-
-1. Open a transcript that extracted an event. Trigger **Add Meeting to Calendar** via
-   Shortcuts/Siri, parameterized by the transcript. With several events, confirm the
-   disambiguation prompt appears; pick one.
-2. The app opens to the confirm sheet — title and start/end editable, notes carrying attendees
-   and the transcript attribution. Tap **Add to Calendar** → the *write-only* permission prompt
-   appears the first time. Grant it; the event lands in the default calendar with a success
-   toast, and exists in Calendar.
-3. **Nothing is written until Add.** Dismiss the sheet without tapping Add; confirm no event was
-   created.
-4. Repeat for an action item via **Add Action Item to Reminders** → the reminders permission
-   prompt, a due date and alarm when one resolved, saved to the default list.
-5. **Deny** the permission once: the failure toast must be calm and point to Settings — no crash,
-   no silent no-op.
-
-### Contacts and Siri name resolution
-
-6. On a multi-speaker transcript, trigger **Name Transcript Speakers** (iOS). Tap **Choose
-   contact** → the system picker appears with **no** Contacts permission prompt. Pick a contact;
-   the speaker shows that name. Confirm **Clear** removes it.
-7. **Mentions.** With Contacts read access already granted, the sheet shows which extracted
-   mentions are in your contacts. Confirm that opening the sheet does **not** trigger a contacts
-   prompt when access is undetermined.
-8. **Name resolution.** After binding a speaker (say "Speaker 2" → "Sergio Ramos"), ask the
-   library assistant a name question. It should resolve to that session even though the
-   transcript text only said "Speaker 2". Reindex is async on bind — allow a moment.
-9. **Contacts stays read-only.** The app never creates or edits a contact.
-
-## Deferred (forge-able later)
-
-- NeMo golden-tensor byte gate: the zoo's capture scripts can regenerate reference
-  tensors from NVIDIA's checkpoint, but need a PyTorch/NeMo Python env. Not blocking —
-  the gates above verify behavior end-to-end, which is what the product needs.
-- Formal DER on a labeled corpus (AMI/VoxConverse samples).
+The checks a person has to perform by hand — the daily loop, the share-sheet taps, the
+two-device passes, the Apple-Intelligence and ecosystem device checks — are not facts about this
+code and do not live here. They are in the workspace, at
+`~/Jarvis/projects/transcription-studio/device-checks.md`.

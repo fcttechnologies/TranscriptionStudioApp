@@ -9,7 +9,7 @@
 // `DiarizationEngine` wrapper in SortformerEngine.swift.
 //
 // ⚠️ The currently-published model does not specialize on this toolchain — see
-// Documentation/SORTFORMER-STATUS.md. The mel frontend, AOSC math, and streaming loop are
+// Documentation/SORTFORMER-MODEL.md. The mel frontend, AOSC math, and streaming loop are
 // unit-verified independently of the model (mel golden gate + AOSC synthetic gates); the live
 // forward pass lights up once a re-exported model loads. SpeakerKit is the shipping default.
 

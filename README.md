@@ -10,7 +10,7 @@ behind FCT's own workflows, is [TranscriptionStudio](https://github.com/fcttechn
 and judged, all rights reserved, no licence granted to use, copy, modify or redistribute it.
 
 - `Documentation/PROJECT_GUIDE.md` — structure, contracts, conventions.
-- `Documentation/VERIFICATION.md` — how "who said what" is verified.
+- `Documentation/VERIFICATION.md` — the automated gates that verify "who said what".
 
 ## Setup
 
@@ -22,7 +22,7 @@ open TranscriptionStudio.xcodeproj    # one scheme, TranscriptionStudio — pick
 ```
 
 The Sortformer neural core must be a **locally re-exported** `.aimodel` (the HF-published one
-doesn't load on current toolchains) — recipe in `Documentation/SORTFORMER-STATUS.md`. Without
+doesn't load on current toolchains) — recipe in `Documentation/SORTFORMER-MODEL.md`. Without
 it the app runs with SpeakerKit diarization; WhisperKit self-downloads on first use.
 
 Full gate: `scripts/gate.sh` (the app-hosted suite on the macOS destination, the CLI suite,

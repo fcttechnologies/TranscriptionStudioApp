@@ -1,5 +1,5 @@
 // DiarizationBackend — the explicit, cheap seam for choosing the diarizer. Sortformer (on a
-// locally re-exported Core AI model — Documentation/SORTFORMER-STATUS.md) is the default: it
+// locally re-exported Core AI model — Documentation/SORTFORMER-MODEL.md) is the default: it
 // passes the ground-truth gates and is the only backend with live streaming. SpeakerKit is the
 // independent cross-check (the inspector's A/B builds one of each) and the fallback when the
 // Sortformer model isn't provisioned. Swapping defaults is a one-line change (`.default`).
@@ -35,7 +35,7 @@ enum DiarizationBackend: String, Sendable, CaseIterable, Codable {
             // The published Sortformer model FATALLY (uncatchably) aborts the process on load on
             // the current toolchain; only a locally re-exported model — which stages a local
             // manifest — is safe. Without one (iOS, or any un-provisioned machine), fall back to
-            // SpeakerKit instead of crashing. See Documentation/SORTFORMER-STATUS.md.
+            // SpeakerKit instead of crashing. See Documentation/SORTFORMER-MODEL.md.
             guard sortformerStore.hasLocalManifest else {
                 return SpeakerKitEngine(recorder: recorder, sessionID: sessionID)
             }

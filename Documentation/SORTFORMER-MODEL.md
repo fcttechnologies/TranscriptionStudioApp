@@ -1,6 +1,6 @@
-# Sortformer (Core AI) — model provenance & re-export handoff
+# Sortformer (Core AI) — the model this code loads, and how it is produced
 
-**Status: WORKING via a locally re-exported model.** The HF-published conversion
+The diarizer's neural core is a **locally re-exported** Core AI model, not the published one. The HF conversion
 (`mlboydaisuke/Streaming-Sortformer-Diar-CoreAI`) does **not** load on the current toolchain;
 the model shipping on this machine was **re-exported locally from the NVIDIA checkpoint with
 the current public Core AI stack** and passes every gate: it loads clean, clears the ≥85%
