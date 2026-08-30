@@ -111,10 +111,31 @@ enum DesignMetrics {
     static let jobProgressHeight: CGFloat = 6
 
     // MARK: Home feed (the single view)
-    /// The feed column's readable max width (both platforms).
-    static let feedMaxWidth: CGFloat = 640
+    /// The feed column's readable width. A fixed cap strands the column on a wide Mac window —
+    /// at 1760pt it reads as a phone layout centred in a desert — so the column grows with its
+    /// container between two bounds: `feedMinWidth` is what a session card needs to hold its
+    /// title and metadata comfortably, `feedMaxWidth` is where a list of cards stops reading as
+    /// a column and starts reading as a table.
+    static let feedMinWidth: CGFloat = 640
+    static let feedMaxWidth: CGFloat = 900
+    static let feedWidthFraction: CGFloat = 0.62
     static let feedRowSpacing: CGFloat = 8
     static let feedSectionSpacing: CGFloat = 20
+
+    /// The feed column's width inside a container of `width`. Never wider than the container
+    /// itself, so a narrow window fills rather than clips.
+    static func feedWidth(forContainer width: CGFloat) -> CGFloat {
+        min(width, min(max(width * feedWidthFraction, feedMinWidth), feedMaxWidth))
+    }
+
+    /// The transcript's prose column inside the detail sheet — a reading measure, unrelated to
+    /// the feed's card column.
+    static let transcriptMaxWidth: CGFloat = 760
+    /// The playback control bar's width. Deliberately narrower than the transcript it floats
+    /// over: a control cluster reads as one by not spanning the text.
+    static let playbackBarMaxWidth: CGFloat = 640
+    /// How far a scrolling surface's content dissolves at an edge instead of being cut.
+    static let scrollFadeLength: CGFloat = 28
 
     // MARK: Mini-player
     static let miniPlayerHeight: CGFloat = 56
@@ -123,8 +144,10 @@ enum DesignMetrics {
     static let miniPlayerTileSize: CGFloat = 36
 
     // MARK: Sheets
-    /// Fixed macOS sheet sizes (iOS sheets are full-height by default).
-    static let macSheetSize = CGSize(width: 520, height: 620)
+    /// Fixed macOS sheet sizes (iOS sheets are full-height by default). Settings is sized to the
+    /// tallest of its panes rather than to the sum of every section, which is what the one-column
+    /// Form used to demand.
+    static let macSheetSize = CGSize(width: 620, height: 640)
     static let macDetailSheetSize = CGSize(width: 760, height: 680)
 
     // MARK: Inspector

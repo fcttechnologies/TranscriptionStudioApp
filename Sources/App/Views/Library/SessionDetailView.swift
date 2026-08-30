@@ -61,9 +61,10 @@ struct SessionDetailView: View {
                         }
                     }
                     .padding(DesignMetrics.spacingL)
-                    .frame(maxWidth: 760, alignment: .leading)
+                    .frame(maxWidth: DesignMetrics.transcriptMaxWidth, alignment: .leading)
                     .frame(maxWidth: .infinity)
                 }
+                .softScrollEdges()
                 .onScrollPhaseChange { _, newPhase in
                     if newPhase == .interacting { lastUserScroll = .now }
                 }
@@ -410,7 +411,7 @@ private struct PlaybackBar: View {
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: DesignMetrics.cornerXL,
                                                     style: .continuous))
         .padding(.horizontal, DesignMetrics.spacingL)
-        .frame(maxWidth: DesignMetrics.feedMaxWidth)
+        .frame(maxWidth: DesignMetrics.playbackBarMaxWidth)
         .frame(maxWidth: .infinity)
     }
 

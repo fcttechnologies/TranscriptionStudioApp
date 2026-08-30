@@ -65,7 +65,10 @@ struct SessionFeed: View {
                 }
             }
             .padding(.horizontal, DesignMetrics.spacingL)
-            .frame(maxWidth: DesignMetrics.feedMaxWidth, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .containerRelativeFrame(.horizontal) { width, _ in
+                DesignMetrics.feedWidth(forContainer: width)
+            }
             .frame(maxWidth: .infinity)
             .animation(reduceMotion ? nil : DesignMetrics.standardSpring,
                        value: visibleSections.map { $0.sessions.map(\.id) })

@@ -79,7 +79,9 @@ private struct RecordingMiniPlayer: View {
             }
             .padding(.horizontal, DesignMetrics.spacingL)
             .frame(height: DesignMetrics.miniPlayerHeight)
-            .frame(maxWidth: DesignMetrics.feedMaxWidth)
+            .containerRelativeFrame(.horizontal) { width, _ in
+                DesignMetrics.feedWidth(forContainer: width)
+            }
             .contentShape(Capsule())
         }
         .buttonStyle(PressableButtonStyle())
@@ -160,7 +162,9 @@ private struct SpeakingMiniPlayer: View {
             }
             .padding(.horizontal, DesignMetrics.spacingL)
             .frame(height: DesignMetrics.miniPlayerHeight)
-            .frame(maxWidth: DesignMetrics.feedMaxWidth)
+            .containerRelativeFrame(.horizontal) { width, _ in
+                DesignMetrics.feedWidth(forContainer: width)
+            }
             .contentShape(Capsule())
         }
         .buttonStyle(PressableButtonStyle())
@@ -236,7 +240,9 @@ private struct PlaybackMiniPlayer: View {
             }
             .padding(.horizontal, DesignMetrics.spacingL)
             .frame(height: DesignMetrics.miniPlayerHeight)
-            .frame(maxWidth: DesignMetrics.feedMaxWidth)
+            .containerRelativeFrame(.horizontal) { width, _ in
+                DesignMetrics.feedWidth(forContainer: width)
+            }
             .contentShape(Capsule())
         }
         .buttonStyle(PressableButtonStyle())
