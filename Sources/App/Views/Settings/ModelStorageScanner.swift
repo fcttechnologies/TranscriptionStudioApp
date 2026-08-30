@@ -55,6 +55,20 @@ enum ModelStorageScanner {
             .sorted { $0.bytes > $1.bytes }
     }
 
+    /// Whether a given Whisper variant is already downloaded on this device.
+    ///
+    /// Reads the same download base the engine loads from, so a `true` here means
+    /// `WhisperKitAsrEngine.prepare()` has nothing to fetch. Cross-platform on purpose: the
+    /// Background Assets installer answers a stricter version of this question (every manifest
+    /// file at its exact size) but exists only on iOS, and the front door has to ask on both.
+    static func isWhisperModelInstalled(
+        _ model: AppSettings.WhisperModel,
+        downloadBase: URL = WhisperKitAsrEngine.defaultDownloadBase()
+    ) -> Bool {
+        scanWhisperKitModels(downloadBase: downloadBase)
+            .contains { $0.kind == .whisper(model) && $0.bytes > 0 }
+    }
+
     /// Deletes every path a model owns. Best-effort per path — one already-missing file (a
     /// concurrent delete, a partial prior cleanup) doesn't block removing the rest — but still
     /// surfaces the last failure so the caller can report it.

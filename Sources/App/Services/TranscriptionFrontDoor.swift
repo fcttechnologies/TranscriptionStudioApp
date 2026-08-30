@@ -25,6 +25,29 @@ nonisolated enum LibraryRestoreState {
     }
 }
 
+/// Whether this device has already been offered the speech model, so the offer is made once and
+/// never becomes a thing to dismiss on every launch.
+///
+/// Per install rather than per account: the model is a file on this disk, and which account is
+/// signed in has nothing to do with whether it is already there. Answering "later" is a real
+/// answer and is remembered — the model still arrives on its own, silently, exactly as it did
+/// before the offer existed.
+nonisolated enum SpeechModelOfferState {
+    static let key = "com.fcttechnologies.TranscriptionStudio.speechModelOffered"
+
+    static func wasOffered(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: key)
+    }
+
+    static func markOffered(in defaults: UserDefaults = .standard) {
+        defaults.set(true, forKey: key)
+    }
+
+    static func clear(in defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: key)
+    }
+}
+
 /// Where a launch routes once the account gate has let it through. A value rather than a step in a
 /// sequence, so the routing table is something a test enumerates instead of drives.
 nonisolated enum FrontDoorEntry: Equatable {
@@ -44,6 +67,9 @@ nonisolated enum FrontDoorStage: Equatable {
     /// The account's library coming down. Nothing of the app is built here.
     case restoring
     case restoreFailed(String)
+    /// The speech model is not on this device yet, and the user is being asked whether to fetch
+    /// it now. Offered once, skippable, and never on the path of a device that already has it.
+    case offerSpeechModel
     case ready
 }
 
@@ -75,6 +101,12 @@ final class TranscriptionFrontDoor {
     /// The first pull, as a seam — so the routing is testable without a live engine, and the app
     /// runs the real one.
     @ObservationIgnored var restoreAccountData: () async -> Bool = { true }
+
+    /// Whether the speech model is already on this disk, as a seam. The live answer reads the
+    /// bundled manifest against the install directory, which a routing test has no business
+    /// needing on hand — and defaulting it to `true` means a harness that never wires it takes
+    /// the model-present path rather than being surprised by an offer.
+    @ObservationIgnored var isSpeechModelInstalled: () -> Bool = { true }
 
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -108,13 +140,20 @@ final class TranscriptionFrontDoor {
         case .restore:
             await restore(attemptID: attemptID)
         case .resume:
-            stage = .ready
+            stage = stageAfterLibrary()
         }
     }
 
     /// This device's copy was wiped (sign-out, switch, deletion). The account gate takes the window
     /// back on its own; what this does is forget that this device ever restored, so the next
     /// sign-in pulls the library down again instead of opening onto an empty store.
+    /// The user answered the speech-model offer, either way. Recording the answer *here* rather
+    /// than in the view is what keeps the offer from reappearing behind a view that got rebuilt.
+    func speechModelOfferAnswered() {
+        SpeechModelOfferState.markOffered(in: defaults)
+        stage = .ready
+    }
+
     func localDataCleared() {
         LibraryRestoreState.clear(in: defaults)
         attempt = UUID()
@@ -142,6 +181,16 @@ final class TranscriptionFrontDoor {
         if let accountID = session().accountID {
             LibraryRestoreState.markRestored(accountID: accountID, in: defaults)
         }
-        stage = .ready
+        stage = stageAfterLibrary()
+    }
+
+    /// The library is in hand; the only question left is the ~1.6 GB of speech model. Asked only
+    /// when it is genuinely absent and has never been asked, so the common launch — model present,
+    /// or already answered — reaches the app in the same step it always did.
+    private func stageAfterLibrary() -> FrontDoorStage {
+        guard !SpeechModelOfferState.wasOffered(in: defaults), !isSpeechModelInstalled() else {
+            return .ready
+        }
+        return .offerSpeechModel
     }
 }

@@ -31,11 +31,13 @@ struct FrontDoorRoutingTests {
     private func makeDoor(
         defaults: UserDefaults,
         accountID: UUID,
-        stub: RestoreStub
+        stub: RestoreStub,
+        speechModelInstalled: Bool = true
     ) -> TranscriptionFrontDoor {
         let door = TranscriptionFrontDoor(defaults: defaults)
         door.session = { (true, accountID) }
         door.restoreAccountData = { await stub.restore() }
+        door.isSpeechModelInstalled = { speechModelInstalled }
         return door
     }
 
@@ -158,5 +160,107 @@ struct FrontDoorRoutingTests {
         await launch.value
 
         #expect(door.stage == .launching)
+    }
+}
+
+
+/// The speech-model offer: the one screen that names the ~1.6 GB before it is spent.
+///
+/// Its whole risk is being in the way. The offer has to appear when the model is genuinely
+/// missing, disappear the moment it is answered, and never stand between a returning user and
+/// their library — so each of those is a test rather than a reading of the routing.
+@MainActor
+struct SpeechModelOfferRoutingTests {
+    private func scratch(_ name: String) -> UserDefaults { UserDefaults(suiteName: name)! }
+
+    private func makeDoor(defaults: UserDefaults,
+                          accountID: UUID = UUID(),
+                          restored: Bool,
+                          modelInstalled: Bool) -> TranscriptionFrontDoor {
+        if restored { LibraryRestoreState.markRestored(accountID: accountID, in: defaults) }
+        let door = TranscriptionFrontDoor(defaults: defaults)
+        door.session = { (true, accountID) }
+        door.restoreAccountData = { true }
+        door.isSpeechModelInstalled = { modelInstalled }
+        return door
+    }
+
+    @Test func aMissingModelIsOfferedAfterTheLibraryLands() async {
+        let name = "ts-offer-\(UUID().uuidString)"
+        let defaults = scratch(name)
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let door = makeDoor(defaults: defaults, restored: false, modelInstalled: false)
+        await door.start()
+
+        #expect(door.stage == .offerSpeechModel)
+    }
+
+    @Test func aModelAlreadyOnDiskIsNeverOffered() async {
+        let name = "ts-offer-\(UUID().uuidString)"
+        let defaults = scratch(name)
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let door = makeDoor(defaults: defaults, restored: false, modelInstalled: true)
+        await door.start()
+
+        #expect(door.stage == .ready)
+        #expect(!SpeechModelOfferState.wasOffered(in: defaults))
+    }
+
+    /// Answering is what retires the offer, either way — the point of recording the answer rather
+    /// than the outcome is that "Later" has to stick just as hard as "Download Now".
+    @Test func answeringRetiresTheOfferForGood() async {
+        let name = "ts-offer-\(UUID().uuidString)"
+        let defaults = scratch(name)
+        defer { defaults.removePersistentDomain(forName: name) }
+        let accountID = UUID()
+
+        let first = makeDoor(defaults: defaults, accountID: accountID,
+                             restored: false, modelInstalled: false)
+        await first.start()
+        #expect(first.stage == .offerSpeechModel)
+        first.speechModelOfferAnswered()
+        #expect(first.stage == .ready)
+
+        // The model is still missing — declining did not install anything — and the next launch
+        // must still go straight through.
+        let second = makeDoor(defaults: defaults, accountID: accountID,
+                              restored: true, modelInstalled: false)
+        await second.start()
+        #expect(second.stage == .ready)
+    }
+
+    /// The offer sits after the library, never in front of it: a failed pull still shows its own
+    /// refusal, because a missing model is not a reason to stop saying the library never arrived.
+    @Test func aFailedPullStillReportsTheRefusalRatherThanTheOffer() async {
+        let name = "ts-offer-\(UUID().uuidString)"
+        let defaults = scratch(name)
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let door = TranscriptionFrontDoor(defaults: defaults)
+        door.session = { (true, UUID()) }
+        door.restoreAccountData = { false }
+        door.isSpeechModelInstalled = { false }
+        await door.start()
+
+        guard case .restoreFailed = door.stage else {
+            Issue.record("expected the restore refusal, got \(door.stage)")
+            return
+        }
+    }
+
+    /// A returning device with the model already answered for takes the same one-step path it
+    /// always did.
+    @Test func aResumeWithNothingToAskReachesTheAppDirectly() async {
+        let name = "ts-offer-\(UUID().uuidString)"
+        let defaults = scratch(name)
+        defer { defaults.removePersistentDomain(forName: name) }
+        SpeechModelOfferState.markOffered(in: defaults)
+
+        let door = makeDoor(defaults: defaults, restored: true, modelInstalled: false)
+        await door.start()
+
+        #expect(door.stage == .ready)
     }
 }

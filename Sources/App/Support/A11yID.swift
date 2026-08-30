@@ -16,6 +16,9 @@ enum A11yID {
     static let frontDoorRestoring = "frontDoor.restoring"
     static let frontDoorRestoreFailed = "frontDoor.restoreFailed"
     static let frontDoorRetry = "frontDoor.retry"
+    static let frontDoorSpeechModel = "frontDoor.speechModel"
+    static let frontDoorSpeechModelDownload = "frontDoor.speechModel.download"
+    static let frontDoorSpeechModelSkip = "frontDoor.speechModel.skip"
     static let debugTestAccountSignIn = "debug.testAccount.signIn"
     static let debugTestAccountStatus = "debug.testAccount.status"
 

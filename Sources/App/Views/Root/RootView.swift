@@ -90,6 +90,8 @@ struct SignedInRootView: View {
             FrontDoorRestoringView()
         case .restoreFailed(let message):
             FrontDoorRestoreFailedView(message: message) { Task { await frontDoor.retry() } }
+        case .offerSpeechModel:
+            FrontDoorSpeechModelView { frontDoor.speechModelOfferAnswered() }
         case .ready:
             #if os(macOS)
             MacRootView()
@@ -120,6 +122,9 @@ struct SignedInRootView: View {
 
         frontDoor.attachAccount(account)
         frontDoor.restoreAccountData = { await sync.restoreAccountData() }
+        frontDoor.isSpeechModelInstalled = {
+            ModelStorageScanner.isWhisperModelInstalled(app.settings.whisperModel)
+        }
 
         await frontDoor.start()
 

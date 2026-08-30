@@ -4298,6 +4298,64 @@
         }
       }
     },
+    "Download Now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt laden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar ahora"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Télécharger"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica ora"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今すぐダウンロード"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 다운로드"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixar agora"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузить сейчас"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即下载"
+          }
+        }
+      }
+    },
     "Drop to transcribe": {
       "localizations": {
         "de": {
@@ -5581,6 +5639,64 @@
         }
       }
     },
+    "Get the speech model": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprachmodell laden"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtener el modelo de voz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtenir le modèle vocal"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ottieni il modello vocale"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "音声モデルを取得"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "음성 모델 받기"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obter o modelo de fala"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузить речевую модель"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "获取语音模型"
+          }
+        }
+      }
+    },
     "Getting your transcripts, highlights and speakers from your account.": {
       "extractionState": "manual",
       "localizations": {
@@ -6682,6 +6798,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "上次同步"
+          }
+        }
+      }
+    },
+    "Later": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Später"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más tarde"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plus tard"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Più tardi"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "後で"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "나중에"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Depois"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Позже"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "稍后"
           }
         }
       }
@@ -18441,6 +18615,64 @@
           "stringUnit": {
             "state": "translated",
             "value": "转录与说话人识别在本机运行。您的资料库——转录文本、高光时刻、说话人信息以及录音本身——保存在您专属的 FCT 账户中，因此可同步到您的 Mac 和 iPhone，即使更换新设备也不会丢失。退出登录会在全部同步完成后从本机移除资料库；重新登录后即会恢复。"
+          }
+        }
+      }
+    },
+    "Transcription runs entirely on this device, which means the speech model has to live here too. It's about 1.6 GB — worth getting on Wi-Fi now rather than partway through your first recording.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Transkription läuft vollständig auf diesem Gerät, also muss auch das Sprachmodell hier liegen. Es ist etwa 1,6 GB groß – besser jetzt über WLAN laden als mitten in deiner ersten Aufnahme."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcripción se realiza por completo en este dispositivo, así que el modelo de voz también tiene que estar aquí. Ocupa unos 1,6 GB: conviene descargarlo por Wi-Fi ahora y no a mitad de tu primera grabación."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La transcription s'effectue entièrement sur cet appareil, le modèle vocal doit donc s'y trouver aussi. Il pèse environ 1,6 Go — autant le télécharger en Wi-Fi maintenant plutôt qu'au milieu de votre premier enregistrement."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La trascrizione avviene interamente su questo dispositivo, quindi anche il modello vocale deve risiedere qui. Occupa circa 1,6 GB: meglio scaricarlo ora via Wi-Fi che a metà della tua prima registrazione."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文字起こしはすべてこのデバイス上で行われるため、音声モデルもここに必要です。サイズは約1.6 GB。最初の録音の途中ではなく、今Wi-Fiで取得しておくのがおすすめです。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "받아쓰기는 전적으로 이 기기에서 실행되므로 음성 모델도 여기에 있어야 합니다. 약 1.6GB이며, 첫 녹음 도중보다 지금 Wi-Fi로 받아두는 것이 좋습니다."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A transcrição é feita inteiramente neste dispositivo, então o modelo de fala também precisa ficar aqui. Ele tem cerca de 1,6 GB — melhor baixar no Wi-Fi agora do que no meio da sua primeira gravação."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Расшифровка выполняется полностью на этом устройстве, поэтому речевая модель должна быть здесь же. Её размер около 1,6 ГБ — лучше загрузить по Wi-Fi сейчас, чем посреди первой записи."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "转录完全在本设备上进行，因此语音模型也需要保存在这里。它约为 1.6 GB — 建议现在通过 Wi-Fi 下载，而不是在你第一次录音进行到一半时。"
           }
         }
       }
