@@ -118,6 +118,12 @@ targets:
     info:
       path: Sources/App/Info.plist
       properties:
+        LSApplicationCategoryType: public.app-category.productivity
+        # The standard exemption: Transcription Studio uses only HTTPS and the platform's own
+        # crypto (the one CryptoKit call is a SHA-256 model-artifact check, which is a hash and
+        # not encryption), so no non-exempt encryption ships. Declared here so no upload stops
+        # to ask.
+        ITSAppUsesNonExemptEncryption: false
         # The ten languages this app ships. Declared HERE, in the Info.plist proper: the
         # `INFOPLIST_KEY_CFBundleLocalizations` build-setting variant is silently ignored, and
         # without the real key every bundle in the process — the app's catalogs and every

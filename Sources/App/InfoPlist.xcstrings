@@ -1,0 +1,461 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSMicrophoneUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio records from your microphone. Speech recognition and speaker identification run entirely on this device; the recording and its transcript are stored in your private FCT account so they reach your other devices."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio graba con tu micrófono. El reconocimiento de voz y la identificación de hablantes se ejecutan completamente en este dispositivo; la grabación y su transcripción se almacenan en tu cuenta privada de FCT para que lleguen a tus otros dispositivos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 会使用你的麦克风进行录音。语音识别和说话人识别完全在本设备上运行；录音及其转录文本会存储在你的 FCT 私人账户中，以便同步到你的其他设备。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio enregistre avec ton microphone. La reconnaissance vocale et l'identification des locuteurs s'exécutent entièrement sur cet appareil ; l'enregistrement et sa transcription sont stockés dans ton compte FCT privé afin qu'ils soient accessibles sur tes autres appareils."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio nimmt über dein Mikrofon auf. Spracherkennung und Sprechererkennung laufen vollständig auf diesem Gerät; die Aufnahme und ihre Abschrift werden in deinem privaten FCT-Konto gespeichert, damit sie auf deinen anderen Geräten verfügbar sind."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio grava pelo seu microfone. O reconhecimento de fala e a identificação de locutores são executados inteiramente neste dispositivo; a gravação e sua transcrição são armazenadas na sua conta privada da FCT para chegar aos seus outros dispositivos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio はマイクから録音します。音声認識と話者識別はこの端末上で完結します。録音とその文字起こしは、ほかの端末にも届くようにあなたの FCT プライベートアカウントに保存されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 마이크를 통해 녹음합니다. 음성 인식과 화자 식별은 이 기기에서만 이루어집니다. 녹음본과 그 대본은 다른 기기에서도 볼 수 있도록 사용자의 개인 FCT 계정에 저장됩니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio registra dal tuo microfono. Il riconoscimento vocale e l'identificazione dei parlanti vengono eseguiti interamente su questo dispositivo; la registrazione e la relativa trascrizione vengono archiviate nel tuo account FCT privato in modo che raggiungano i tuoi altri dispositivi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio записывает звук с вашего микрофона. Распознавание речи и определение говорящих выполняются полностью на этом устройстве; запись и её расшифровка хранятся в вашей личной учётной записи FCT, чтобы быть доступными на других ваших устройствах."
+          }
+        }
+      }
+    },
+    "NSAudioCaptureUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio captures system audio to transcribe meetings and calls. Transcription runs entirely on this Mac; the recording and its transcript are stored in your private FCT account so they reach your other devices."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio captura el audio del sistema para transcribir reuniones y llamadas. La transcripción se ejecuta completamente en este Mac; la grabación y su transcripción se almacenan en tu cuenta privada de FCT para que lleguen a tus otros dispositivos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 会捕获系统音频以转录会议和通话内容。转录完全在这台 Mac 上进行；录音及其转录文本会存储在你的 FCT 私人账户中，以便同步到你的其他设备。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio capture l'audio système pour transcrire les réunions et les appels. La transcription s'exécute entièrement sur ce Mac ; l'enregistrement et sa transcription sont stockés dans ton compte FCT privé afin qu'ils soient accessibles sur tes autres appareils."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio erfasst System-Audio, um Besprechungen und Anrufe zu transkribieren. Die Transkription läuft vollständig auf diesem Mac; die Aufnahme und ihre Abschrift werden in deinem privaten FCT-Konto gespeichert, damit sie auf deinen anderen Geräten verfügbar sind."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio captura o áudio do sistema para transcrever reuniões e chamadas. A transcrição é executada inteiramente neste Mac; a gravação e sua transcrição são armazenadas na sua conta privada da FCT para chegar aos seus outros dispositivos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio は会議や通話を文字起こしするためにシステムオーディオをキャプチャします。文字起こしはこの Mac 上で完結します。録音とその文字起こしは、ほかの端末にも届くようにあなたの FCT プライベートアカウントに保存されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 회의와 통화를 대본으로 옮기기 위해 시스템 오디오를 캡처합니다. 대본 작성은 이 Mac에서만 이루어집니다. 녹음본과 그 대본은 다른 기기에서도 볼 수 있도록 사용자의 개인 FCT 계정에 저장됩니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio cattura l'audio di sistema per trascrivere riunioni e chiamate. La trascrizione viene eseguita interamente su questo Mac; la registrazione e la relativa trascrizione vengono archiviate nel tuo account FCT privato in modo che raggiungano i tuoi altri dispositivi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio захватывает системный звук для расшифровки встреч и звонков. Расшифровка выполняется полностью на этом Mac; запись и её расшифровка хранятся в вашей личной учётной записи FCT, чтобы быть доступными на других ваших устройствах."
+          }
+        }
+      }
+    },
+    "NSCalendarsWriteOnlyAccessUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio adds meetings you review from a transcript to your calendar. It only ever adds — it never reads your existing calendar."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio añade a tu calendario las reuniones que revisas a partir de una transcripción. Solo añade — nunca lee tu calendario existente."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 会将你从转录文本中确认的会议添加到你的日历。它只会添加，绝不会读取你现有的日历内容。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio ajoute à ton calendrier les réunions que tu valides depuis une transcription. Il ne fait qu'ajouter — il ne lit jamais ton calendrier existant."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio fügt deinem Kalender Besprechungen hinzu, die du aus einer Abschrift überprüfst. Es fügt ausschließlich hinzu — es liest niemals deinen bestehenden Kalender."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio adiciona ao seu calendário as reuniões que você revisa a partir de uma transcrição. Ele apenas adiciona — nunca lê o seu calendário existente."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio は、文字起こしから確認した会議をあなたのカレンダーに追加します。追加するだけで、既存のカレンダーを読み取ることは一切ありません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 대본에서 확인한 회의를 캘린더에 추가합니다. 추가만 할 뿐, 기존 캘린더를 읽는 일은 절대 없습니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio aggiunge al tuo calendario le riunioni che rivedi da una trascrizione. Aggiunge soltanto — non legge mai il tuo calendario esistente."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio добавляет в ваш календарь встречи, которые вы подтверждаете по расшифровке. Приложение только добавляет записи и никогда не читает существующий календарь."
+          }
+        }
+      }
+    },
+    "NSRemindersFullAccessUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio adds action items you review from a transcript to your reminders."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio añade a tus recordatorios las tareas que revisas a partir de una transcripción."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 会将你从转录文本中确认的待办事项添加到你的提醒事项中。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio ajoute à tes rappels les tâches que tu valides depuis une transcription."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio fügt deinen Erinnerungen Aufgaben hinzu, die du aus einer Abschrift überprüfst."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio adiciona aos seus lembretes as tarefas que você revisa a partir de uma transcrição."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio は、文字起こしから確認したアクションアイテムをあなたのリマインダーに追加します。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 대본에서 확인한 실행 항목을 미리 알림에 추가합니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio aggiunge ai tuoi promemoria le attività che rivedi da una trascrizione."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio добавляет в ваши напоминания задачи, которые вы подтверждаете по расшифровке."
+          }
+        }
+      }
+    },
+    "NSContactsUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio matches names in your transcripts to your contacts so speakers and mentions show real names. It only reads your contacts; the name you bind to a speaker is saved with that transcript in your FCT account."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio compara los nombres de tus transcripciones con tus contactos para que los hablantes y las menciones muestren nombres reales. Solo lee tus contactos; el nombre que vinculas a un hablante se guarda junto con esa transcripción en tu cuenta de FCT."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 会将转录文本中的姓名与你的通讯录进行匹配，以便说话人和被提及的人显示真实姓名。它只会读取你的通讯录；你为某位说话人绑定的姓名会与该转录文本一起保存在你的 FCT 账户中。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio compare les noms de tes transcriptions à tes contacts afin que les locuteurs et les mentions affichent de vrais noms. Il ne fait que lire tes contacts ; le nom que tu associes à un locuteur est enregistré avec cette transcription dans ton compte FCT."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio gleicht Namen in deinen Abschriften mit deinen Kontakten ab, damit Sprecher und Erwähnungen echte Namen anzeigen. Es liest nur deine Kontakte; der Name, den du einem Sprecher zuordnest, wird zusammen mit dieser Abschrift in deinem FCT-Konto gespeichert."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio compara os nomes das suas transcrições com seus contatos para que locutores e menções mostrem nomes reais. Ele apenas lê seus contatos; o nome que você vincula a um locutor é salvo junto com essa transcrição na sua conta FCT."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio は、文字起こし内の名前を連絡先と照合し、話者や言及された人物に実名を表示します。連絡先を読み取るだけです。話者に紐づけた名前は、その文字起こしとともにあなたの FCT アカウントに保存されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 대본에 있는 이름을 연락처와 대조하여 화자와 언급된 인물에 실제 이름을 표시합니다. 연락처를 읽기만 할 뿐입니다. 화자에게 연결한 이름은 해당 대본과 함께 사용자의 FCT 계정에 저장됩니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio confronta i nomi nelle tue trascrizioni con i tuoi contatti in modo che i parlanti e le menzioni mostrino nomi reali. Legge soltanto i tuoi contatti; il nome che associ a un parlante viene salvato insieme a quella trascrizione nel tuo account FCT."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio сопоставляет имена в ваших расшифровках с вашими контактами, чтобы у говорящих и упоминаний отображались настоящие имена. Приложение только читает контакты; имя, которое вы связываете с говорящим, сохраняется вместе с этой расшифровкой в вашей учётной записи FCT."
+          }
+        }
+      }
+    },
+    "NSFaceIDUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio uses Face ID to unlock sessions you've marked private, so only you can open them."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio usa Face ID para desbloquear las sesiones que has marcado como privadas, de modo que solo tú puedas abrirlas."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 使用面容 ID 解锁你标记为私密的会话，确保只有你本人才能打开。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio utilise Face ID pour déverrouiller les sessions que tu as marquées comme privées, afin que toi seul puisses les ouvrir."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio verwendet Face ID, um Sitzungen zu entsperren, die du als privat markiert hast, sodass nur du sie öffnen kannst."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio usa o Face ID para desbloquear as sessões que você marcou como privadas, para que só você possa abri-las."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio は、あなたが非公開に設定したセッションのロックを解除するために Face ID を使用します。これにより、あなただけがそれらを開けるようになります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 비공개로 표시한 세션의 잠금을 해제하기 위해 Face ID를 사용하므로, 오직 본인만 열 수 있습니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio usa Face ID per sbloccare le sessioni che hai contrassegnato come private, così solo tu puoi aprirle."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio использует Face ID для разблокировки сеансов, которые вы пометили как приватные, чтобы открыть их могли только вы."
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio can tag a recording with the place you made it, so you can find it by location later. It's captured only while recording, and the tag is saved with that session in your private FCT account so it reaches your other devices."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio puede etiquetar una grabación con el lugar donde la hiciste, para que puedas encontrarla más tarde por ubicación. Solo se captura mientras grabas, y la etiqueta se guarda junto con esa sesión en tu cuenta privada de FCT para que llegue a tus otros dispositivos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio 可以为录音标记你录制时所在的地点，方便你以后按位置查找。位置信息仅在录音期间被采集，该标记会与该会话一起保存在你的 FCT 私人账户中，以便同步到你的其他设备。"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio peut associer à un enregistrement le lieu où tu l'as fait, pour que tu puisses le retrouver plus tard par localisation. Elle n'est capturée que pendant l'enregistrement, et l'étiquette est enregistrée avec cette session dans ton compte FCT privé afin qu'elle soit accessible sur tes autres appareils."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio kann eine Aufnahme mit dem Ort versehen, an dem du sie gemacht hast, damit du sie später anhand des Standorts wiederfinden kannst. Der Standort wird nur während der Aufnahme erfasst, und die Markierung wird zusammen mit dieser Sitzung in deinem privaten FCT-Konto gespeichert, damit sie auf deinen anderen Geräten verfügbar ist."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Transcription Studio pode marcar uma gravação com o local onde você a fez, para que possa encontrá-la depois por localização. Ela só é capturada durante a gravação, e a marcação é salva com essa sessão na sua conta privada da FCT para chegar aos seus outros dispositivos."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio は、録音した場所をタグとして記録できるため、あとで場所から見つけることができます。位置情報は録音中にのみ取得され、そのタグはほかの端末にも届くようにそのセッションとともにあなたの FCT プライベートアカウントに保存されます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio는 녹음한 장소를 태그로 남겨, 나중에 위치로 찾을 수 있게 합니다. 위치 정보는 녹음 중에만 수집되며, 이 태그는 다른 기기에서도 볼 수 있도록 해당 세션과 함께 사용자의 개인 FCT 계정에 저장됩니다."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio può contrassegnare una registrazione con il luogo in cui l'hai fatta, così puoi ritrovarla in seguito in base alla posizione. Viene rilevata solo durante la registrazione, e il tag viene salvato insieme a quella sessione nel tuo account FCT privato in modo che raggiunga i tuoi altri dispositivi."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transcription Studio может отметить запись местом, где она была сделана, чтобы позже вы могли найти её по местоположению. Геопозиция определяется только во время записи, и эта метка сохраняется вместе с сеансом в вашей личной учётной записи FCT, чтобы быть доступной на других ваших устройствах."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

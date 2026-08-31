@@ -476,6 +476,7 @@
 		F06A410F0E4D181534B88EB7 /* FCTContacts in Frameworks */ = {isa = PBXBuildFile; productRef = 903A5A7702C5E1926C86004A /* FCTContacts */; };
 		F0A4740F46DC15C45B857EDA /* DiarizationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE128D369882F9DA048B523 /* DiarizationEngine.swift */; };
 		F0D53F658A6809F310707F44 /* SortformerCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E73D5F65186F05E6E79F5918 /* SortformerCore.swift */; };
+		F18181EA427CD5810E06599D /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 658ABE5C58B8CC6CBA44A629 /* InfoPlist.xcstrings */; };
 		F218B37E949DC9E97859A541 /* A11yID.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3A528828488B96EF3ABAC8 /* A11yID.swift */; };
 		F2882416802844342C25FBA7 /* LuxTtsCloningEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC6C88231008D2C875BC315 /* LuxTtsCloningEngine.swift */; };
 		F290DF83B8394380630E73AC /* TranscribeLinkIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E1949689A1E8E8653484D5 /* TranscribeLinkIntent.swift */; };
@@ -496,6 +497,7 @@
 		FCD52F931046B08FC894FB7E /* AppGroup.swift in Sources */ = {isa = PBXBuildFile; fileRef = F295C8C813C32B0A434A4723 /* AppGroup.swift */; };
 		FD32ABDE18DC49EA5FBBC972 /* PresenceHeartbeat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E6FDE0AD96C1C3A81ABA9C2 /* PresenceHeartbeat.swift */; };
 		FD414BB1BA666F8C4F34F955 /* PlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81C0C354E8F0E7DA65239FC0 /* PlaybackIntents.swift */; };
+		FDB121DFB4CC39D724077EBC /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 658ABE5C58B8CC6CBA44A629 /* InfoPlist.xcstrings */; };
 		FDBC53A39F55968256376B58 /* FluidAudio in Frameworks */ = {isa = PBXBuildFile; productRef = 0C2CAD67D4D03A8497C3A083 /* FluidAudio */; };
 		FE37D6F477E444A8F18F4528 /* FCTBlobSyncTesting in Frameworks */ = {isa = PBXBuildFile; productRef = 81C3E6E135EECC6B6801A069 /* FCTBlobSyncTesting */; };
 		FF38953FC992891D4CCD847B /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25366897D2EE807215A4CFA /* SettingsView.swift */; };
@@ -678,6 +680,7 @@
 		645477D915C7913F2A0CE91C /* BackgroundExecution.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundExecution.swift; sourceTree = "<group>"; };
 		64B87DBE658FB7E07032005B /* DocxExporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocxExporterTests.swift; sourceTree = "<group>"; };
 		64E1949689A1E8E8653484D5 /* TranscribeLinkIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscribeLinkIntent.swift; sourceTree = "<group>"; };
+		658ABE5C58B8CC6CBA44A629 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		66F6FA889253485440B73D2F /* TranscriptFuserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptFuserTests.swift; sourceTree = "<group>"; };
 		677A6085C01C2BD9F033D946 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		68D0BB12F8234AFDCCD2379D /* LocationChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationChip.swift; sourceTree = "<group>"; };
@@ -1034,6 +1037,7 @@
 				B47D456BF67B407F6EF93CEF /* AppShortcuts.xcstrings */,
 				BC0A6FBE775B9F4D36FFB700 /* Assets.xcassets */,
 				DD16216E11A5914F3240534B /* Info.plist */,
+				658ABE5C58B8CC6CBA44A629 /* InfoPlist.xcstrings */,
 				0966D0B8003D2D5886ED6709 /* Localizable.xcstrings */,
 				DC5D10CCC46B236A1685AE62 /* PrivacyInfo.xcprivacy */,
 				34C452C08235266EB3CDE744 /* TranscriptionShortcuts.swift */,
@@ -1886,6 +1890,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D9C17493FC769D9F6B5DE602 /* AppShortcuts.xcstrings in Resources */,
+				FDB121DFB4CC39D724077EBC /* InfoPlist.xcstrings in Resources */,
 				B43089750FFF3B0B23512089 /* Localizable.xcstrings in Resources */,
 				2F28D88D321B15B46AF306B9 /* whisperkit-model-manifest.json in Resources */,
 			);
@@ -1897,6 +1902,7 @@
 			files = (
 				50B1DBEA2B5EE75587E2BE27 /* AppShortcuts.xcstrings in Resources */,
 				D68B424E7AC7F1485A4B1A3D /* Assets.xcassets in Resources */,
+				F18181EA427CD5810E06599D /* InfoPlist.xcstrings in Resources */,
 				66400A1EDAFB4E3B349CD163 /* Localizable.xcstrings in Resources */,
 				7A4E719CCB24B2245B6C82B4 /* PrivacyInfo.xcprivacy in Resources */,
 				72E0B2010A2504017AAC4E88 /* whisperkit-model-manifest.json in Resources */,

@@ -66,6 +66,10 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Transcription Studio captures system audio to transcribe meetings and calls. Transcription runs entirely on this Mac; the recording and its transcript are stored in your private FCT account so they reach your other devices.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>

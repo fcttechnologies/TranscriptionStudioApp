@@ -287,6 +287,7 @@ echo "==> App icon in both artifacts"
 # holding the key is not the same as the catalog carrying the string.
 echo "==> Localization drift (this repo's own sources)"
 check_loc_drift "${DD}/macos" --require-languages "${SHIPPED_LANGUAGES}" \
+  --coverage-only Sources/App/InfoPlist.xcstrings \
   Sources/App/Localizable.xcstrings Sources/App/AppShortcuts.xcstrings
 mark "artifact checks (Debug)"
 
