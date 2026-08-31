@@ -125,9 +125,11 @@ final class TranscriptionSync {
     @ObservationIgnored private var engine: SyncEngine?
     @ObservationIgnored private let manual = ManualTrigger()
     @ObservationIgnored private var eventTask: Task<Void, Never>?
-    @ObservationIgnored private var triggerTask: Task<Void, Never>?
-    @ObservationIgnored private var retryTask: Task<Void, Never>?
-    @ObservationIgnored private var debounceTask: Task<Void, Never>?
+    /// When a cycle runs — the trigger subscription, the debounce that coalesces a burst, and the
+    /// backoff wait — owned by the package so the rule it keeps is maintained in one place.
+    @ObservationIgnored private lazy var scheduler = SyncScheduler { [weak self] in
+        await self?.syncNow()
+    }
     @ObservationIgnored private var syncInFlight = false
     @ObservationIgnored private var syncAgain = false
     @ObservationIgnored private var pathMonitor: NWPathMonitor?
@@ -264,7 +266,7 @@ final class TranscriptionSync {
             if let blobStore { _ = await blobStore.sync() }
             let result = await engine.sync()
             publish(result)
-            scheduleRetry(after: result)
+            scheduler.scheduleRetry(after: result)
         } while syncAgain
     }
 
@@ -317,29 +319,6 @@ final class TranscriptionSync {
     /// counting them. Empty when there is no blob store to ask.
     var refusedUploads: [BlobOutboxEntry] {
         blobStore?.failedEntries() ?? []
-    }
-
-    /// Coalesce a burst of triggers into one cycle: a finishing transcription saves its session,
-    /// then hundreds of segments, then the extraction pass's highlights, and each save is a round
-    /// trip if nothing gathers them.
-    ///
-    /// **What the cancel takes is the WAIT, never a cycle already running.** The task releases its
-    /// own handle before it starts syncing, so a later trigger finds nothing to tear down and
-    /// coalesces through `syncAgain` instead. Cancelling the task while it sat inside `syncNow()`
-    /// would cancel the request underneath it — and the trigger that does that is the cycle's *own*
-    /// applier, since `LocalSaveTrigger` fires on the applied save. The first pull after a sign-in
-    /// is the worst of it: every page of the library that lands schedules a debounce that kills the
-    /// restore that produced it, so the restore converges only by starting over, and on a slow link
-    /// it can outlive its own timeout and report an unreachable account that answered every time.
-    private func scheduleDebouncedSync() {
-        debounceTask?.cancel()
-        debounceTask = Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(250))
-            guard !Task.isCancelled, let self else { return }
-            // Past the wait this cycle is no longer cancellable by a later trigger.
-            self.debounceTask = nil
-            await self.syncNow()
-        }
     }
 
     /// Rebuild this device's view from the server. Refuses while anything is unpushed.
@@ -548,25 +527,13 @@ final class TranscriptionSync {
         self.blobStore = blobs
         engineBuildCountForTesting += 1
 
-        let triggers = configuration.makeTriggers(container) + [manual]
-        let signals = CompositeHistoryChangeTrigger(triggers).signals()
-        triggerTask = Task { [weak self] in
-            for await _ in signals {
-                guard let self else { return }
-                self.scheduleDebouncedSync()
-            }
-        }
+        scheduler.observe(configuration.makeTriggers(container) + [manual])
 
         await syncNow()
     }
 
     private func stopEngine(releasing: Bool) {
-        triggerTask?.cancel()
-        triggerTask = nil
-        retryTask?.cancel()
-        retryTask = nil
-        debounceTask?.cancel()
-        debounceTask = nil
+        scheduler.stop()
         if releasing {
             engine = nil
             blobStore = nil
@@ -666,29 +633,6 @@ final class TranscriptionSync {
     }
 
     // MARK: - Backoff and connectivity
-
-    /// Wait out the backoff, then run one cycle.
-    ///
-    /// **What the cancel takes is the WAIT, never a cycle already running** — the debounce's rule
-    /// one layer up, and sharper here, because this task's own cycle calls straight back in: the
-    /// `scheduleRetry` below is the last statement of `syncNow()`'s loop body. A retry still
-    /// holding its handle would cancel *itself* at the end of its first pass, on any result and a
-    /// success included, and the second pass would run torn down — the staging sweep, the blob
-    /// drain and the pull all cancelled. That pass is where a library this size actually lands:
-    /// the retry is the cycle a device coming back from offline has been waiting on, and it was
-    /// the only one that ever cancelled it.
-    private func scheduleRetry(after result: SyncStatus) {
-        retryTask?.cancel()
-        retryTask = nil
-        guard case .offline(let delay) = result else { return }
-        retryTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled, let self else { return }
-            // Past the wait this cycle is no longer cancellable by a later `scheduleRetry`.
-            self.retryTask = nil
-            await self.syncNow()
-        }
-    }
 
     /// The clock resets on a network-path change, so a device coming back on Wi-Fi retries at once
     /// rather than at the tail of a five-minute backoff it earned while genuinely offline.
