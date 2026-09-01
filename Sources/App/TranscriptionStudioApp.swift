@@ -22,7 +22,6 @@ struct TranscriptionStudioApp: App {
     @State private var sync = TranscriptionSync()
     /// MetricKit production diagnostics — daily metric reports + crash/hang/hitch/launch/memory
     /// events, tagged with the pipeline stage they occurred in. Held for the app's lifetime.
-    @State private var metricsReporter = MetricsReporter()
 
     init() {
         TranscriptionDiagnostics.start()
@@ -100,7 +99,9 @@ struct TranscriptionStudioApp: App {
         BackgroundAssetsModelInstaller.installStagedModel()
         #endif
         AppModelContainer.stampMainContextAuthor()
-        // Start consuming MetricKit reports for the rest of the session (idempotent).
-        metricsReporter.start()
+        // MetricKit consumption is the shared layer's (`TranscriptionDiagnostics.service`), which
+        // both uploads and mirrors to OSLog. This app used to run a SECOND MetricManager beside it
+        // purely for the OSLog half; that mirroring now lives in `MetricsService` so all thirteen
+        // apps get it, and the local subscriber is gone.
     }
 }
