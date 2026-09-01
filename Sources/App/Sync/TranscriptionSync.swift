@@ -23,10 +23,14 @@ struct TranscriptionSyncConfiguration {
     var blobCacheDirectory: () throws -> URL
     var makeTransport: (any SyncAccount) -> any SyncTransport
     var makeBlobTransport: (any SyncAccount) -> any BlobTransport
-    /// The change triggers the engine listens on, beside the bootstrap's own manual pulse.
-    /// `LocalSaveTrigger` observes saves *process-wide*, which is right in an app and wrong in a
-    /// test process, where it would wake one suite's engine on another suite's writes.
+    /// The change triggers the engine listens on. `LocalSaveTrigger` observes saves
+    /// *process-wide*, which is right in an app and wrong in a test process, where it would wake
+    /// one suite's engine on another suite's writes.
     var makeTriggers: (ModelContainer) -> [any HistoryChangeTrigger]
+    /// The Realtime channel a foregrounding subscribes for nudges — rung 2 of the ping ladder.
+    /// `nil` where no socket may be opened at all, which is every test process: there is no
+    /// server to join, and correctness never rides this rung.
+    var makeNudgeChannel: (any SyncAccount) -> SyncNudgeChannel?
 
     init(
         stateFileURL: @escaping () throws -> URL,
@@ -34,7 +38,8 @@ struct TranscriptionSyncConfiguration {
         blobCacheDirectory: @escaping () throws -> URL,
         makeTransport: @escaping (any SyncAccount) -> any SyncTransport,
         makeBlobTransport: @escaping (any SyncAccount) -> any BlobTransport,
-        makeTriggers: @escaping (ModelContainer) -> [any HistoryChangeTrigger]
+        makeTriggers: @escaping (ModelContainer) -> [any HistoryChangeTrigger],
+        makeNudgeChannel: @escaping (any SyncAccount) -> SyncNudgeChannel? = { _ in nil }
     ) {
         self.stateFileURL = stateFileURL
         self.blobStateFileURL = blobStateFileURL
@@ -42,6 +47,7 @@ struct TranscriptionSyncConfiguration {
         self.makeTransport = makeTransport
         self.makeBlobTransport = makeBlobTransport
         self.makeTriggers = makeTriggers
+        self.makeNudgeChannel = makeNudgeChannel
     }
 
     static var live: TranscriptionSyncConfiguration {
@@ -63,19 +69,24 @@ struct TranscriptionSyncConfiguration {
                     account: account
                 )
             },
-            // The cross-process rung is what makes a Share-extension or App-Intent write reach the
-            // server without waiting for the app's next foreground — on the platforms where it fires.
+            // The engine's own applier is excluded from the local-save rung in there, and the
+            // cross-process rung it adds is what makes a Share-extension or App-Intent write reach
+            // the server without waiting for the app's next foreground.
             makeTriggers: { container in
-                // `MacPresence` is a heartbeat row, not a user edit: it is rewritten every
-                // 60s whether or not anything happened, and waking the engine costs a whole
-                // cycle. `PresenceHeartbeat` sends its own row through `pushOnly()` instead.
-                var triggers: [any HistoryChangeTrigger] = [
-                    LocalSaveTrigger(ignoring: [TranscriptionSync.heartbeatEntityName])
-                ]
-                if let remote = try? RemoteHistoryChangeTrigger(container: container) {
-                    triggers.append(remote)
-                }
-                return triggers
+                // `MacPresence` is a heartbeat row, not a user edit: it is rewritten every 60s
+                // whether or not anything happened, and the cycle it would wake sends the very row
+                // `PresenceHeartbeat` already sends itself through `pushOnly()`.
+                SyncScheduler.engineTriggers(
+                    container: container,
+                    ignoring: [TranscriptionSync.heartbeatEntityName]
+                )
+            },
+            makeNudgeChannel: { account in
+                SyncNudgeChannel(
+                    baseURL: AccountEnvironment.fct.baseURL,
+                    publishableKey: AccountEnvironment.fct.publishableKey,
+                    account: account
+                )
             }
         )
     }
@@ -123,15 +134,20 @@ final class TranscriptionSync {
     private(set) var blobStore: BlobStore?
 
     @ObservationIgnored private var engine: SyncEngine?
-    @ObservationIgnored private let manual = ManualTrigger()
     @ObservationIgnored private var eventTask: Task<Void, Never>?
+    /// The account's Realtime channel and the subscription this foreground holds on it. Both live
+    /// only while the app is in front: the socket is dropped on the way to the background.
+    @ObservationIgnored private var nudgeChannel: SyncNudgeChannel?
+    @ObservationIgnored private var nudgeTask: Task<Void, Never>?
     /// When a cycle runs — the trigger subscription, the debounce that coalesces a burst, and the
     /// backoff wait — owned by the package so the rule it keeps is maintained in one place.
-    @ObservationIgnored private lazy var scheduler = SyncScheduler { [weak self] in
-        await self?.syncNow()
+    @ObservationIgnored private lazy var scheduler = SyncScheduler { [weak self] cycle in
+        await self?.syncNow(cycle)
     }
     @ObservationIgnored private var syncInFlight = false
-    @ObservationIgnored private var syncAgain = false
+    /// What a request that arrived mid-cycle asks the loop to run next, at the strongest kind
+    /// asked for while the cycle was in flight. `nil` is "nothing further asked for".
+    @ObservationIgnored private var syncAgain: SyncCycle?
     @ObservationIgnored private var pathMonitor: NWPathMonitor?
     @ObservationIgnored private weak var controller: AccountController?
     @ObservationIgnored private var container: ModelContainer?
@@ -208,36 +224,62 @@ final class TranscriptionSync {
         stopEngine(releasing: true)
     }
 
-    /// Launch and every foregrounding. Unconditional, cursor-cheap, and the rung correctness
-    /// actually rides on — everything above it only buys freshness.
+    /// Launch and every foregrounding: rung 1 of the ping ladder, and the one correctness rides
+    /// on — everything above it only buys freshness. One full cycle, and the Realtime rung
+    /// subscribed for as long as this foreground lasts.
     func foregrounded() {
         guard engine != nil else { return }
         engine?.resetBackoff()
         blobStore?.resetBackoff()
-        manual.fire()
-        Task { await syncNow() }
+        Task { await syncNow(.full) }
+        startNudges()
     }
 
-    /// Force a full cycle now — the post-sign-in path. Stages any recording still living in the
-    /// session's local byte column, drains the upload queue, then runs the record engine (whose
-    /// push gate holds any session whose upload has not confirmed).
-    ///
-    /// A cycle already in flight is not joined by a second one; the request is remembered and the
-    /// loop runs again once — the applier's own save fires `LocalSaveTrigger`, so every pull that
-    /// lands rows asks for another cycle, which is correct and would otherwise re-enter.
+    /// On the way out of the foreground the socket goes too. iOS suspends it anyway, so a channel
+    /// held across the suspend leaks one per foreground rather than in a rare failure — and losing
+    /// the rung costs nothing but freshness, since the next foreground re-joins and pulls.
+    func backgrounded() {
+        stopNudges()
+    }
+
     /// The SwiftData entity whose saves are a heartbeat rather than an edit. Named once, because
     /// the trigger's ignore list and the writer that compensates for it have to agree or a write
     /// silently stops reaching the server.
     static let heartbeatEntityName = "MacPresence"
 
+    /// Rung 2, held for this foreground only: each nudge is the account saying another device
+    /// wrote, which only a full cycle can act on.
+    private func startNudges() {
+        guard nudgeTask == nil, let channel = nudgeChannel else { return }
+        nudgeTask = Task { [weak self] in
+            do {
+                for try await _ in channel.nudges() {
+                    await self?.syncNow(.full)
+                }
+            } catch {
+                // Every way this stream ends is ordinary — a refused join, a socket that would not
+                // stay up, no session to join with — and each leaves the device pulling on
+                // foreground and post-push exactly as it would with no socket at all. So it is
+                // logged and never published: this rung must not be able to paint the UI failed.
+                Logger.persistence.info(
+                    "realtime nudge rung absent for this foreground: \(String(describing: error), privacy: .public)"
+                )
+            }
+        }
+    }
+
+    private func stopNudges() {
+        nudgeTask?.cancel()
+        nudgeTask = nil
+    }
+
     /// Send what is queued without pulling anything back.
     ///
     /// The presence heartbeat's own path. A beat genuinely has to reach the server — that is the
     /// entire point of the row — but it has nothing to *learn*, and a full cycle would spend a
-    /// cursor pull on all nine tables to deliver one column. Sharing `syncInFlight` with
-    /// ``syncNow()`` keeps a beat from opening a second wire beside a real cycle; a beat that
-    /// arrives mid-cycle is simply dropped, because the cycle it collided with pushes the row
-    /// anyway.
+    /// read round trip to deliver one column. Sharing `syncInFlight` with ``syncNow(_:)`` keeps a
+    /// beat from opening a second wire beside a real cycle; a beat that arrives mid-cycle is
+    /// simply dropped, because the cycle it collided with pushes the row anyway.
     func pushOnly() async {
         guard let engine, !syncInFlight else { return }
         syncInFlight = true
@@ -252,22 +294,32 @@ final class TranscriptionSync {
         }
     }
 
-    func syncNow() async {
+    /// Run a cycle of the kind asked for. Stages any recording still living in the session's local
+    /// byte column, drains the upload queue, then runs the record engine (whose push gate holds any
+    /// session whose upload has not confirmed).
+    ///
+    /// A cycle already in flight is not joined by a second one: the request is remembered at its
+    /// own strength and the loop runs again with it once the running pass ends. `max` is what keeps
+    /// a nudge arriving beside a local save from being served as a push — the weaker request is
+    /// already inside the stronger one, and losing the pull is losing the rung.
+    func syncNow(_ cycle: SyncCycle) async {
         guard let engine else { return }
         if syncInFlight {
-            syncAgain = true
+            syncAgain = max(syncAgain ?? cycle, cycle)
             return
         }
         syncInFlight = true
         defer { syncInFlight = false }
-        repeat {
-            syncAgain = false
+        var pending: SyncCycle? = cycle
+        while let running = pending {
+            syncAgain = nil
             await stageAuthoredAudio()
             if let blobStore { _ = await blobStore.sync() }
-            let result = await engine.sync()
+            let result = await engine.sync(running)
             publish(result)
             scheduler.scheduleRetry(after: result)
-        } while syncAgain
+            pending = syncAgain
+        }
     }
 
     /// The account's first pull on this device, awaited — the front door's restore stage. Answers
@@ -275,16 +327,16 @@ final class TranscriptionSync {
     /// resolving into a feed that says "no sessions yet" about a library nobody managed to read.
     ///
     /// The wait at the top is the part that matters: the engine is built from the account's event
-    /// stream, which races this caller, and `syncNow()` folds a concurrent request into the running
-    /// cycle and returns at once — so calling it while a cycle was already in flight would hand
-    /// back a verdict about a pull that had not happened.
+    /// stream, which races this caller, and `syncNow(_:)` folds a concurrent request into the
+    /// running cycle and returns at once — so calling it while a cycle was already in flight would
+    /// hand back a verdict about a pull that had not happened.
     func restoreAccountData(waitingUpTo timeout: Duration = .seconds(30)) async -> Bool {
         let deadline = ContinuousClock.now + timeout
         while engine == nil || syncInFlight {
             guard ContinuousClock.now < deadline else { return false }
             try? await Task.sleep(for: .milliseconds(50))
         }
-        await syncNow()
+        await syncNow(.full)
         return status == .idle
     }
 
@@ -311,7 +363,10 @@ final class TranscriptionSync {
         requeued += blobStore?.retryFailed() ?? 0
         engine?.resetBackoff()
         blobStore?.resetBackoff()
-        await syncNow()
+        // Full: a refusal is the one state where this device may also be the stale one — a record
+        // judged because the server had moved on is repaired by hearing what it holds, not only by
+        // sending again.
+        await syncNow(.full)
         return requeued
     }
 
@@ -468,7 +523,7 @@ final class TranscriptionSync {
         // living engine: same account, not enrolling → just run a cycle. Rebuilding the trigger
         // wiring here would accumulate a task + observer set per foreground.
         if let engine, !enrolling, engine.accountID == accountID {
-            await syncNow()
+            await syncNow(.full)
             return
         }
         stopEngine(releasing: true)
@@ -505,10 +560,13 @@ final class TranscriptionSync {
         engine.pushGate = { [weak blobs] table, uuid in
             blobs?.isRecordPushable(table: table, uuid: uuid) ?? true
         }
+        // The uploads that were holding records back have settled, so the gate they were shut
+        // against is open: a push, because what changed is on this device and nothing about a
+        // settled upload says the server has anything to tell us.
         blobs.onUploadsSettled = { [weak self] in
             guard let self else { return }
             self.engine?.resetBackoff()
-            Task { await self.syncNow() }
+            Task { await self.syncNow(.push) }
         }
         engine.didApplyRemoteChanges = { [weak self] in self?.onRemoteChanges?() }
         engine.onAccountDeleted = { [weak self] in
@@ -525,18 +583,23 @@ final class TranscriptionSync {
         }
         self.engine = engine
         self.blobStore = blobs
+        self.nudgeChannel = configuration.makeNudgeChannel(credentials)
         engineBuildCountForTesting += 1
 
-        scheduler.observe(configuration.makeTriggers(container) + [manual])
+        scheduler.observe(configuration.makeTriggers(container))
 
-        await syncNow()
+        await syncNow(.full)
     }
 
     private func stopEngine(releasing: Bool) {
         scheduler.stop()
+        // Unconditional: the socket is joined with the account's own token, so it must not outlive
+        // the account even where the engine itself is only idled.
+        stopNudges()
         if releasing {
             engine = nil
             blobStore = nil
+            nudgeChannel = nil
         }
     }
 
@@ -646,7 +709,7 @@ final class TranscriptionSync {
                 guard let self, self.engine != nil else { return }
                 self.engine?.resetBackoff()
                 self.blobStore?.resetBackoff()
-                await self.syncNow()
+                await self.syncNow(.full)
             }
         }
         monitor.start(queue: DispatchQueue(label: "com.fcttechnologies.TranscriptionStudio.sync.path"))
@@ -659,7 +722,11 @@ nonisolated struct UnreachableTransport: SyncTransport {
         throw SyncTransportError.connectivity("no account")
     }
 
-    func pull(schemaVersion: String, table: String, cursor: Int64, pageLimit: Int) async throws -> PullEnvelope {
+    func pullAll(
+        schemaVersion: String,
+        cursors: [String: Int64],
+        rowBudget: Int
+    ) async throws -> PullAllEnvelope {
         throw SyncTransportError.connectivity("no account")
     }
 }

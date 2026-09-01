@@ -69,10 +69,16 @@ struct SignedInRootView: View {
         stageView
             .task { await openTheDoor() }
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active, frontDoor.stage == .ready else { return }
+                guard frontDoor.stage == .ready else { return }
+                // The Realtime rung is foreground-only, and `.background` is the transition that
+                // ends one. `.inactive` is a notification shade or an app switcher, and dropping
+                // the socket there would buy a re-join seconds later for nothing.
+                guard phase != .background else { return sync.backgrounded() }
+                guard phase == .active else { return }
                 app.ingestPendingShares()
-                // Re-read the shared session, re-check the Apple credential, run a cycle —
-                // launch, foregrounding and post-push is the rung correctness rides on.
+                // Re-read the shared session, re-check the Apple credential, run a cycle and
+                // re-join the nudge channel — launch, foregrounding and post-push is the rung
+                // correctness rides on.
                 Task {
                     await account.resume()
                     await account.refreshAppleCredentialState()

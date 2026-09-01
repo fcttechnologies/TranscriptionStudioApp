@@ -68,7 +68,7 @@ struct AccountSection: View {
     /// push with. So this runs a cycle first — most "unsynced" is simply a cycle that has not
     /// happened yet — and only asks when something genuinely could not be uploaded.
     private func preflightSignOut() async -> Bool {
-        await sync.syncNow()
+        await sync.syncNow(.full)
         // A count that could not be taken lets the sign-out through: the clear it runs into is
         // itself barrier-gated and keeps the library on anything unpushed, so the refusal is
         // enforced there rather than duplicated here.

@@ -29,9 +29,8 @@ final class BootstrapDevice {
     ///   to arrive inside it.
     /// - Parameter transport: the wire itself, for a suite that has to watch the round trip rather
     ///   than only its result. Overrides `transportLatency`.
-    /// - Parameter triggers: the change triggers the engine listens on beside the bootstrap's own
-    ///   manual pulse. Empty by default, so a suite drives cycles explicitly; a suite about the
-    ///   trigger path supplies its own.
+    /// - Parameter triggers: the change triggers the engine listens on. Empty by default, so a
+    ///   suite drives cycles explicitly; a suite about the trigger path supplies its own.
     init(server: FakeSyncServer = FakeSyncServer(),
          objects: FakeBlobObjectStore = FakeBlobObjectStore(),
          accountID: UUID = UUID(),
@@ -131,10 +130,54 @@ nonisolated struct LaggingTransport: SyncTransport {
         return try await wrapped.push(schemaVersion: schemaVersion, records: records)
     }
 
-    func pull(schemaVersion: String, table: String, cursor: Int64, pageLimit: Int) async throws -> PullEnvelope {
+    func pullAll(
+        schemaVersion: String,
+        cursors: [String: Int64],
+        rowBudget: Int
+    ) async throws -> PullAllEnvelope {
         try await Task.sleep(for: delay)
-        return try await wrapped.pull(schemaVersion: schemaVersion, table: table,
-                                      cursor: cursor, pageLimit: pageLimit)
+        return try await wrapped.pullAll(schemaVersion: schemaVersion, cursors: cursors,
+                                         rowBudget: rowBudget)
+    }
+}
+
+/// Every record round trip a cycle makes, counted, so a claim about what a cycle costs on the wire
+/// is a measurement rather than a reading of the call graph.
+final class CountingTransport: SyncTransport, @unchecked Sendable {
+    private let inner: FakeTransport
+    private let lock = NSLock()
+    private var _pushes = 0
+    private var _reads = 0
+    private var _lastCursors: [String: Int64] = [:]
+
+    var pushes: Int { lock.withLock { _pushes } }
+    /// One per cycle that reads at all: the whole declaration comes back in a single call.
+    var reads: Int { lock.withLock { _reads } }
+    /// Which tables the last read asked about — every table the client holds a cursor for, which
+    /// is what makes "one call" a claim about the whole schema rather than about one table.
+    var lastReadCursors: [String: Int64] { lock.withLock { _lastCursors } }
+    var roundTrips: Int { lock.withLock { _pushes + _reads } }
+
+    init(server: FakeSyncServer) { inner = FakeTransport(server: server) }
+
+    func reset() { lock.withLock { _pushes = 0; _reads = 0 } }
+
+    func push(schemaVersion: String, records: [PushRecord]) async throws -> [PushVerdict] {
+        lock.withLock { _pushes += 1 }
+        return try await inner.push(schemaVersion: schemaVersion, records: records)
+    }
+
+    func pullAll(
+        schemaVersion: String,
+        cursors: [String: Int64],
+        rowBudget: Int
+    ) async throws -> PullAllEnvelope {
+        lock.withLock {
+            _reads += 1
+            _lastCursors = cursors
+        }
+        return try await inner.pullAll(schemaVersion: schemaVersion, cursors: cursors,
+                                       rowBudget: rowBudget)
     }
 }
 

@@ -5,36 +5,46 @@ import Foundation
 import Testing
 @testable import TranscriptionStudio
 
-/// A wire that fails one pull to arm the backoff and then answers slowly, asking for a second pass
-/// from inside the recovering cycle — the way the applier's own save does when a pull lands rows.
+/// A wire that fails one read to arm the backoff and then answers slowly, asking for a second pass
+/// from inside the recovering cycle — the way a Realtime nudge or a foregrounding does when it
+/// lands while a cycle is running.
 ///
 /// `Task.sleep` throwing `CancellationError` is the whole detector, the same one the debounce suite
-/// uses: a pull that is merely slow finishes, and a pull whose enclosing cycle was cancelled does
-/// not. The failed pull never reaches the counter, so a non-zero `pullsStarted` is itself the proof
+/// uses: a read that is merely slow finishes, and a read whose enclosing cycle was cancelled does
+/// not. The failed read never reaches the counter, so a non-zero `readsStarted` is itself the proof
 /// that the retry fired at all.
 private final class RetryTransport: SyncTransport, @unchecked Sendable {
     private let inner: FakeTransport
-    private let trigger: ManualTrigger
     private let lock = NSLock()
-    private var _pullsStarted = 0
-    private var _pullsCancelled = 0
+    private var _readsStarted = 0
+    private var _readsCancelled = 0
     private var _failuresRemaining: Int
-    private var _askedForAnotherPass = false
+    private var _asked = false
+    private var _askForAnotherPass: (@Sendable () -> Void)?
 
-    var pullsStarted: Int { lock.withLock { _pullsStarted } }
-    var pullsCancelled: Int { lock.withLock { _pullsCancelled } }
+    var readsStarted: Int { lock.withLock { _readsStarted } }
+    var readsCancelled: Int { lock.withLock { _readsCancelled } }
 
-    init(server: FakeSyncServer, trigger: ManualTrigger, failuresBeforeSuccess: Int = 1) {
+    init(server: FakeSyncServer, failuresBeforeSuccess: Int = 1) {
         inner = FakeTransport(server: server)
-        self.trigger = trigger
         _failuresRemaining = failuresBeforeSuccess
+    }
+
+    /// What the wire asks for once it is inside the recovering cycle. Installed after the device
+    /// exists, because what it asks is the device's own bootstrap for another pass.
+    func askForAnotherPass(_ body: @escaping @Sendable () -> Void) {
+        lock.withLock { _askForAnotherPass = body }
     }
 
     func push(schemaVersion: String, records: [PushRecord]) async throws -> [PushVerdict] {
         try await inner.push(schemaVersion: schemaVersion, records: records)
     }
 
-    func pull(schemaVersion: String, table: String, cursor: Int64, pageLimit: Int) async throws -> PullEnvelope {
+    func pullAll(
+        schemaVersion: String,
+        cursors: [String: Int64],
+        rowBudget: Int
+    ) async throws -> PullAllEnvelope {
         let failing = lock.withLock { () -> Bool in
             guard _failuresRemaining > 0 else { return false }
             _failuresRemaining -= 1
@@ -43,54 +53,58 @@ private final class RetryTransport: SyncTransport, @unchecked Sendable {
         if failing { throw SyncTransportError.connectivity("no route to host (test)") }
 
         // Asked for from the wire rather than on a timer, which is what makes the second pass
-        // certain: the request lands while the cycle is provably still inside a pull. Once is
-        // enough — a request per pull would keep the loop running for as long as the test watched.
-        let shouldFire = lock.withLock { () -> Bool in
-            _pullsStarted += 1
-            guard !_askedForAnotherPass else { return false }
-            _askedForAnotherPass = true
-            return true
+        // certain: the request lands while the cycle is provably still inside a read. Once is
+        // enough — a request per read would keep the loop running for as long as the test watched.
+        let ask = lock.withLock { () -> (@Sendable () -> Void)? in
+            _readsStarted += 1
+            guard !_asked else { return nil }
+            _asked = true
+            return _askForAnotherPass
         }
-        if shouldFire { trigger.fire() }
+        ask?()
 
         do {
             try await Task.sleep(for: .milliseconds(200))
         } catch {
-            lock.withLock { _pullsCancelled += 1 }
+            lock.withLock { _readsCancelled += 1 }
             // The raw `CancellationError` is deliberate. Dressing it as `.connectivity` — what
             // `NSURLErrorCancelled` becomes through `PostgRESTTransport`, and so the obvious "more
             // faithful" edit — would put the engine back in `.offline(retryingIn:)` and arm a fresh
             // 1s·2ⁿ backoff inside the quiet window the settle below reads as finished.
             throw error
         }
-        return try await inner.pull(
-            schemaVersion: schemaVersion, table: table, cursor: cursor, pageLimit: pageLimit
+        return try await inner.pullAll(
+            schemaVersion: schemaVersion, cursors: cursors, rowBudget: rowBudget
         )
     }
 }
 
 /// The backoff retry's one hard rule — the debounce's rule, one layer up.
 ///
-/// `scheduleRetry` is the last statement of `syncNow()`'s `repeat … while syncAgain` body, so when
-/// the task running that loop *is* the retry task, the `retryTask?.cancel()` at the top cancels the
-/// task currently executing. It sits above the `.offline` guard, so it fires on every result, a
-/// success included, and what runs cancelled is the second pass: the staging sweep, the blob drain
-/// and the pull, all torn down mid-flight.
+/// `scheduleRetry` is the last statement of the cycle loop's body, so when the task running that
+/// loop *is* the retry task, a cancel aimed at the retry handle cancels the task currently
+/// executing. It fires on every result, a success included, and what runs cancelled is the second
+/// pass: the staging sweep, the blob drain and the read, all torn down mid-flight.
 ///
 /// It is the come-back-from-offline path, and this library is the worst place to lose it. The
 /// restore here is the fleet's heaviest — sessions, then segments in their hundreds, then speakers
-/// and highlights — so a pull that lands rows asks for a second pass nearly every time, and the
-/// retry that finally got through cancels that pass on its way out of the first. The debounce suite
+/// and highlights — so a cycle is long, and the requests that ask for a second pass from inside one
+/// (a Realtime nudge, a foregrounding, a network path coming back) land in it. The debounce suite
 /// covers the trigger layer; nothing reached this one.
 @Suite("Sync — the retry cancels the wait, never its own cycle")
 @MainActor
 struct TranscriptionSyncRetryTests {
     @Test func aRetryCycleDoesNotCancelItselfWhenItNeedsASecondPass() async throws {
         let server = FakeSyncServer()
-        let trigger = ManualTrigger()
-        let transport = RetryTransport(server: server, trigger: trigger)
-        let device = try BootstrapDevice(server: server, transport: transport, triggers: [trigger])
+        let transport = RetryTransport(server: server)
+        let device = try BootstrapDevice(server: server, transport: transport)
         defer { device.tearDown() }
+
+        // A full second pass, asked for from inside the recovering cycle: the nudge's own shape,
+        // and the one that has a read to tear down.
+        transport.askForAnotherPass { [sync = device.sync] in
+            Task { @MainActor in await sync.syncNow(.full) }
+        }
 
         // Enrolling runs a cycle, and this one fails on the wire: the engine goes
         // `.offline(retryingIn:)` and `scheduleRetry` arms the retry task. A first failure is a 2⁰
@@ -99,14 +113,17 @@ struct TranscriptionSyncRetryTests {
 
         try #require(
             await settled(transport),
-            "the retry never reached the wire, or the cycles never stopped starting pulls"
+            "the retry never reached the wire, or the cycles never stopped starting reads"
         )
 
-        #expect(transport.pullsStarted > 0, "the retry path never reached the transport")
+        // The retry's own read, and the second pass's. One alone means the pass this is about
+        // never ran, and the assertion below would hold for a cycle that had nothing to cancel.
+        #expect(transport.readsStarted > 1,
+                "the retry's second pass never reached the wire (\(transport.readsStarted) reads)")
         #expect(
-            transport.pullsCancelled == 0,
+            transport.readsCancelled == 0,
             """
-            \(transport.pullsCancelled) of \(transport.pullsStarted) pulls were cancelled \
+            \(transport.readsCancelled) of \(transport.readsStarted) reads were cancelled \
             mid-flight. A retry must let go of its handle once past its wait, so the \
             `scheduleRetry` ending its own cycle finds nothing to tear down.
             """
@@ -117,21 +134,21 @@ struct TranscriptionSyncRetryTests {
     /// they are not interchangeable. Between the failed cycle and the retry the wire is quiet for
     /// the whole backoff, so a stability poll started there reads that gap as quiescence and samples
     /// the counters before the cycle under trial has run at all. A fixed span is worse still: one
-    /// calibrated on the broken run expires mid-pull on the green one, where the surviving cycles
-    /// live longer and start more pulls, and `tearDown` then deletes the store underneath one of
+    /// calibrated on the broken run expires mid-read on the green one, where the surviving cycles
+    /// live longer and start more reads, and `tearDown` then deletes the store underneath one of
     /// them — a SwiftData fault that takes the whole run down rather than a failing assertion.
     private func settled(_ transport: RetryTransport, deadline: Duration = .seconds(30)) async -> Bool {
         let expiry = ContinuousClock.now + deadline
-        while transport.pullsStarted == 0, ContinuousClock.now < expiry {
+        while transport.readsStarted == 0, ContinuousClock.now < expiry {
             try? await Task.sleep(for: .milliseconds(50))
         }
-        guard transport.pullsStarted > 0 else { return false }
+        guard transport.readsStarted > 0 else { return false }
 
         var quietSamples = 0
         var last = -1
         while ContinuousClock.now < expiry {
             try? await Task.sleep(for: .milliseconds(150))
-            let now = transport.pullsStarted
+            let now = transport.readsStarted
             quietSamples = now == last ? quietSamples + 1 : 0
             last = now
             if quietSamples >= 8 { return true }

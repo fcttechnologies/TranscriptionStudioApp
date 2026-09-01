@@ -46,7 +46,7 @@ struct TranscriptionSyncRecoveryTests {
         ).objectPath
         await device.objects.setRejecting([objectPath])
         await device.objects.setOnline(true)
-        await device.sync.syncNow()
+        await device.sync.syncNow(.full)
 
         try #require(device.sync.counted.stuck == 1, "the record must be judged and parked")
         try #require(device.sync.blobCounted.stuck == 1, "and the upload refused and parked")
@@ -103,7 +103,7 @@ struct TranscriptionSyncRecoveryTests {
         let author = try BootstrapDevice(server: server, objects: objects, accountID: accountID)
         try author.recordSession(title: "Quarterly planning", audio: nil)
         await author.enroll()
-        await author.sync.syncNow()
+        await author.sync.syncNow(.full)
         author.tearDown()
 
         let restored = try BootstrapDevice(server: server, objects: objects, accountID: accountID)
@@ -142,7 +142,7 @@ struct TranscriptionSyncRecoveryTests {
     }
 
     /// The third field failure, beside unreachable and refused: a server that answers correctly and
-    /// **slowly**. A cycle already in flight is what `syncNow()` folds a second request into and
+    /// **slowly**. A cycle already in flight is what `syncNow(_:)` folds a second request into and
     /// returns from immediately, so a restore that did not wait would hand the front door a verdict
     /// about a pull that had not finished.
     @MainActor
@@ -154,7 +154,7 @@ struct TranscriptionSyncRecoveryTests {
         let author = try BootstrapDevice(server: server, objects: objects, accountID: accountID)
         try author.recordSession(title: "Design review", audio: nil)
         await author.enroll()
-        await author.sync.syncNow()
+        await author.sync.syncNow(.full)
         author.tearDown()
 
         let restored = try BootstrapDevice(server: server, objects: objects, accountID: accountID,
@@ -163,7 +163,7 @@ struct TranscriptionSyncRecoveryTests {
         await restored.enroll()
 
         // A cycle deliberately already running when the restore asks.
-        let inFlight = Task { await restored.sync.syncNow() }
+        let inFlight = Task { await restored.sync.syncNow(.full) }
         let answer = await restored.sync.restoreAccountData()
         await inFlight.value
 
@@ -187,7 +187,7 @@ struct TranscriptionSyncRecoveryTests {
 
         try device.recordSession(title: "Cached audio", audio: Data("real recording bytes".utf8))
         await device.enroll()
-        await device.sync.syncNow()
+        await device.sync.syncNow(.full)
 
         try #require(device.cachedFileCount > 0,
                      "the staging sweep must have written the recording into the cache")
@@ -231,7 +231,7 @@ struct TranscriptionSyncRecoveryTests {
 
         try device.recordSession(title: "Synced fine", audio: nil)
         await device.enroll()
-        await device.sync.syncNow()
+        await device.sync.syncNow(.full)
         await device.sync.handle(.signedOut)
 
         #expect(device.sync.keptOnSignOut == 0, "the barrier let it through")

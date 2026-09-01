@@ -50,7 +50,7 @@ struct TranscriptionSyncLifecycleTests {
 
         // The other side of the same wire: the upload lands, the gate opens, the record goes.
         await device.objects.setOnline(true)
-        await device.sync.syncNow()
+        await device.sync.syncNow(.full)
         let pushed = await device.server.liveCount(in: TranscriptSession.syncTableName)
         #expect(pushed == 1, "the confirmed upload must release the session through the same gate")
         let stored = await device.objects.object(at: BlobPath(
@@ -264,7 +264,7 @@ struct TranscriptionSyncLifecycleTests {
             blobID: ref.id
         ).objectPath])
         await device.objects.setOnline(true)
-        await device.sync.syncNow()
+        await device.sync.syncNow(.full)
 
         #expect(device.sync.blobCounted.stuck == 1,
                 "the refused recording is the row's needs-attention half")
