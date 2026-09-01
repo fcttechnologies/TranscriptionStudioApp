@@ -21,7 +21,7 @@
 	     transcript and its extracted highlights cross as records (TranscriptionSyncSchema), and
 	     the recording itself crosses as a blob — TranscriptionSync.stageAuthoredAudio moves the
 	     bytes out of TranscriptSession.audioData into BlobStore, which uploads them through
-	     SupabaseStorageTransport. All of it is custody so the user's own devices stay in step —
+	     R2BlobTransport. All of it is custody so the user's own devices stay in step —
 	     App Functionality — and all of it is linked to the account identity by construction,
 	     since the account id is what every synced row and blob is scoped by. -->
 	<key>NSPrivacyCollectedDataTypes</key>

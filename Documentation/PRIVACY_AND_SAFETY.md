@@ -11,7 +11,7 @@ must all say.
 
 | Class | Examples | Storage | Leaves device? |
 |---|---|---|---|
-| Recordings | mic capture, macOS meeting capture, imported files, ingested links | `TranscriptSession.audioData` → `BlobStore`, App Group | the user's own FCT account (`SupabaseStorageTransport`) |
+| Recordings | mic capture, macOS meeting capture, imported files, ingested links | `TranscriptSession.audioData` → `BlobStore`, App Group | the user's own FCT account (`R2BlobTransport`) |
 | Transcript | `TranscriptSession.fullText`, `StoredSegment.text` + word timings | SwiftData | the user's own FCT account, as records |
 | Extracted highlights | decisions, action items, events, people, places | SwiftData | the user's own FCT account, as records |
 | Speaker bindings | `SpeakerAssignment.displayName` + `CNContact.identifier` | SwiftData | the user's own FCT account, as records |
