@@ -269,7 +269,7 @@ struct TranscriptionSyncRecoveryTests {
 
         try device.recordSession(title: "Account A's", audio: nil)
         await device.enroll()
-        await device.sync.handle(.switched(from: device.accountID, to: UUID()))
+        await device.sync.handle(.switched(from: device.accountID, to: UUID(), appleFullName: nil))
 
         #expect(cleared == 1)
     }

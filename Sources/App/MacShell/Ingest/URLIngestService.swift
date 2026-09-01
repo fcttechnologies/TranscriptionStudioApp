@@ -54,10 +54,12 @@ struct URLIngestService: URLAudioDownloading {
     /// flags) plus `--newline`/no `--quiet` so progress is parseable.
     static func buildArguments(url: String, outputTemplate: URL, ffmpegDirectory: String?) -> [String] {
         var arguments = [
-            // Prefer a real audio-only stream; else an H.264 stream — TikTok's bytevc1/
-            // H.265 "best" formats advertise AAC but download video-only, breaking audio
-            // extraction; else any best. Ported verbatim from pipeline.py.
-            "-f", "bestaudio/best[vcodec^=h264]/best",
+            // Prefer a real audio-only stream, except TikTok's `audio` format, which is the
+            // post's *sound* (the background song, often minutes longer than the clip) and not
+            // the video's own track; then an H.264 stream, whose audio is the clip's — TikTok's
+            // bytevc1/H.265 "best" formats advertise AAC but download video-only, breaking
+            // extraction; else any best.
+            "-f", "bestaudio[format_id!=audio]/best[vcodec^=h264]/best",
             "-x", "--audio-format", "mp3", "--audio-quality", "192K",
             "--no-playlist",
             "--no-cache-dir",

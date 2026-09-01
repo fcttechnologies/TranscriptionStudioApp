@@ -70,7 +70,7 @@ final class BootstrapDevice {
     }
 
     func enroll() async {
-        await sync.handle(.enrolled(accountID))
+        await sync.handle(.enrolled(accountID, appleFullName: nil))
     }
 
     /// The engine's durable state, for asserting on the outbox itself rather than on a surface

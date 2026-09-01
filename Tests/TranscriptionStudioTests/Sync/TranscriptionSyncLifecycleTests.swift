@@ -118,7 +118,7 @@ struct TranscriptionSyncLifecycleTests {
         await device.enroll()
         #expect(device.sync.unsyncedWork?.isDrained == false, "the switch must be discarding real unpushed work")
 
-        await device.sync.handle(.switched(from: device.accountID, to: UUID()))
+        await device.sync.handle(.switched(from: device.accountID, to: UUID(), appleFullName: nil))
 
         // Account A's rows must not survive into account B — pushed or not.
         let context = device.container.mainContext

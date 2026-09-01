@@ -13,7 +13,7 @@ struct URLIngestServiceTests {
                                                     outputTemplate: template,
                                                     ffmpegDirectory: "/opt/homebrew/bin")
         #expect(args == [
-            "-f", "bestaudio/best[vcodec^=h264]/best",
+            "-f", "bestaudio[format_id!=audio]/best[vcodec^=h264]/best",
             "-x", "--audio-format", "mp3", "--audio-quality", "192K",
             "--no-playlist",
             "--no-cache-dir",

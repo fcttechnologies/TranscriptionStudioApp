@@ -428,11 +428,11 @@ final class TranscriptionSync {
 
     func handle(_ event: AccountEvent) async {
         switch event {
-        case .enrolled(let accountID):
+        case .enrolled(let accountID, _):
             await startEngine(accountID: accountID, enrolling: true)
         case .resumed(let accountID):
             await startEngine(accountID: accountID, enrolling: false)
-        case .switched(_, let to):
+        case .switched(_, let to, _):
             // A different account. Account A's library must not silently become account B's, so
             // this clears — and it discards whatever A never managed to push, because A's
             // credentials are already gone. The discard is surfaced, never swallowed.
@@ -670,4 +670,6 @@ nonisolated struct DetachedAccount: SyncAccount {
     func accessToken(afterRefusalOf refused: String) async throws -> String {
         throw SyncTransportError.authRefused("no session")
     }
+    /// There is no session to lose; every refusal from this account is session loss.
+    func isSessionLoss(_ error: any Error) -> Bool { true }
 }
