@@ -46,6 +46,20 @@ MIN_APP_TESTS=564
 SHIPPED_LANGUAGES="en,es,zh-Hans,fr,de,pt-BR,ja,ko,it,ru"
 VERIFY_SHORTCUTS="../FCTFoundation/scripts/verify-app-shortcuts.py"
 VERIFY_ICONS="../FCTFoundation/scripts/verify-app-icons.py"
+# The first-launch budget, in seconds to an INTERACTIVE UI on a device that has never held the
+# app. That event is LATER than first frame, and a budget set from a first-frame figure reads as
+# rigour while behaving as a flake generator.
+#
+# Derived, not chosen. The slowest of four measured cold launches was 2.879s, each taken with a
+# Release build compiling beside it (load average 31-234) — deliberately the worst realistic
+# condition, because a budget is a CEILING and one derived from an idle box flakes on a busy one.
+# 5.0 is 1.63x that: regression headroom on top of an already-worst-case reading, so a genuine
+# doubling of launch cost goes red instead of sitting just inside. The fleet's other factor — the
+# 1.66x an idle reading needs to reach this regime — is already spent in the number above, and
+# applying it again would buy a ceiling nothing could ever cross.
+#
+# It still catches what this leg exists for: a 26-38s first-run stall fails by several times over.
+COLD_LAUNCH_BUDGET=5.0
 DD="$(mktemp -d -t ts-gate)"
 # The logs outlive the DerivedData they describe: a leg's log is read AFTER the run, and a failure
 # that names a path inside ${DD} names a path the exit trap has already deleted.
@@ -146,6 +160,19 @@ echo "    ${CLI_TEST_COUNT} tests passed"
 collect_build macos-release
 collect_build ios-release
 mark "suites + Release builds (concurrent)"
+
+# The launch a first-time user gets, which nothing else here can see: every other check reads a
+# built artifact or runs against a device the app has already been on, so a cost paid ONCE — on the
+# first install, before any container or cache exists — is invisible to all of them. Measured
+# against the RELEASE artifact, because that is what ships. The leg creates and deletes its own
+# simulator rather than reusing this gate's: a device that has already had the app installed cannot
+# answer the question, since `simctl uninstall` clears the container but leaves the caches warm.
+# Started here and collected at the end, so the artifact checks overlap its ~135s.
+leg_start cold-launch "${LOGS}/cold-launch.log" \
+  ../FCTFoundation/scripts/cold-launch.sh \
+    --app "${DD}/ios-release/Build/Products/Release-iphonesimulator/TranscriptionStudio.app" \
+    --bundle-id com.fcttechnologies.TranscriptionStudio \
+    --threshold "${COLD_LAUNCH_BUDGET}"
 
 IOS_APP="${DD}/ios/Build/Products/Debug-iphonesimulator/TranscriptionStudio.app"
 MAC_APP="${DD}/macos/Build/Products/Debug/TranscriptionStudio.app"
@@ -306,7 +333,26 @@ echo "${REL_ENTITLEMENTS}" | grep -q com.apple.security.app-sandbox \
   && fail "Release macOS app picked up the sandbox"
 mark "artifact checks (Release)"
 
+echo "==> Cold launch on a device that has never held the app"
+# `|| cold_rc=$?` rather than `; cold_rc=$?`: under `set -e` a failing leg_wait would abort the
+# gate before the verdict below could say which of the three things happened.
+cold_rc=0
+leg_wait cold-launch || cold_rc=$?
+if [ "${cold_rc}" -eq 0 ]; then
+  grep -E '^    (cold|warm) ' "${LOGS}/cold-launch.log"
+elif [ "${cold_rc}" -eq 3 ]; then
+  # The measurement could not be taken. Still red — a check that did not run proves nothing — but
+  # named as the simulator rather than the app: sending someone to profile a launch that was never
+  # measured is how a leg stops being believed.
+  tail -20 "${LOGS}/cold-launch.log"
+  fail "the cold-launch simulator would not stay up, so the launch was never measured — re-run (log: ${LOGS}/cold-launch.log)"
+else
+  tail -20 "${LOGS}/cold-launch.log"
+  fail "cold launch over the ${COLD_LAUNCH_BUDGET}s budget, or it never became interactive (log: ${LOGS}/cold-launch.log)"
+fi
+mark "cold launch"
+
 phase_table
 echo "==> PASS: ${TEST_COUNT} + ${CLI_TEST_COUNT} tests green, Debug + Release on both platforms" \
      "and the CLI built warning-free, shortcuts + privacy manifests in every artifact," \
-     "ten languages complete, Release Mac hardened."
+     "ten languages complete, Release Mac hardened, and a first-ever install reaches an interactive UI inside ${COLD_LAUNCH_BUDGET}s."
