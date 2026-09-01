@@ -25,6 +25,7 @@ struct TranscriptionStudioApp: App {
     @State private var metricsReporter = MetricsReporter()
 
     init() {
+        TranscriptionDiagnostics.start()
         #if os(macOS)
         let model = AppModel.live(captureFactory: Self.captureFactory,
                                   urlDownloader: URLIngestService())

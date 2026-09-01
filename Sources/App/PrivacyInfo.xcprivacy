@@ -4,9 +4,9 @@
 <dict>
 	<!-- Transcription Studio tracks nobody: no third-party analytics or tracking SDKs, no
 	     advertising identifier, and nothing this app collects is joined to data from another
-	     company. (FCTMetrics rides in through FCTServerSync/FCTAccount but is never started —
-	     `Diag.start` is called nowhere here — so every diagnostics call is a no-op and the layer
-	     uploads nothing. If it is ever turned on, this manifest gains the diagnostics types.)
+	     company. The FCT diagnostics layer is started at launch (`TranscriptionDiagnostics`) and
+	     its types are declared below; it keys on a locally-minted install id and joins to no
+	     account, so it is unlinked.
 	     Documentation/PRIVACY_AND_SAFETY.md carries the data inventory this declares.
 
 	     A manifest covers ONE bundle. The share, widget and Background Assets extensions carry
@@ -149,6 +149,61 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+			<!-- The FCT diagnostics layer, started at launch in `TranscriptionDiagnostics`. Crash and hang payloads,
+		     MetricKit metrics, the breadcrumb trail that led to an event, funnels, and feature
+		     counters. They key on a locally-minted install id and carry no account token, and the
+		     `diag` schema no synced or auth object joins to is where they land — so they are NOT
+		     linked to identity, structurally rather than by promise. Names are compile-time enum
+		     constants, so free text has no way in. Design of record:
+		     FCTPlatform/Documentation/diagnostics.md. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeCrashData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePerformanceData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherDiagnosticData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeProductInteraction</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
 			</array>
 		</dict>
 	</array>

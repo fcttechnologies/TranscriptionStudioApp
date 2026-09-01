@@ -21,10 +21,12 @@ must all say.
 | Long-transcript generation | transcript text above the on-device context budget | — | **Apple Private Cloud Compute**, not retained (see below) |
 | Voice profiles + prompt cache | reference clips, derived prompt transcripts | Application Support | never |
 | Models | WhisperKit / Sortformer / LuxTTS weights | App Group + Application Support | never (downloaded, never uploaded) |
-| Diagnostics | `PipelineStateReporter` stages, MetricKit payloads | local only — FCTMetrics' uploader is never started | never |
+| Diagnostics | `PipelineStateReporter` stages, MetricKit payloads | local container, and uploaded anonymously by FCTMetrics' `Diag` under a locally-minted install id | on crash/hang, and opportunistically |
 
-No third-party SDKs, no analytics, no ads, no tracking. The vendored engines
-(WhisperKit / SpeakerKit / TTSKit / FluidAudio) run locally and open no telemetry channel.
+No third-party SDKs, no ads, no tracking, no third-party analytics. The vendored engines
+(WhisperKit / SpeakerKit / TTSKit / FluidAudio) run locally and open no telemetry channel; the one
+channel the app does open is FCT's own anonymous diagnostics, keyed on an install id that joins to
+no account.
 
 **Nothing is derived on a server.** The FCT account holds the user's own rows and blobs under RLS;
 no model runs on them, and no content is read for any purpose but handing it back to that user's

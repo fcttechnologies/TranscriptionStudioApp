@@ -71,6 +71,8 @@ targets:
           # also carries the executable's @main. Never compile them into the app target.
           - "**/CLI/**"
     dependencies:
+      - package: FCTFoundation
+        product: FCTMetrics
       # Granular FCTFoundation products only — every one is imported by some file in the target;
       # a dependency of a dependency is not importable.
       - package: FCTFoundation
