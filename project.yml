@@ -91,6 +91,8 @@ targets:
         product: FCTBlobSync
       - package: FCTFoundation
         product: FCTAccount
+      - package: FCTFoundation
+        product: FCTSupport
       # The front door: the intro carousel and the required sign-in that ends it. The app supplies
       # its pages and nothing else — no pager, no dots, no sign-in surface of its own.
       - package: FCTFoundation
@@ -312,6 +314,8 @@ targets:
         product: FCTBlobSync
       - package: FCTFoundation
         product: FCTAccount
+      - package: FCTFoundation
+        product: FCTSupport
       - package: FCTFoundation
         product: FCTGlanceables
       - package: argmax-oss-swift

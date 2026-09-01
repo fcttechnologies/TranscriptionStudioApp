@@ -1,4 +1,5 @@
 import FCTAccount
+import FCTSupport
 import SwiftUI
 
 /// App settings — the account and sync state, the speech model (fixed at large-v3-turbo), the
@@ -20,7 +21,7 @@ struct SettingsView: View {
     @State private var pane: Pane = .account
 
     /// The macOS panes, in the order they read: who you are, what the app does with sound, what
-    /// it is allowed to touch, what it costs on disk, and what it discloses.
+    /// it is allowed to touch, what it costs on disk, and what it discloses plus how to reach us.
     private enum Pane: String, CaseIterable, Identifiable {
         case account, transcription, permissions, storage, about
         var id: Self { self }
@@ -148,6 +149,7 @@ struct SettingsView: View {
             // claim goes wrong: WHERE audio is processed is not WHERE it is stored.
             Text("Speech recognition, speaker identification and synthesis run entirely on this device — your audio is never sent anywhere to be transcribed. Your library is stored in your private FCT account so it reaches your other devices: the transcripts, the highlights, the speakers, any place you tagged, and the recordings themselves. Summaries and transcript questions use Apple Intelligence, which runs on this device and may use Apple's Private Cloud Compute for a long transcript.")
         }
+        SupportSettingsSection(appName: "Transcription Studio")
     }
 
     /// iOS can never provision the Sortformer model — `DiarizationBackend.makeEngine`'s guard
