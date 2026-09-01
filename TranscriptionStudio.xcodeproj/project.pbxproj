@@ -75,7 +75,6 @@
 		22A7144BB1C65A7DE51F18ED /* OpenSettingsIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF82BAF5B940DD4EF96B4E17 /* OpenSettingsIntent.swift */; };
 		22FB633C12EDFC1B63C95CCA /* CompanionViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC75F8B786CF2B978706F14C /* CompanionViews.swift */; };
 		23ED6092C6CF3779B6C92F61 /* TranscribeLinkIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E1949689A1E8E8653484D5 /* TranscribeLinkIntent.swift */; };
-		23F62748F9DAEB003E808478 /* MetricsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96393DFD79216DFEC1ED58C5 /* MetricsReporter.swift */; };
 		2435D44C9793410212B519DE /* RecordingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52FDD5C5F088496BBCD33401 /* RecordingController.swift */; };
 		261C39EF07728697D9B90BB9 /* SortformerMel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12D642EBFBCCB4E6E0C3468E /* SortformerMel.swift */; };
 		2682CB20E8F7BF073331D1FA /* StudioHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE280A94C6E816527EFE0032 /* StudioHomeView.swift */; };
@@ -196,7 +195,6 @@
 		5C2344E86214503720BFFD7D /* SessionRelevance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A64AE973F63C52A15679508 /* SessionRelevance.swift */; };
 		5D0C6437E2C8A8448E5EA464 /* FrontDoorStageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D73AAC434335E641CC2CD6D /* FrontDoorStageViews.swift */; };
 		5D149853EFDF2CD4F39DFE0D /* TranscriptTurn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CEEA55A99AF1F1E42A1111F /* TranscriptTurn.swift */; };
-		5D17FF996FC895F39771B5C1 /* MetricsReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96393DFD79216DFEC1ED58C5 /* MetricsReporter.swift */; };
 		5DEA5E603AC11322F6543B76 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 71BE20623E9FE83654A89E10 /* PrivacyInfo.xcprivacy */; };
 		5E198E6765E34FFA8FADE948 /* RelativeDateResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8A9C828C2FD623322BFDBA /* RelativeDateResolver.swift */; };
 		5FED5EF36B77BF521350C015 /* AssignSpeakersIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CCFB9FC824F59817AE84189 /* AssignSpeakersIntent.swift */; };
@@ -729,7 +727,6 @@
 		943196472EB93DB3FF926667 /* RecordingFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingFlowTests.swift; sourceTree = "<group>"; };
 		944BAC82358B8EC0590761ED /* TranscriptionFrontDoor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionFrontDoor.swift; sourceTree = "<group>"; };
 		95F9EA9253DB65DD365B1A78 /* WarmTTSEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarmTTSEngineTests.swift; sourceTree = "<group>"; };
-		96393DFD79216DFEC1ED58C5 /* MetricsReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricsReporter.swift; sourceTree = "<group>"; };
 		980ED78165D4B726CA277610 /* TranscriptionSyncSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSyncSchema.swift; sourceTree = "<group>"; };
 		9820BCE72E00303C075556F9 /* JobAndInspectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobAndInspectorTests.swift; sourceTree = "<group>"; };
 		9A7B6EF98FEB691728354EAF /* ActionSuggestionsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionSuggestionsTests.swift; sourceTree = "<group>"; };
@@ -1474,7 +1471,6 @@
 			isa = PBXGroup;
 			children = (
 				330582EE42B8BFB12BF8C64E /* InspectorStore.swift */,
-				96393DFD79216DFEC1ED58C5 /* MetricsReporter.swift */,
 				F8C54B9DB9498339208BB541 /* MetricsSummary.swift */,
 				A78D6B8A08EFA1E0DA938EA9 /* PipelineLog.swift */,
 				7B1E028C02D7FAB8F29C19C2 /* PipelineStateLabel.swift */,
@@ -2027,7 +2023,6 @@
 				4DC4BAB9A84A613F0F8FD105 /* MacRootView.swift in Sources */,
 				616F09FD730C5404CB60E9C9 /* MeetingCaptureSource.swift in Sources */,
 				A549B6E3A468DDAFA8C2A76F /* MentionResolver.swift in Sources */,
-				23F62748F9DAEB003E808478 /* MetricsReporter.swift in Sources */,
 				2C4144BD386B596E8DEA8CAE /* MetricsSummary.swift in Sources */,
 				F8B680163A569F85496773B3 /* MicCaptureSource.swift in Sources */,
 				AF2BB3E3B1ED0C872EDA226E /* MiniPlayer.swift in Sources */,
@@ -2228,7 +2223,6 @@
 				F2882416802844342C25FBA7 /* LuxTtsCloningEngine.swift in Sources */,
 				7A4822BB5E7C700267033009 /* MeetingCaptureSource.swift in Sources */,
 				631E5AAF4B9CF89820B9C1B0 /* MentionResolver.swift in Sources */,
-				5D17FF996FC895F39771B5C1 /* MetricsReporter.swift in Sources */,
 				D8691281CF4C02326F5A27DB /* MetricsSummary.swift in Sources */,
 				D125ED109EB03758DBB446D4 /* MicCaptureSource.swift in Sources */,
 				FB758D932FAD2A89882E3070 /* MiniPlayer.swift in Sources */,
