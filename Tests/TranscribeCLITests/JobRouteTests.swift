@@ -82,6 +82,35 @@ private final class FailingDiarizer: DiarizationEngine, Sendable {
     }
 }
 
+/// Counts how many engines were built, and takes long enough preparing that every concurrent
+/// caller is genuinely inside the load window rather than racing a few bytecodes.
+private final class CountingDiarizerFactory: @unchecked Sendable {
+    private let lock = NSLock()
+    private var built = 0
+
+    var buildCount: Int { lock.withLock { built } }
+
+    func make() -> any DiarizationEngine {
+        lock.withLock { built += 1 }
+        return SlowDiarizer()
+    }
+}
+
+private final class SlowDiarizer: DiarizationEngine, Sendable {
+    let backendName = "Slow"
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        try await Task.sleep(for: .milliseconds(200))
+    }
+    func diarize(samples: [Float]) async throws -> DiarizationResult {
+        DiarizationResult(turns: [], frames: SpeakerFrameMatrix(activities: [],
+                                                                committedFrameCount: 0,
+                                                                frameDuration: 0.08))
+    }
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<DiarizationUpdate, Error> {
+        AsyncThrowingStream { $0.finish() }
+    }
+}
+
 // MARK: - Fixtures
 
 /// Four seconds of real, decodable audio — the upload has to survive `FileIngestService`.
@@ -292,6 +321,35 @@ struct UploadJobTests {
         let staged = FileManager.default.temporaryDirectory
             .appendingPathComponent("transcribe-serve-\(jobID).m4a")
         #expect(!FileManager.default.fileExists(atPath: staged.path))
+    }
+}
+
+@Suite("WarmDiarizer")
+struct WarmDiarizerTests {
+    /// Two jobs arriving together must not each pay for their own separation model. An actor
+    /// suspends at `await`, so the load window is genuinely reentrant — `SlowDiarizer` holds it
+    /// open long enough that both callers are inside it, which is what makes this test able to
+    /// fail at all.
+    @Test func concurrentFirstJobsLoadTheModelOnce() async throws {
+        let factory = CountingDiarizerFactory()
+        let warm = WarmDiarizer(idleTimeout: 0, makeEngine: { factory.make() })
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<8 {
+                group.addTask { _ = try? await warm.ensureLoaded() }
+            }
+        }
+
+        #expect(factory.buildCount == 1)
+    }
+
+    @Test func aLoadThatFailedIsRetriedRatherThanPinned() async throws {
+        let warm = WarmDiarizer(idleTimeout: 0, makeEngine: { FailingDiarizer() })
+
+        await #expect(throws: (any Error).self) { try await warm.ensureLoaded() }
+        // The turns call swallows the same failure — the job goes on without speakers.
+        let turns = await warm.turns(for: [0, 0, 0])
+        #expect(turns.isEmpty)
     }
 }
 

@@ -107,6 +107,11 @@ actor WarmDiarizer {
     private let idleTimeout: TimeInterval
     private let makeEngine: @Sendable () -> any DiarizationEngine
     private var engine: (any DiarizationEngine)?
+    /// The load in flight, shared by every caller that arrives during it. An actor suspends at
+    /// `await`, so a bare check-then-assign around the load is reentrant: two jobs arriving
+    /// together would each build and prepare their own model, and the loser's would be orphaned
+    /// after paying for itself in full.
+    private var loading: Task<any DiarizationEngine, Error>?
     private var lastUsed = Date()
 
     init(idleTimeout: TimeInterval,
@@ -115,13 +120,23 @@ actor WarmDiarizer {
         self.makeEngine = makeEngine
     }
 
-    /// Load the model if it isn't resident, returning the ready engine. Idempotent.
+    /// Load the model if it isn't resident, returning the ready engine. Idempotent, and loads
+    /// exactly once however many callers arrive at once.
     @discardableResult
     func ensureLoaded() async throws -> any DiarizationEngine {
         lastUsed = Date()
         if let engine { return engine }
-        let e = makeEngine()
-        try await e.prepare { _ in }
+        if let loading { return try await loading.value }
+
+        let make = makeEngine
+        let task = Task {
+            let e = make()
+            try await e.prepare { _ in }
+            return e
+        }
+        loading = task
+        defer { loading = nil }        // a failed load must not pin the failure forever
+        let e = try await task.value
         engine = e
         return e
     }
