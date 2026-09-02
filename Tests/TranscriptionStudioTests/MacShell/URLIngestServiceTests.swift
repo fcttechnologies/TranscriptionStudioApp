@@ -6,7 +6,7 @@ import Testing
 struct URLIngestServiceTests {
 
     // yt-dlp argument construction: the TikTok-safe format chain, mp3 extraction,
-    // isolation flags, and the output template all land in the right order.
+    // isolation flags, the title sidecar, and the output template all land in the right order.
     @Test func buildsExpectedYtDlpArguments() {
         let template = URL(fileURLWithPath: "/tmp/TranscriptionStudio/job-1/audio.%(ext)s")
         let args = URLIngestService.buildArguments(url: "https://example.com/video",
@@ -19,10 +19,28 @@ struct URLIngestServiceTests {
             "--no-cache-dir",
             "--newline",
             "--no-warnings",
+            "--write-info-json",
             "-o", template.path,
             "--ffmpeg-location", "/opt/homebrew/bin",
             "https://example.com/video",
         ])
+    }
+
+    // The title the sidecar carries, and the absence that means a job names itself by its URL.
+    @Test func readsTheMediaTitleFromTheInfoSidecar() throws {
+        let jobID = UUID()
+        let jobDir = URLIngestService.jobDirectory(for: jobID)
+        try FileManager.default.createDirectory(at: jobDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: jobDir) }
+
+        #expect(URLIngestService.title(forJobID: jobID) == nil)
+
+        try Data(#"{"title": "A Public Podcast Excerpt"}"#.utf8)
+            .write(to: jobDir.appendingPathComponent("audio.info.json"))
+        #expect(URLIngestService.title(forJobID: jobID) == "A Public Podcast Excerpt")
+
+        try Data(#"{"title": "   "}"#.utf8).write(to: jobDir.appendingPathComponent("audio.info.json"))
+        #expect(URLIngestService.title(forJobID: jobID) == nil)
     }
 
     // No ffmpeg location found → yt-dlp falls back to PATH-only resolution, matching
