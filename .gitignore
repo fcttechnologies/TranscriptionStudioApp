@@ -11,3 +11,4 @@ TranscriptionStudio.xcodeproj/project.xcworkspace/xcuserdata/
 # Synthesized verification audio — regenerate with scripts/make-verification-audio.sh.
 TestResources/
 .venv-verify/
+.asc/
