@@ -133,9 +133,10 @@ struct UploadJobTests {
         #expect(segments.first?["start"] as? Double == 0)
     }
 
-    /// The upload's own filename is the job's title — a caller naming its saved transcript has
-    /// something to name it after.
-    @Test func theUploadsFilenameIsTheJobsTitle() async throws {
+    /// The upload's own name is the job's title — a caller naming its saved transcript has
+    /// something to name it after. Without the container suffix, so a title means the same
+    /// thing here as the one yt-dlp reports for a URL.
+    @Test func theUploadsNameIsTheJobsTitle() async throws {
         let base = try await startTestServer(
             asr: { StubAsrEngine(segments: [asr(0, 2, "Hello.")]) },
             diarizer: { StubDiarizer(turns: [turn(0, 0, 2)]) })
@@ -143,7 +144,14 @@ struct UploadJobTests {
         let started = try await upload(base, filename: "board meeting.m4a", bytes: try mediaBytes())
         let job = try await pollJob(base, try #require(started.json?["job_id"] as? String))
 
-        #expect(job["title"] as? String == "board meeting.m4a")
+        #expect(job["title"] as? String == "board meeting")
+    }
+
+    @Test func aNameThatIsNothingButASuffixKeepsIt() {
+        #expect(mediaTitle(for: "board meeting.m4a") == "board meeting")
+        #expect(mediaTitle(for: "notes.2026.m4a") == "notes.2026")
+        #expect(mediaTitle(for: ".m4a") == ".m4a")
+        #expect(mediaTitle(for: "upload") == "upload")
     }
 
     @Test func aSoloClipComesBackWithNoSpeakerLabels() async throws {

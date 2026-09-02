@@ -534,7 +534,7 @@ final class TranscribeServer: @unchecked Sendable {
                 sendJSON(fd, status: 500, body: ["error": humanError(error)])
                 return
             }
-            runBlocking { await self.jobs.create(jobID, title: filename) }
+            runBlocking { await self.jobs.create(jobID, title: mediaTitle(for: filename)) }
             startUploadJob(jobID, mediaURL: tempURL, language: language)
         }
         sendJSON(fd, status: 200, body: ["job_id": jobID])
@@ -918,6 +918,14 @@ private func attribute(_ key: String, from header: String) -> String? {
 private func safeExtension(for filename: String) -> String {
     let bare = (filename as NSString).pathExtension.lowercased()
     return SupportedMediaExtensions.allowed.contains(bare) ? ".\(bare)" : ".audio"
+}
+
+/// An upload's title: the media's own name, which means the filename without its container
+/// suffix — a title means the same thing here as the one yt-dlp reports for a URL, and that one
+/// never carries `.mp3`. A name that is nothing but a suffix keeps it rather than becoming empty.
+func mediaTitle(for filename: String) -> String {
+    let stem = (filename as NSString).deletingPathExtension
+    return stem.isEmpty ? filename : stem
 }
 
 // MARK: - Responses
