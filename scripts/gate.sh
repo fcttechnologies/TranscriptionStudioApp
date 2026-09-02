@@ -9,7 +9,7 @@
 # suite beside it.
 #
 # This is the Debug loop. Before shipping, build Release on both platforms too and re-read the
-# artifacts (scripts/package-mac.sh does the Mac one): a `#if DEBUG` path that release code still
+# artifacts (scripts/install-mac.sh does the Mac one): a `#if DEBUG` path that release code still
 # calls compiles clean here and breaks only in the archive. A Release *simulator* build
 # additionally needs `ONLY_ACTIVE_ARCH=YES ARCHS=arm64` — Release defaults to building the x86_64
 # sim slice too, and the `_CoreSpotlight_FoundationModels` cross-import overlay is absent there.
@@ -197,7 +197,7 @@ echo "==> App Shortcuts registered in both artifacts"
   || fail "iOS App Shortcuts did not register — see the message above."
 
 # The Mac slice is deliberately NOT sandboxed: it runs Hardened Runtime plus the hardened-process
-# entitlements on RELEASE (scripts/package-mac.sh builds that; see project.yml's configs), because
+# entitlements on RELEASE (scripts/install-mac.sh builds that; see project.yml's configs), because
 # URL ingest shells out to yt-dlp/ffmpeg. The Debug artifact carries the base capability set —
 # Sign in with Apple, the App Group (the shared store the Share extension writes into), and the
 # keychain group (the FCT account session); its hardening keys live in the Release entitlements
