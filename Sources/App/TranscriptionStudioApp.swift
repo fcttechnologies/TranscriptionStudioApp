@@ -1,4 +1,7 @@
 import FCTAccount
+#if DEBUG
+import FCTScreenshotStudio
+#endif
 import SwiftData
 import SwiftUI
 
@@ -20,6 +23,12 @@ struct TranscriptionStudioApp: App {
     /// The record engine + blob layer, alive exactly as long as an account is. Started from behind
     /// the gate.
     @State private var sync = TranscriptionSync()
+    #if DEBUG
+    /// The debug surface's own store. Every session the debug tools seed or delete is a synced
+    /// row, so they act on a second, local-only store file instead — and this points the app at
+    /// it while that demo library is what the screens are meant to show.
+    @State private var debugStore = DebugStoreSwitch(store: AppModelContainer.configuration)
+    #endif
     /// MetricKit production diagnostics — daily metric reports + crash/hang/hitch/launch/memory
     /// events, tagged with the pipeline stage they occurred in. Held for the app's lifetime.
 
@@ -75,8 +84,15 @@ struct TranscriptionStudioApp: App {
                 // the drop-box keeps, and the app drains it again on every foreground.
                 .onOpenURL { url in app.handleIngestURL(url) }
                 .task { await launch() }
+                #if DEBUG
+                .environment(\.debugStoreSwitch, debugStore)
+                #endif
         }
+        #if DEBUG
+        .modelContainer(debugStore.container(or: AppModelContainer.shared))
+        #else
         .modelContainer(AppModelContainer.shared)
+        #endif
         #if os(macOS)
         .defaultSize(width: 1140, height: 740)
         .commands { AppCommands(app: app) }

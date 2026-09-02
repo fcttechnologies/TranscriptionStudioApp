@@ -99,6 +99,10 @@ targets:
         product: FCTOnboarding
       - package: FCTFoundation
         product: FCTGlanceables
+      # The detached debug store: every `#if DEBUG` seed and reset acts on a second, local-only
+      # store file, so nothing under DEBUG can push to the account. Compiles to nothing in Release.
+      - package: FCTFoundation
+        product: FCTScreenshotStudio
       # The Share extension ships on both platforms and is itself multiplatform — no filter.
       - target: ShareExtension
       - package: argmax-oss-swift
@@ -318,6 +322,10 @@ targets:
         product: FCTSupport
       - package: FCTFoundation
         product: FCTGlanceables
+      # This target compiles the app's Settings sources by membership, and the debug tools there
+      # import it — a target that compiles a file must link what that file imports. Release-empty.
+      - package: FCTFoundation
+        product: FCTScreenshotStudio
       - package: argmax-oss-swift
         product: WhisperKit
       - package: argmax-oss-swift
