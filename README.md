@@ -31,6 +31,9 @@ Tests alone (app-hosted on the Mac): `xcodebuild -scheme TranscriptionStudio
 -destination 'platform=macOS,arch=arm64' test`; real-model gates are env-flagged with a
 `TEST_RUNNER_` prefix — see `Documentation/VERIFICATION.md`.
 Verification audio: `scripts/make-verification-audio.sh` (writes `TestResources/`).
+Onto the phone: `scripts/install-ios.sh [device-udid]` — Release, auto-signed, installed by UDID
+over `devicectl`, with every dSYM the build produced retained so a crash from it can be
+symbolicated. It runs the old code until it is next launched, which stays a human step.
 
 ## Headless CLI
 
