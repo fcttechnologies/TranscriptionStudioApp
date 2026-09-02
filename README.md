@@ -11,6 +11,8 @@ and judged, all rights reserved, no licence granted to use, copy, modify or redi
 
 - `Documentation/PROJECT_GUIDE.md` — structure, contracts, conventions.
 - `Documentation/VERIFICATION.md` — the automated gates that verify "who said what".
+- `metadata/` — the canonical App Store listing metadata `asc` reads and pushes, ten locales;
+  `metadata-macos/` carries the Mac destination's own description and keywords beside it.
 
 ## Setup
 
