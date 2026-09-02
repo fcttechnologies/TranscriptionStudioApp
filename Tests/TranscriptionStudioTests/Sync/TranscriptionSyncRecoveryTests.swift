@@ -172,6 +172,52 @@ struct TranscriptionSyncRecoveryTests {
                 "the true answer must describe a pull that actually landed the rows")
     }
 
+    /// **A push cycle is not a read, and only a read may answer the restore.**
+    ///
+    /// A local save asks for a `.push`: it drains and sends, and pulls only if the reply says
+    /// another device has written since. A device whose own push *is* the account's high-water is
+    /// told nothing, so the cycle comes back `.idle` having fetched no row.
+    ///
+    /// The shape is the one that costs most — a first sign-in that could not reach the account,
+    /// then one session recorded by hand — and what keeps it safe is that `restoreAccountData`
+    /// asks a full cycle of its own and reads that cycle's verdict. A clean push before it must
+    /// not be mistakable for a restore: the front door writes `LibraryRestoreState` on the answer,
+    /// so a false `true` is remembered and the library opens empty over a real one.
+    @MainActor
+    @Test func aCleanPushCycleIsNotMistakenForARestore() async throws {
+        let server = FakeSyncServer()
+        let objects = FakeBlobObjectStore()
+        let accountID = UUID()
+
+        // Another device on this account already has a session on the server.
+        let author = try BootstrapDevice(server: server, objects: objects, accountID: accountID)
+        try author.recordSession(title: "Quarterly planning", audio: nil)
+        await author.enroll()
+        await author.sync.syncNow(.full)
+        author.tearDown()
+
+        // This device: same account, nothing local, and a first sign-in that cannot reach it.
+        let device = try BootstrapDevice(server: server, objects: objects, accountID: accountID)
+        defer { device.tearDown() }
+        await server.setOnline(false)
+        await device.enroll()
+        #expect(await device.sync.restoreAccountData() == false,
+                "no answer is not the same as no data")
+
+        // The link is back, and the user records a session. A reason to SEND, not to ask.
+        await server.setOnline(true)
+        try device.recordSession(title: "Recorded by hand", audio: nil)
+        await device.sync.syncNow(.push)
+        try #require(device.sync.status == .idle, "the push cycle itself completed cleanly")
+        #expect(try device.container.mainContext.fetchCount(FetchDescriptor<TranscriptSession>()) == 1,
+                "and the account's own session is still not on this device")
+
+        // The restore is answered by a pull of its own, not by the push that just succeeded.
+        #expect(await device.sync.restoreAccountData() == true)
+        #expect(try device.container.mainContext.fetchCount(FetchDescriptor<TranscriptSession>()) == 2,
+                "the account's session came down with it")
+    }
+
     // MARK: - What a sign-out actually reclaims
 
     /// A recording is cached on disk permanently on the device that made it, so a sign-out that
