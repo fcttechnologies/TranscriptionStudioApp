@@ -1,3 +1,4 @@
+import FCTAccountProfile
 import FCTServerSync
 import FCTServerSyncTesting
 import FCTSync
@@ -97,9 +98,16 @@ struct TranscriptionSyncContractTests {
 
     /// The store's membership and the wire's must not drift apart: a `@Model` added to the schema
     /// without a wire decision is a model that silently never syncs, and nothing else would say so.
+    ///
+    /// The shared account fragment is composed into both sides, so it keeps the counts balanced;
+    /// its two tables live in the `account` schema rather than this app's, which is the one place
+    /// the prefix rule does not apply.
     @Test @MainActor func everyStoredModelHasAWireTable() {
         #expect(TranscriptionSchemaCurrent.models.count == TranscriptionSyncSchema.schema.tables.count)
-        for table in TranscriptionSyncSchema.schema.tables {
+        let declared = Set(TranscriptionSyncSchema.schema.tables.map(\.name))
+        let account = Set(AccountSchema.tables.map(\.name))
+        #expect(account.isSubset(of: declared), "the account fragment rides this app's wire")
+        for table in TranscriptionSyncSchema.schema.tables where !account.contains(table.name) {
             #expect(
                 table.name.hasPrefix(TranscriptionSyncSchema.postgresSchema + "."),
                 "\(table.name) is not in the app's Postgres schema"

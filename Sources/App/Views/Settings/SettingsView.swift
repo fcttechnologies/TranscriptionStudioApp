@@ -1,4 +1,5 @@
 import FCTAccount
+import FCTAccountProfile
 import FCTSupport
 import SwiftUI
 
@@ -90,6 +91,12 @@ struct SettingsView: View {
     @ViewBuilder
     private var accountGroup: some View {
         if let account, let sync {
+            // Above the account block, which is where the fleet puts it. The session can end from
+            // that block while this screen is still up, so the profile is built from the
+            // credentials that exist rather than the ones that did.
+            if let credentials = account.credentials {
+                AccountProfileSection(tint: .accentColor, trusted: AccountTrusted(account: credentials))
+            }
             AccountSection(account: account, sync: sync)
         }
     }

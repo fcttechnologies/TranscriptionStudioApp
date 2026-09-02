@@ -23,7 +23,7 @@ struct PresenceSyncCostTests {
 
     /// The instrument first, against an answer already known: the read path asks for the whole
     /// declaration in one call, so an idle cycle that costs anything other than one round trip —
-    /// or asks about anything other than the schema's nine tables — means the counter is wrong
+    /// or asks about anything other than the schema's eleven tables — means the counter is wrong
     /// before any claim rests on it.
     @Test func anIdleCycleCostsOneReadForTheWholeDeclaration() async throws {
         let server = FakeSyncServer()
@@ -35,11 +35,11 @@ struct PresenceSyncCostTests {
         transport.reset()
         await device.sync.syncNow(.full)
 
-        // One call carrying all nine cursors, and NO push: the engine skips the push entirely when
+        // One call carrying all eleven cursors, and NO push: the engine skips the push entirely when
         // the outbox is empty. That last part is why a cost derived from the call graph missed
         // that a dirty presence row adds the push back.
         let declared = Set(TranscriptionSyncSchema.schema.tables.map(\.name))
-        #expect(declared.count == 9)
+        #expect(declared.count == 11, "this app's nine tables plus the account fragment's two")
         #expect(transport.reads == 1)
         #expect(Set(transport.lastReadCursors.keys) == declared,
                 "every declared table's cursor rides the one call, or a quiet table is never asked about")

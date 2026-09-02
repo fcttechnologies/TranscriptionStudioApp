@@ -128,6 +128,10 @@ final class TranscriptionSync {
     private(set) var discardedOnSwitch: Int = 0
     /// Set when a sign-out left the library in place because unpushed work made the clear unsafe.
     private(set) var keptOnSignOut: Int = 0
+    /// The name Apple carried on the authorization, for the account onboarding to prefill from.
+    /// Apple offers it exactly once, on the first authorization, and only `enrolled` and
+    /// `switched` carry it — so it is kept off the event here, or it is lost for that Apple id.
+    private(set) var appleFullName: PersonNameComponents?
 
     /// The blob store, alive exactly as long as the engine is. Playback reads it for the lazy
     /// full-bytes fetch of a restored recording.
@@ -483,14 +487,16 @@ final class TranscriptionSync {
 
     func handle(_ event: AccountEvent) async {
         switch event {
-        case .enrolled(let accountID, _):
+        case .enrolled(let accountID, let appleFullName):
+            self.appleFullName = appleFullName
             await startEngine(accountID: accountID, enrolling: true)
         case .resumed(let accountID):
             await startEngine(accountID: accountID, enrolling: false)
-        case .switched(_, let to, _):
+        case .switched(_, let to, let appleFullName):
             // A different account. Account A's library must not silently become account B's, so
             // this clears — and it discards whatever A never managed to push, because A's
             // credentials are already gone. The discard is surfaced, never swallowed.
+            self.appleFullName = appleFullName
             discardLocalData()
             await startEngine(accountID: to, enrolling: true)
         case .needsReauthentication:
@@ -664,6 +670,13 @@ final class TranscriptionSync {
         blobCounted = OutboxCensus()
         onRemoteChanges?()
         onLocalDataCleared?()
+    }
+
+    /// The engine's own state file, for the account onboarding gate — which reads what the engine
+    /// has pulled rather than what the store happens to hold. `nil` only when the App Group
+    /// container cannot be resolved, which is the same condition that leaves the engine unbuilt.
+    var stateFile: SyncStateFile? {
+        (try? configuration.stateFileURL()).map(SyncStateFile.init(url:))
     }
 
     /// An engine with no account behind it, for the one job that outlives the credentials: wiping

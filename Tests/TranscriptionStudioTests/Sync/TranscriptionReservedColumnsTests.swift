@@ -1,3 +1,4 @@
+import FCTAccountProfile
 import FCTBlobSync
 import FCTServerSync
 import Foundation
@@ -10,10 +11,10 @@ import Testing
 /// one is `rejected` by the server. Pinned here so a future column rename fails this test instead
 /// of a push in the field.
 ///
-/// An app-side edit stamp renames instead (`edited_at` is the fleet pattern). **This app has
-/// none**: `TranscriptSession.createdAt` is a creation stamp, which is not reserved, and nothing
-/// here records a last-edited time — the absence is pinned below rather than left to be inferred
-/// from the loop passing.
+/// An app-side edit stamp renames instead (`edited_at` is the fleet pattern). **This app's own
+/// models have none**: `TranscriptSession.createdAt` is a creation stamp, which is not reserved,
+/// and nothing here records a last-edited time — the absence is pinned below rather than left to
+/// be inferred from the loop passing. The shared account fragment does carry one, already renamed.
 @Suite("Reserved wire columns")
 struct TranscriptionReservedColumnsTests {
     static let reserved: Set<String> = [
@@ -69,6 +70,10 @@ struct TranscriptionReservedColumnsTests {
             (TranscriptPlace.syncTableName, place.syncRow()),
             (SpeakerAssignment.syncTableName, assignment.syncRow()),
             (MacPresence.syncTableName, presence.syncRow()),
+            (AccountOnboardingRecord.syncTableName,
+             AccountOnboardingRecord(completedIn: TranscriptionSyncSchema.postgresSchema).syncRow()),
+            (AccountProfileField.syncTableName,
+             AccountProfileField(kind: .givenName, value: "Fernando").syncRow()),
         ]
         #expect(rows.count == TranscriptionSyncSchema.schema.tables.count, "every synced table is pinned here")
         for (table, row) in rows {
@@ -108,6 +113,9 @@ struct TranscriptionReservedColumnsTests {
                 "speaker_slot", "contact_identifier", "display_name", "session_id",
             ],
             MacPresence.syncTableName: ["device_id", "device_name", "last_seen"],
+            // The shared account fragment, declared by this app and migrated by the platform.
+            AccountOnboardingRecord.syncTableName: ["completed_at", "flow_version", "completed_in"],
+            AccountProfileField.syncTableName: ["field", "value", "edited_at"],
         ]
 
         let session = TranscriptSession(title: "t", kind: .roomRecording)
@@ -122,6 +130,10 @@ struct TranscriptionReservedColumnsTests {
             SpeakerAssignment.syncTableName: SpeakerAssignment(
                 speakerSlot: 0, contactIdentifier: "x", displayName: "x").syncRow(),
             MacPresence.syncTableName: MacPresence(deviceIDString: "x", deviceName: "x").syncRow(),
+            AccountOnboardingRecord.syncTableName:
+                AccountOnboardingRecord(completedIn: "x").syncRow(),
+            AccountProfileField.syncTableName:
+                AccountProfileField(kind: .givenName, value: "x").syncRow(),
         ]
 
         #expect(Set(expected.keys) == Set(TranscriptionSyncSchema.schema.tables.map(\.name)))

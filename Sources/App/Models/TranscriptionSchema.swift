@@ -1,3 +1,4 @@
+import FCTAccountProfile
 import Foundation
 import SwiftData
 
@@ -10,7 +11,7 @@ enum TranscriptionSchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        [
+        AccountSchema.models + [
             TranscriptSession.self,
             StoredSegment.self,
             MacPresence.self,

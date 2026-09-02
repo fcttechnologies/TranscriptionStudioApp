@@ -1,3 +1,4 @@
+import FCTAccountProfile
 import FCTBlobSync
 import FCTServerSync
 import Foundation
@@ -39,7 +40,7 @@ enum TranscriptionSyncSchema {
     /// those are main-actor for the same reason the engine is: `StoreHistoryReader` is.
     @MainActor static let schema = SyncSchema(
         version: version,
-        tables: [
+        tables: AccountSchema.tables + [
             .of(TranscriptSession.self),
             .of(StoredSegment.self),
             .of(TranscriptDecision.self),

@@ -91,6 +91,10 @@ targets:
         product: FCTBlobSync
       - package: FCTFoundation
         product: FCTAccount
+      # The shared FCT account as a product: the schema fragment in this app's store and wire, the
+      # onboarding gate behind the front door, and the profile section in Settings.
+      - package: FCTFoundation
+        product: FCTAccountProfile
       - package: FCTFoundation
         product: FCTSupport
       # The front door: the intro carousel and the required sign-in that ends it. The app supplies
@@ -318,6 +322,10 @@ targets:
         product: FCTBlobSync
       - package: FCTFoundation
         product: FCTAccount
+      # This target compiles the app's schema and Settings sources by membership, and both import
+      # it — a target that compiles a file must link what that file imports.
+      - package: FCTFoundation
+        product: FCTAccountProfile
       - package: FCTFoundation
         product: FCTSupport
       - package: FCTFoundation

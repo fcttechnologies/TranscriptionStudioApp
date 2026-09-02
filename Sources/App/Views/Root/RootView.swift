@@ -1,4 +1,5 @@
 import FCTAccount
+import FCTAccountProfile
 import FCTOnboarding
 import SwiftData
 import SwiftUI
@@ -96,14 +97,42 @@ struct SignedInRootView: View {
             FrontDoorRestoringView()
         case .restoreFailed(let message):
             FrontDoorRestoreFailedView(message: message) { Task { await frontDoor.retry() } }
-        case .offerSpeechModel:
-            FrontDoorSpeechModelView { frontDoor.speechModelOfferAnswered() }
-        case .ready:
-            #if os(macOS)
-            MacRootView()
-            #else
-            StudioHomeView()
-            #endif
+        case .offerSpeechModel, .ready:
+            accountOnboardingGate
+        }
+    }
+
+    /// The one FCT onboarding, nested after this app's own restore stage — the account row is
+    /// already on disk by the time this renders, so the gate's wait is instant — and *ahead* of
+    /// the speech-model offer, because an app's own setup question comes after the account's.
+    ///
+    /// One gate across both stages rather than one per stage, so answering the speech-model offer
+    /// does not rebuild the coordinator underneath it.
+    @ViewBuilder
+    private var accountOnboardingGate: some View {
+        if let credentials = account.credentials, let stateFile = sync.stateFile {
+            AccountOnboardingGate(
+                tint: .accentColor,
+                completedIn: TranscriptionSyncSchema.postgresSchema,
+                appleFullName: sync.appleFullName,
+                stateFile: stateFile,
+                sync: { _ = await sync.restoreAccountData() },
+                trusted: AccountTrusted(account: credentials)
+            ) {
+                if case .offerSpeechModel = frontDoor.stage {
+                    FrontDoorSpeechModelView { frontDoor.speechModelOfferAnswered() }
+                } else {
+                    #if os(macOS)
+                    MacRootView()
+                    #else
+                    StudioHomeView()
+                    #endif
+                }
+            }
+        } else {
+            // The session ended under a signed-in stage; `AccountGate` takes the window back on
+            // its own one update later.
+            FrontDoorLaunchingView()
         }
     }
 
