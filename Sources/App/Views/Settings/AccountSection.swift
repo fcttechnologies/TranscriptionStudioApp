@@ -211,6 +211,7 @@ struct SyncStatusRow: View {
         case .failed(let count): String(localized: "\(count) change(s) the server refused")
         case .needsReauthentication: String(localized: "Sign in again to resume")
         case .resyncRequired: String(localized: "This device needs to rebuild")
+        case .merged: String(localized: "Your account moved — sign in again")
         }
     }
 
@@ -219,7 +220,7 @@ struct SyncStatusRow: View {
     private var needsAttention: Bool {
         switch sync.status {
         case .off, .idle, .syncing: false
-        case .offline, .needsReauthentication, .resyncRequired, .failed: true
+        case .offline, .needsReauthentication, .resyncRequired, .failed, .merged: true
         }
     }
 }

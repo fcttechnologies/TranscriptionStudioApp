@@ -20,7 +20,7 @@ struct SyncStatusIndicator: View {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Offline — will retry")
-        case .failed, .resyncRequired, .needsReauthentication:
+        case .failed, .resyncRequired, .needsReauthentication, .merged:
             Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
                 .accessibilityLabel("Sync needs attention")
