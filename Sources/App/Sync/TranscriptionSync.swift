@@ -1,4 +1,5 @@
 import FCTAccount
+import FCTAccountProfile
 import FCTBlobSync
 import FCTServerSync
 import FCTSync
@@ -21,6 +22,11 @@ struct TranscriptionSyncConfiguration {
     var stateFileURL: () throws -> URL
     var blobStateFileURL: () throws -> URL
     var blobCacheDirectory: () throws -> URL
+    /// The account blob store's own state file and cache — a second store beside this app's,
+    /// sharing its transport, because a `BlobStore` binds to one slug and the account's objects
+    /// live under its own.
+    var accountBlobStateFileURL: () throws -> URL
+    var accountBlobCacheDirectory: () throws -> URL
     var makeTransport: (any SyncAccount) -> any SyncTransport
     var makeBlobTransport: (any SyncAccount) -> any BlobTransport
     /// The change triggers the engine listens on. `LocalSaveTrigger` observes saves
@@ -36,6 +42,8 @@ struct TranscriptionSyncConfiguration {
         stateFileURL: @escaping () throws -> URL,
         blobStateFileURL: @escaping () throws -> URL,
         blobCacheDirectory: @escaping () throws -> URL,
+        accountBlobStateFileURL: @escaping () throws -> URL,
+        accountBlobCacheDirectory: @escaping () throws -> URL,
         makeTransport: @escaping (any SyncAccount) -> any SyncTransport,
         makeBlobTransport: @escaping (any SyncAccount) -> any BlobTransport,
         makeTriggers: @escaping (ModelContainer) -> [any HistoryChangeTrigger],
@@ -44,6 +52,8 @@ struct TranscriptionSyncConfiguration {
         self.stateFileURL = stateFileURL
         self.blobStateFileURL = blobStateFileURL
         self.blobCacheDirectory = blobCacheDirectory
+        self.accountBlobStateFileURL = accountBlobStateFileURL
+        self.accountBlobCacheDirectory = accountBlobCacheDirectory
         self.makeTransport = makeTransport
         self.makeBlobTransport = makeBlobTransport
         self.makeTriggers = makeTriggers
@@ -55,6 +65,8 @@ struct TranscriptionSyncConfiguration {
             stateFileURL: { try AppModelContainer.syncStateFileURL() },
             blobStateFileURL: { try AppModelContainer.blobStateFileURL() },
             blobCacheDirectory: { try AppModelContainer.blobCacheDirectory() },
+            accountBlobStateFileURL: { try AppModelContainer.accountBlobStateFileURL() },
+            accountBlobCacheDirectory: { try AppModelContainer.accountBlobCacheDirectory() },
             makeTransport: { account in
                 PostgRESTTransport(
                     baseURL: AccountEnvironment.fct.baseURL,
@@ -137,6 +149,11 @@ final class TranscriptionSync {
     /// full-bytes fetch of a restored recording.
     private(set) var blobStore: BlobStore?
 
+    /// The account's own blob store — the avatar's bytes, under the `account` slug rather than
+    /// this app's. Observed rather than ignored: the engine is built from the account's event
+    /// stream, so a settings screen already on screen when it lands is the ordinary case.
+    private(set) var accountBlobs: AccountBlobStore?
+
     @ObservationIgnored private var engine: SyncEngine?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     /// The account's Realtime channel and the subscription this foreground holds on it. Both live
@@ -190,7 +207,7 @@ final class TranscriptionSync {
     var unsyncedWork: OutboxCensus? {
         guard let engine else { return nil }
         var census = engine.state.counted
-        if let blobCensus = blobStore?.counted {
+        for blobCensus in [blobStore?.counted, accountBlobs?.blobs.counted].compactMap({ $0 }) {
             census.retrying += blobCensus.retrying
             census.stuck += blobCensus.stuck
         }
@@ -319,6 +336,7 @@ final class TranscriptionSync {
             syncAgain = nil
             await stageAuthoredAudio()
             if let blobStore { _ = await blobStore.sync() }
+            if let accountBlobs { _ = await accountBlobs.blobs.sync() }
             let result = await engine.sync(running)
             publish(result)
             scheduler.scheduleRetry(after: result)
@@ -365,8 +383,10 @@ final class TranscriptionSync {
     func retryRefused() async -> Int {
         var requeued = engine?.retryFailed() ?? 0
         requeued += blobStore?.retryFailed() ?? 0
+        requeued += accountBlobs?.blobs.retryFailed() ?? 0
         engine?.resetBackoff()
         blobStore?.resetBackoff()
+        accountBlobs?.blobs.resetBackoff()
         // Full: a refusal is the one state where this device may also be the stale one — a record
         // judged because the server had moved on is repaired by hearing what it holds, not only by
         // sending again.
@@ -536,6 +556,7 @@ final class TranscriptionSync {
 
         let stateFile: SyncStateFile
         let blobs: BlobStore
+        let accountStore: AccountBlobStore
         do {
             stateFile = SyncStateFile(url: try configuration.stateFileURL())
             blobs = BlobStore(
@@ -547,6 +568,13 @@ final class TranscriptionSync {
                 transport: configuration.makeBlobTransport(credentials),
                 stateFileURL: try configuration.blobStateFileURL(),
                 cacheDirectory: try configuration.blobCacheDirectory()
+            )
+            // Same transport — one account, one JWT, one bucket — and its own state file and cache.
+            accountStore = AccountBlobStore(
+                account: credentials,
+                transport: configuration.makeBlobTransport(credentials),
+                stateFileURL: try configuration.accountBlobStateFileURL(),
+                cacheDirectory: try configuration.accountBlobCacheDirectory()
             )
         } catch {
             lastError = "\(error)"
@@ -563,17 +591,22 @@ final class TranscriptionSync {
         )
         // The ordering rule's engine half: a session whose recording upload is pending or failed
         // stays *pending* in the outbox — held, never pushed, never failed.
-        engine.pushGate = { [weak blobs] table, uuid in
-            blobs?.isRecordPushable(table: table, uuid: uuid) ?? true
+        // Both stores, because the account's `avatar_blob` row is held by its own store exactly
+        // as a session is by this app's: no row may push ahead of the bytes it names.
+        engine.pushGate = { [weak blobs, weak accountStore] table, uuid in
+            (blobs?.isRecordPushable(table: table, uuid: uuid) ?? true)
+                && (accountStore?.blobs.isRecordPushable(table: table, uuid: uuid) ?? true)
         }
         // The uploads that were holding records back have settled, so the gate they were shut
         // against is open: a push, because what changed is on this device and nothing about a
         // settled upload says the server has anything to tell us.
-        blobs.onUploadsSettled = { [weak self] in
+        let settled: @MainActor () -> Void = { [weak self] in
             guard let self else { return }
             self.engine?.resetBackoff()
             Task { await self.syncNow(.push) }
         }
+        blobs.onUploadsSettled = settled
+        accountStore.blobs.onUploadsSettled = settled
         engine.didApplyRemoteChanges = { [weak self] in self?.onRemoteChanges?() }
         engine.onAccountDeleted = { [weak self] in
             guard let self, let controller = self.controller else { return }
@@ -596,6 +629,7 @@ final class TranscriptionSync {
         }
         self.engine = engine
         self.blobStore = blobs
+        self.accountBlobs = accountStore
         self.nudgeChannel = configuration.makeNudgeChannel(credentials)
         engineBuildCountForTesting += 1
 
@@ -612,6 +646,7 @@ final class TranscriptionSync {
         if releasing {
             engine = nil
             blobStore = nil
+            accountBlobs = nil
             nudgeChannel = nil
         }
     }
@@ -626,13 +661,16 @@ final class TranscriptionSync {
         guard let container else { return }
         let engine = self.engine ?? makeDetachedEngine(container: container)
         let blobs = self.blobStore
+        let accountBlobs = self.accountBlobs
 
         let unpushedRecords = engine?.state.outbox.count ?? 0
-        let undrainedUploads = blobs.map { $0.counted.total } ?? 0
+        let undrainedUploads = (blobs.map { $0.counted.total } ?? 0)
+            + (accountBlobs.map { $0.blobs.counted.total } ?? 0)
         guard unpushedRecords + undrainedUploads == 0 else {
             keptOnSignOut = unpushedRecords + undrainedUploads
             self.engine = nil
             self.blobStore = nil
+            self.accountBlobs = nil
             // Nothing was cleared, so this device's library is still the account's — the next
             // sign-in resumes onto it rather than restoring it.
             return
@@ -642,6 +680,7 @@ final class TranscriptionSync {
             // The engine's own barrier still runs: this is a re-read, not a substitute for it.
             try engine?.clearSyncedData()
             try blobs?.clearLocalData()
+            try accountBlobs?.blobs.clearLocalData()
             lastSyncedAt = nil
             counted = OutboxCensus()
             blobCounted = OutboxCensus()
@@ -655,6 +694,7 @@ final class TranscriptionSync {
         }
         self.engine = nil
         self.blobStore = nil
+        self.accountBlobs = nil
         onRemoteChanges?()
         if keptOnSignOut == 0 { onLocalDataCleared?() }
     }
@@ -670,8 +710,11 @@ final class TranscriptionSync {
         discardedOnSwitch = engine?.state.outbox.count ?? 0
         try? engine?.clearSyncedData(discardingUnsynced: true)
         try? blobStore?.clearLocalData(discardingUnsynced: true)
+        // Account A's avatar must not stay cached on a device account B just took over.
+        try? accountBlobs?.blobs.clearLocalData(discardingUnsynced: true)
         self.engine = nil
         self.blobStore = nil
+        self.accountBlobs = nil
         lastSyncedAt = nil
         counted = OutboxCensus()
         blobCounted = OutboxCensus()
@@ -704,7 +747,7 @@ final class TranscriptionSync {
 
     private func publish(_ result: SyncStatus) {
         status = result
-        lastError = engine?.lastError ?? blobStore?.lastError
+        lastError = engine?.lastError ?? blobStore?.lastError ?? accountBlobs?.blobs.lastError
         refreshCounters()
     }
 
@@ -712,7 +755,12 @@ final class TranscriptionSync {
         guard let state = engine?.state else { return }
         lastSyncedAt = state.lastSyncedAt
         counted = state.counted
-        blobCounted = blobStore?.counted ?? OutboxCensus()
+        var blobs = blobStore?.counted ?? OutboxCensus()
+        if let account = accountBlobs?.blobs.counted {
+            blobs.retrying += account.retrying
+            blobs.stuck += account.stuck
+        }
+        blobCounted = blobs
     }
 
     // MARK: - Backoff and connectivity
@@ -729,6 +777,7 @@ final class TranscriptionSync {
                 guard let self, self.engine != nil else { return }
                 self.engine?.resetBackoff()
                 self.blobStore?.resetBackoff()
+                self.accountBlobs?.blobs.resetBackoff()
                 await self.syncNow(.full)
             }
         }

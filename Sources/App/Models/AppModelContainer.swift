@@ -50,6 +50,22 @@ enum AppModelContainer {
             .appendingPathComponent("BlobCache", isDirectory: true)
     }
 
+    /// The account blob store's durable state. A `BlobStore` binds to one slug at construction and
+    /// the account's objects live under `account/`, so the avatar rides a second store beside this
+    /// app's — which needs its own state file, or the two overwrite each other's queues.
+    nonisolated static func accountBlobStateFileURL() throws -> URL {
+        try configuration.storeURL()
+            .deletingLastPathComponent()
+            .appendingPathComponent("TranscriptionStudio.store.account-blobstate.json")
+    }
+
+    /// The account blob cache, beside this app's own for the same reason.
+    nonisolated static func accountBlobCacheDirectory() throws -> URL {
+        try configuration.storeURL()
+            .deletingLastPathComponent()
+            .appendingPathComponent("AccountBlobCache", isDirectory: true)
+    }
+
     /// The transaction author stamped on THIS device's own local writes, so the incremental
     /// Spotlight observer can tell them apart from a change the sync applier landed and skip
     /// re-indexing what its inline `TranscriptSpotlightIndex.index`/`deindex` calls already

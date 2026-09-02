@@ -1,10 +1,15 @@
+import CoreGraphics
 import FCTAccount
 import FCTAccountProfile
+import FCTBlobSync
+import FCTBlobSyncTesting
 import FCTServerSync
 import FCTServerSyncTesting
 import Foundation
+import ImageIO
 import SwiftData
 import Testing
+import UniformTypeIdentifiers
 
 @testable import TranscriptionStudio
 
@@ -93,4 +98,76 @@ struct AccountAdoptionTests {
         #expect(family.value == "Cortez")
         #expect(family.id == AccountProfileField.Kind.familyName.id)
     }
+
+    /// The account's blob store is in this app's push gate: the `avatar_blob` row naming an object
+    /// still sitting on this device stays held, so no other device pulls an avatar uuid the object
+    /// store cannot serve. A gate wired to this app's own store alone passes every other test in
+    /// this file and fails this one.
+    @Test @MainActor
+    func thePushGateHoldsTheAvatarRowUntilItsObjectLands() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+        await device.enroll()
+        let avatars = try #require(device.sync.accountBlobs, "the account's store is built with the engine")
+
+        await device.objects.setOnline(false)
+        let blobID = try avatars.stageAvatar(avatarJPEG())
+        let context = device.container.mainContext
+        context.insert(AccountProfileField(kind: .avatarBlob, value: blobID.uuidString))
+        try context.save()
+        await device.sync.syncNow(.full)
+
+        let held = await device.server.rows(in: AccountProfileField.syncTableName)
+        #expect(held.isEmpty, "the row is held while its object is still on this device")
+
+        await device.objects.setOnline(true)
+        await device.sync.syncNow(.full)
+
+        let pushed = await device.server.value(
+            "value",
+            of: AccountProfileField.Kind.avatarBlob.id,
+            in: AccountProfileField.syncTableName
+        )
+        #expect(pushed?.stringValue == blobID.uuidString, "and it pushes once the upload lands")
+    }
+
+    /// Signing out clears the account's store with this app's own: the avatar's bytes are the
+    /// account's data, and a device that is no longer signed in holds none of it.
+    @Test @MainActor
+    func signingOutClearsTheAccountBlobStore() async throws {
+        let device = try BootstrapDevice()
+        defer { device.tearDown() }
+        await device.enroll()
+        let avatars = try #require(device.sync.accountBlobs)
+
+        let blobID = try avatars.stageAvatar(avatarJPEG())
+        await device.sync.syncNow(.full)
+        #expect(avatars.cachedAvatar(blobID) != nil, "the picked bytes are cached here")
+        #expect(avatars.blobs.counted.isDrained, "and the upload landed, so the barrier is clear")
+
+        await device.sync.handle(.signedOut)
+
+        #expect(device.sync.accountBlobs == nil, "the store goes with the session")
+        #expect(
+            device.accountBlobsOnDisk.cachedAvatar(blobID) == nil,
+            "and its cache was cleared, not just dropped from memory"
+        )
+    }
+}
+
+/// Real encoded image bytes: `stageAvatar` decodes what it is handed and refuses anything it
+/// cannot read, so a test staging `Data("bytes".utf8)` would prove only that the refusal works.
+@MainActor
+private func avatarJPEG(side: Int = 64) -> Data {
+    let context = CGContext(
+        data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+        space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+    )!
+    context.setFillColor(CGColor(red: 0.1, green: 0.2, blue: 0.4, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: side, height: side))
+    let encoded = NSMutableData()
+    let destination = CGImageDestinationCreateWithData(encoded, UTType.jpeg.identifier as CFString, 1, nil)!
+    CGImageDestinationAddImage(destination, context.makeImage()!, nil)
+    precondition(CGImageDestinationFinalize(destination))
+    return encoded as Data
 }

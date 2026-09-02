@@ -94,8 +94,15 @@ struct SettingsView: View {
             // Above the account block, which is where the fleet puts it. The session can end from
             // that block while this screen is still up, so the profile is built from the
             // credentials that exist rather than the ones that did.
-            if let credentials = account.credentials {
-                AccountProfileSection(tint: .accentColor, trusted: AccountTrusted(account: credentials))
+            // The account's blob store lands with the engine, which is built from the account's
+            // event stream — so the profile block appears with it rather than being built against
+            // a store that does not exist yet.
+            if let credentials = account.credentials, let avatars = sync.accountBlobs {
+                AccountProfileSection(
+                    tint: .accentColor,
+                    trusted: AccountTrusted(account: credentials),
+                    avatars: avatars
+                )
             }
             AccountSection(account: account, sync: sync)
         }

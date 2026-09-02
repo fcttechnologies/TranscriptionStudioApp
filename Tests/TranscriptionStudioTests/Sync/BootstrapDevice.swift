@@ -1,4 +1,5 @@
 import FCTAccount
+import FCTAccountProfile
 import FCTBlobSync
 import FCTBlobSyncTesting
 import FCTServerSync
@@ -51,6 +52,8 @@ final class BootstrapDevice {
             stateFileURL: { base.appendingPathComponent("syncstate.json") },
             blobStateFileURL: { base.appendingPathComponent("blobstate.json") },
             blobCacheDirectory: { base.appendingPathComponent("cache", isDirectory: true) },
+            accountBlobStateFileURL: { base.appendingPathComponent("account-blobstate.json") },
+            accountBlobCacheDirectory: { base.appendingPathComponent("account-cache", isDirectory: true) },
             makeTransport: { _ -> any SyncTransport in
                 if let transport { return transport }
                 let fake = FakeTransport(server: server)
@@ -84,6 +87,17 @@ final class BootstrapDevice {
     /// The files actually sitting in that cache right now.
     var cachedFileCount: Int {
         (try? FileManager.default.contentsOfDirectory(atPath: blobCacheDirectory.path).count) ?? 0
+    }
+
+    /// A second store over this device's account blob paths — what a relaunch would read, and the
+    /// only way to ask whether a clear reached the cache after the bootstrap dropped its store.
+    var accountBlobsOnDisk: AccountBlobStore {
+        AccountBlobStore(
+            account: FakeAccount(accountID: accountID),
+            transport: FakeBlobTransport(store: objects),
+            stateFileURL: base.appendingPathComponent("account-blobstate.json"),
+            cacheDirectory: base.appendingPathComponent("account-cache", isDirectory: true)
+        )
     }
 
     /// Record a session the way the app does before any account exists: bytes in the session's
