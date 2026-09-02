@@ -23,9 +23,8 @@
 # scripts/make-verification-audio.sh once before the full suite.
 #
 # Usage:  scripts/gate.sh
-# Env:    SIM_NAME  simulator device name for the iOS build leg (default "iPhone 17 Pro"). A
-#         concurrent lane points this at its own simulator; two lanes on one device collide on
-#         boot and install.
+# Env:    SIM_NAME  simulator device name (default "iPhone 17 Pro") outside a lane; inside one the
+#                   leased device is the destination (gate-lib's lane_sim_destination).
 
 set -euo pipefail
 
@@ -34,7 +33,7 @@ cd "$(dirname "$0")/.."
 source "../FCTFoundation/scripts/gate-lib.sh"
 phase_init
 
-SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
+lane_sim_destination
 # The promoted set is 10 on both platforms — exactly Apple's cap. Extras past the cap are dropped
 # with no error, so the count is pinned rather than merely bounded.
 SHORTCUT_COUNT_MAC=10
@@ -114,7 +113,7 @@ collect_build() {
 # compiles their test bundles, so each suite below is a test RUN rather than a second build of the
 # graph it just built. The headless CLI builds from the same sources as a separate tool target; it
 # must never rot.
-start_build ios   TranscriptionStudio build             "platform=iOS Simulator,name=${SIM_NAME}"
+start_build ios   TranscriptionStudio build             "${IOS_DEST}"
 start_build macos TranscriptionStudio build-for-testing "platform=macOS,arch=arm64"
 start_build cli   transcribe-cli      build-for-testing "platform=macOS,arch=arm64"
 collect_build macos
@@ -151,7 +150,7 @@ start_build macos-release TranscriptionStudio build "platform=macOS,arch=arm64" 
 # ONLY_ACTIVE_ARCH to NO, and the x86_64 simulator slice cannot resolve the
 # `_CoreSpotlight_FoundationModels` cross-import overlay, so without the pin this leg does not
 # merely take twice as long, it fails.
-start_build ios-release TranscriptionStudio build "platform=iOS Simulator,name=${SIM_NAME}" \
+start_build ios-release TranscriptionStudio build "${IOS_DEST}" \
   -configuration Release ONLY_ACTIVE_ARCH=YES ARCHS=arm64
 
 leg_wait unit-suite || { grep -E '✘|error:|failed' "${TEST_LOG}" | head -40; fail "unit suite failed (log: ${TEST_LOG})"; }
