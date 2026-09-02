@@ -88,7 +88,24 @@ protocol AsrEngine: AnyObject, Sendable {
                     track: AudioTrack,
                     wordTimestamps: Bool) async throws -> [AsrSegment]
 
+    /// The same, with the spoken language decided per call — one loaded model serving callers
+    /// that disagree about the language. `nil` leaves the engine's own default in force
+    /// (Whisper's auto-detect).
+    func transcribe(samples: [Float],
+                    track: AudioTrack,
+                    wordTimestamps: Bool,
+                    language: String?) async throws -> [AsrSegment]
+
     /// Live transcription over a chunk stream. One stream in, one update stream out;
     /// finishes when the input finishes (emitting the final confirmed state last).
     func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<AsrUpdate, Error>
+}
+
+extension AsrEngine {
+    /// An engine with no per-call language control — a fake, or one whose language is fixed at
+    /// construction — transcribes the way it always does.
+    func transcribe(samples: [Float], track: AudioTrack, wordTimestamps: Bool,
+                    language: String?) async throws -> [AsrSegment] {
+        try await transcribe(samples: samples, track: track, wordTimestamps: wordTimestamps)
+    }
 }

@@ -36,6 +36,14 @@ actor WhisperKitAsrEngine: AsrEngine {
         #endif
     }
 
+    /// The Whisper language code for a BCP-47 tag (`es-MX` → `es`), or nil when Whisper has no
+    /// such language. Whisper's codes are bare primary subtags, so only that part is read; a
+    /// script or region subtag carries no distinction the model can act on.
+    static func whisperLanguageCode(forTag tag: String) -> String? {
+        let primary = tag.split(separator: "-").first.map { $0.lowercased() } ?? ""
+        return Constants.languageCodes.contains(primary) ? primary : nil
+    }
+
     /// How much *new* audio must accumulate before a streaming decode pass runs — avoids
     /// re-running the encoder/decoder on sub-second dribbles of chunks.
     private let minimumNewAudioSeconds: TimeInterval
@@ -115,6 +123,15 @@ actor WhisperKitAsrEngine: AsrEngine {
     }
 
     func transcribe(samples: [Float], track: AudioTrack, wordTimestamps: Bool) async throws -> [AsrSegment] {
+        try await transcribe(samples: samples, track: track, wordTimestamps: wordTimestamps,
+                             language: forcedLanguage)
+    }
+
+    /// Transcribe with the spoken language decided per call rather than per engine — one warm
+    /// model serving callers that disagree about the language (the serve's per-job option).
+    /// `nil` is Whisper's own auto-detect.
+    func transcribe(samples: [Float], track: AudioTrack, wordTimestamps: Bool,
+                    language: String?) async throws -> [AsrSegment] {
         guard let whisperKit else { throw AsrEngineError.notPrepared }
         guard !samples.isEmpty else { return [] }
 
@@ -128,7 +145,7 @@ actor WhisperKitAsrEngine: AsrEngine {
         // repeated). WhisperKit's default sequential windowing offsets timestamps correctly,
         // producing a clean in-order transcript at ~the same wall-clock time here, so batch
         // jobs use it. (Live streaming uses its own `clipTimestamps` re-decode loop below.)
-        applyBiasing(&options, tokenizer: whisperKit.tokenizer)
+        applyBiasing(&options, language: language, tokenizer: whisperKit.tokenizer)
         let results = try await whisperKit.transcribe(audioArray: samples, decodeOptions: options)
         return results
             .flatMap(\.segments)
@@ -136,7 +153,7 @@ actor WhisperKitAsrEngine: AsrEngine {
             .map { Self.makeSegment(from: $0, track: track, confirmed: true) }
     }
 
-    /// Applies decode biasing — currently just a forced language (if set).
+    /// Applies decode biasing — currently just the spoken language (if one is forced).
     ///
     /// NOTE: proper-noun conditioning via `DecodingOptions.promptTokens` was tried and
     /// deliberately dropped. The default `large-v3-turbo` variant returns an EMPTY transcript
@@ -145,8 +162,9 @@ actor WhisperKitAsrEngine: AsrEngine {
     /// fine, so it's variant-specific. The accuracy upside was marginal even where it worked,
     /// so it isn't worth breaking the best model. A future reintroduction must guard on the
     /// variant (skip turbo) or use a different biasing mechanism.
-    private func applyBiasing(_ options: inout DecodingOptions, tokenizer: WhisperTokenizer?) {
-        if let forcedLanguage { options.language = forcedLanguage }
+    private func applyBiasing(_ options: inout DecodingOptions, language: String?,
+                              tokenizer: WhisperTokenizer?) {
+        if let language { options.language = language }
     }
 
     /// Drives its own accumulate-and-decode loop rather than WhisperKit's built-in

@@ -25,17 +25,22 @@ struct TranscribeCLI {
       --language <c>   Force the spoken language (ISO code, e.g. "en"/"es") instead of
                        Whisper's auto-detect.
 
-    SERVE: run a warm on-device transcription service (drop-in for the old FastAPI app on
-           the same :8000 API — POST /api/jobs/start, GET /api/jobs/{id}, POST /api/transcribe/file),
-           which also speaks: POST /speak {text, voice?, language?} -> audio/wav, streamed
-           (chunked transfer) as the audio is synthesized.
+    SERVE: run a warm on-device transcription service — POST /jobs with either a JSON body
+           ({"source": {"url": …}, "options": {"language": "auto"|"<bcp47>"}}) or a multipart
+           upload (a `file` part, plus an optional `language` field) -> {job_id}, polled at
+           GET /jobs/{id} -> {state, title, segments, transcript, error}. Every job separates
+           speakers, so segments carry a `speaker` label and the transcript carries
+           `Speaker N:` prefixes whenever more than one voice was found. It also speaks:
+           POST /speak {text, voice?, language?} -> audio/wav, streamed (chunked transfer) as
+           the audio is synthesized.
       --serve          Start the HTTP service (holds the models warm across requests).
       --port <n>       Listen port (default: 8000).
       --idle-timeout <s>  Release a model after this many seconds idle, reloading on demand
                        (default: 600 = ~10 min; 0 = never release / stay warm forever). The
-                       recognition and synthesis models idle out independently.
-      --preload        Load the recognition model at startup for the lowest first-request
-                       latency (eager). Synthesis always loads on its first request.
+                       recognition, separation and synthesis models idle out independently.
+      --preload        Load the models every job needs — recognition and speaker separation —
+                       at startup, for the lowest first-request latency (eager). Synthesis
+                       always loads on its first request.
 
     SPEAK: synthesize speech from text with the on-device model and write it to a file.
       speak <text>     The text to say.
@@ -136,18 +141,20 @@ struct TranscribeCLI {
 
     // MARK: - Serve
 
-    /// Run the warm transcription HTTP service until killed. Builds the warm engines (the
-    /// recognition one optionally preloaded), starts the idle reaper (a no-op at idle-timeout 0),
-    /// and blocks on the accept loop. Never returns on success.
+    /// Run the warm transcription HTTP service until killed. Builds the warm engines (the two a
+    /// job needs optionally preloaded), starts the idle reaper (a no-op at idle-timeout 0), and
+    /// blocks on the accept loop. Never returns on success.
     ///
-    /// `--preload` covers recognition only. The 24/7 service exists for the `transcribe` tool, so
-    /// that model earns its residency; eagerly loading a ~1 GB synthesis model that a given day
-    /// may never ask for would double the resident footprint on a personal machine for nothing.
-    /// Synthesis loads on its first `/speak` and then stays warm on the same idle rules.
+    /// `--preload` covers what every job runs — recognition and speaker separation — and never
+    /// synthesis: eagerly loading a ~1 GB synthesis model that a given day may never ask for
+    /// would double the resident footprint on a personal machine for nothing. Synthesis loads on
+    /// its first `/speak` and then stays warm on the same idle rules. A separation model that
+    /// won't load is not fatal, on the same best-effort contract every job holds it to.
     static func runServe(port: UInt16, idleTimeout: TimeInterval, preload: Bool,
                          modelName: String, forcedLanguage: String?,
                          voiceProfilePath: String?) async {
         let warm = WarmEngine(modelName: modelName, forcedLanguage: forcedLanguage, idleTimeout: idleTimeout)
+        let diarization = WarmDiarizer(idleTimeout: idleTimeout)
         let speech = WarmTTSEngine(idleTimeout: idleTimeout,
                                    makeEngine: makeSpeechEngine(voiceProfilePath: voiceProfilePath,
                                                                 warmAsr: warm))
@@ -160,23 +167,31 @@ struct TranscribeCLI {
             } catch {
                 fail("preload failed: \(error.localizedDescription)")
             }
+            status("Preloading speaker separation…")
+            do {
+                try await diarization.ensureLoaded()
+                status("Speaker separation ready.")
+            } catch {
+                status("Speaker separation unavailable: \(error.localizedDescription)")
+            }
         }
 
-        // Idle reaper: release a model once it's been idle past the timeout. Both engines are
-        // swept on the same tick but against their own last-used clocks, so either can be
-        // resident while the other is reaped. No-op at 0 (warm forever), so only spun up when a
-        // positive timeout is set.
+        // Idle reaper: release a model once it's been idle past the timeout. Every engine is
+        // swept on the same tick but against its own last-used clock, so one can be resident
+        // while another is reaped. No-op at 0 (warm forever), so only spun up when a positive
+        // timeout is set.
         if idleTimeout > 0 {
             Task.detached {
                 while true {
                     try? await Task.sleep(for: .seconds(60))
                     await warm.reapIfIdle()
+                    await diarization.reapIfIdle()
                     await speech.reapIfIdle()
                 }
             }
         }
 
-        let server = TranscribeServer(port: port, warm: warm, speech: speech)
+        let server = TranscribeServer(port: port, warm: warm, diarization: diarization, speech: speech)
         do {
             try server.run()  // blocks forever on accept()
         } catch {

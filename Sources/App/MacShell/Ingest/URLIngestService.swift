@@ -49,6 +49,18 @@ struct URLIngestService: URLAudioDownloading {
         tempRoot().appendingPathComponent(jobID.uuidString, isDirectory: true)
     }
 
+    /// The media title yt-dlp recorded for a completed job, read from the info-JSON sidecar
+    /// `--write-info-json` leaves beside the audio. `nil` when the sidecar is absent or carries
+    /// no title — a job names itself by its URL then.
+    static func title(forJobID jobID: UUID) -> String? {
+        let sidecar = jobDirectory(for: jobID).appendingPathComponent("audio.info.json")
+        guard let data = try? Data(contentsOf: sidecar),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let title = (object["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return nil }
+        return title
+    }
+
     /// Builds the yt-dlp argument list — ported flag-for-flag from the web app's
     /// `pipeline.py download_audio` (format chain, mp3 extraction, isolation, quiet
     /// flags) plus `--newline`/no `--quiet` so progress is parseable.
@@ -65,6 +77,11 @@ struct URLIngestService: URLAudioDownloading {
             "--no-cache-dir",
             "--newline",
             "--no-warnings",
+            // The media's own title, into a sidecar beside the audio (`Self.title(forJobID:)`
+            // reads it). The metadata is already fetched to pick a format, so this costs no
+            // extra request, and it leaves the progress lines on stdout that `--print` would
+            // suppress.
+            "--write-info-json",
             "-o", outputTemplate.path,
         ]
         if let ffmpegDirectory {

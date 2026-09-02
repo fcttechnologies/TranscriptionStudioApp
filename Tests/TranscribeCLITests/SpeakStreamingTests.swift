@@ -165,7 +165,8 @@ private func startServer(engine: any TtsEngine) async throws -> UInt16 {
     let port = try ephemeralPortForStreaming()
     let server = TranscribeServer(
         port: port,
-        warm: WarmEngine(modelName: "unused-in-tests", forcedLanguage: nil, idleTimeout: 0),
+        warm: WarmEngine(idleTimeout: 0, makeEngine: { MockAsrEngine() }),
+        diarization: WarmDiarizer(idleTimeout: 0, makeEngine: { MockDiarizationEngine() }),
         speech: WarmTTSEngine(idleTimeout: 600, makeEngine: { engine })
     )
     Thread.detachNewThread { try? server.run() }
