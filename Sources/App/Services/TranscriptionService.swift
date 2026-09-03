@@ -1,3 +1,4 @@
+import FCTMetrics
 import Foundation
 import SwiftData
 
@@ -90,6 +91,7 @@ final class TranscriptionService {
 
             try await transcribeAndPersist(samples: samples, session: session, job: job,
                                            transcribeStep: 2, saveStep: 3, sessionID: sessionID)
+            Diag.count(TranscriptionCounter.filesTranscribed)
             job.finish(resultSessionID: sessionID)
             return sessionID
         } catch {
@@ -164,6 +166,7 @@ final class TranscriptionService {
                 await downloader.cleanup(jobID: sessionID)
             }
 
+            Diag.count(TranscriptionCounter.linksTranscribed)
             job.finish(resultSessionID: sessionID)
             return sessionID
         } catch {

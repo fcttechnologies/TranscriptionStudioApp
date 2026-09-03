@@ -2,29 +2,6 @@ import FCTAccount
 import Foundation
 import Observation
 
-/// Whether this device has ever pulled this account's library down — the fact that separates
-/// "this account is new" from "this account's library has not arrived yet".
-///
-/// Kept per account id rather than per install: an install-wide flag reads `true` for the *second*
-/// account to sign in on this device, which is exactly the case that opens onto an empty store.
-/// It syncs nowhere on purpose — it is a statement about this device — and a sign-out, switch or
-/// deletion clears it, so the next sign-in restores again.
-nonisolated enum LibraryRestoreState {
-    static let key = "com.fcttechnologies.TranscriptionStudio.restoredAccountID"
-
-    static func hasRestored(accountID: UUID, in defaults: UserDefaults = .standard) -> Bool {
-        defaults.string(forKey: key) == accountID.uuidString
-    }
-
-    static func markRestored(accountID: UUID, in defaults: UserDefaults = .standard) {
-        defaults.set(accountID.uuidString, forKey: key)
-    }
-
-    static func clear(in defaults: UserDefaults = .standard) {
-        defaults.removeObject(forKey: key)
-    }
-}
-
 /// Whether this device has already been offered the speech model, so the offer is made once and
 /// never becomes a thing to dismiss on every launch.
 ///
@@ -102,6 +79,11 @@ final class TranscriptionFrontDoor {
     /// runs the real one.
     @ObservationIgnored var restoreAccountData: () async -> Bool = { true }
 
+    /// Whether this device has ever finished reading this account — the engine's own durable,
+    /// per-account marker, read through the sync bootstrap. A seam for the same reason the pull
+    /// is one: the routing is a table, and a table is testable without a live engine.
+    @ObservationIgnored var hasCompletedFirstPull: (UUID) -> Bool = { _ in false }
+
     /// Whether the speech model is already on this disk, as a seam. The live answer reads the
     /// bundled manifest against the install directory, which a routing test has no business
     /// needing on hand — and defaulting it to `true` means a harness that never wires it takes
@@ -126,8 +108,7 @@ final class TranscriptionFrontDoor {
 
     var entry: FrontDoorEntry {
         FrontDoorEntry.forLaunch(
-            hasRestored: session().accountID
-                .map { LibraryRestoreState.hasRestored(accountID: $0, in: defaults) } ?? false
+            hasRestored: session().accountID.map { hasCompletedFirstPull($0) } ?? false
         )
     }
 
@@ -144,9 +125,6 @@ final class TranscriptionFrontDoor {
         }
     }
 
-    /// This device's copy was wiped (sign-out, switch, deletion). The account gate takes the window
-    /// back on its own; what this does is forget that this device ever restored, so the next
-    /// sign-in pulls the library down again instead of opening onto an empty store.
     /// The user answered the speech-model offer, either way. Recording the answer *here* rather
     /// than in the view is what keeps the offer from reappearing behind a view that got rebuilt.
     func speechModelOfferAnswered() {
@@ -154,8 +132,11 @@ final class TranscriptionFrontDoor {
         stage = .ready
     }
 
+    /// This device's copy was wiped (sign-out, switch, deletion). The account gate takes the
+    /// window back on its own; this puts the door back at the top, so the next sign-in routes
+    /// from scratch. Nothing here forgets the restore: the marker is the engine's own and the
+    /// clear that wiped the rows dropped it with them.
     func localDataCleared() {
-        LibraryRestoreState.clear(in: defaults)
         attempt = UUID()
         stage = .launching
     }
@@ -177,9 +158,6 @@ final class TranscriptionFrontDoor {
                 comment: "Front door: the account's first pull could not complete"
             ))
             return
-        }
-        if let accountID = session().accountID {
-            LibraryRestoreState.markRestored(accountID: accountID, in: defaults)
         }
         stage = stageAfterLibrary()
     }

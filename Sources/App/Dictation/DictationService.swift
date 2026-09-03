@@ -1,4 +1,5 @@
 import FCTDictation
+import FCTMetrics
 import Foundation
 import SwiftData
 
@@ -66,6 +67,9 @@ extension AppModel {
         guard let id = StudioDictation.route.resultID(in: url) else { return false }
         if let store = try? DictationStore(appGroupID: StudioDictation.appGroupID),
            let result = try? store.consume(id) {
+            // A result is consumed once, so this counts a dictation whose words actually reached
+            // the app rather than every open of the same URL.
+            Diag.count(TranscriptionCounter.dictationsCompleted)
             dictation.present(result)
         }
         activeSheet = .dictation

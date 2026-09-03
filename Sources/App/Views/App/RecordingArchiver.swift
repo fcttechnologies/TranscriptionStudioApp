@@ -1,3 +1,4 @@
+import FCTMetrics
 import Foundation
 import SwiftData
 
@@ -101,6 +102,7 @@ final class RecordingArchiver {
         titleGenerator.applyGeneratedTitle(to: session, modelContext: modelContext)
         // The FM extraction substrate — off the critical path, after the session is saved.
         highlightsExtractor.schedule(for: session, modelContext: modelContext)
+        Diag.count(TranscriptionCounter.sessionsRecorded)
         return sessionID
     }
 

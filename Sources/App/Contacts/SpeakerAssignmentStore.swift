@@ -1,3 +1,4 @@
+import FCTMetrics
 import Foundation
 import SwiftData
 
@@ -10,6 +11,7 @@ enum SpeakerAssignmentStore {
     @discardableResult
     static func assign(slot: Int, contactIdentifier: String, displayName: String,
                               to session: TranscriptSession, in context: ModelContext) -> SpeakerAssignment {
+        Diag.count(TranscriptionCounter.speakersNamed)
         let name = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         if let existing = (session.speakerAssignments ?? []).first(where: { $0.speakerSlot == slot }) {
             existing.contactIdentifier = contactIdentifier

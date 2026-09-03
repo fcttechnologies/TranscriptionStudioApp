@@ -2,6 +2,7 @@ import Foundation
 import OSLog
 import SwiftData
 import FCTIntelligence
+import FCTMetrics
 
 /// The Foundation Models **extraction substrate**: a structured pass over a completed transcript that
 /// pulls out decisions, action items, events, people, and places as real, queryable SwiftData models
@@ -149,6 +150,7 @@ struct HighlightsExtractor: Sendable {
 
         session.highlightsStatus = .ready
         try? modelContext.save()
+        Diag.count(TranscriptionCounter.highlightsExtracted)
     }
 
     /// Delete any previously-extracted highlights so a re-run replaces rather than accumulates.

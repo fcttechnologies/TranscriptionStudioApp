@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import AppIntents
+import FCTMetrics
 
 /// A saved session's transcript, presented as a sheet from the feed (and expanded from the
 /// mini-player during playback). The reading surface: an identity header (kind chip, title,
@@ -131,6 +132,7 @@ struct SessionDetailView: View {
                       contentType: exportFormat.map(TranscriptExportDocument.contentType(for:)) ?? .plainText,
                       defaultFilename: exportFileName) { result in
             if case .success = result, let format = exportFormat {
+                Diag.count(TranscriptionCounter.transcriptsExported)
                 let entity = TranscriptSessionEntity(session)
                 Task { await TranscriptionIntentDonations.donateExportTranscript(entity, format: format) }
             }

@@ -181,8 +181,8 @@ struct TranscriptionSyncRecoveryTests {
     /// The shape is the one that costs most — a first sign-in that could not reach the account,
     /// then one session recorded by hand — and what keeps it safe is that `restoreAccountData`
     /// asks a full cycle of its own and reads that cycle's verdict. A clean push before it must
-    /// not be mistakable for a restore: the front door writes `LibraryRestoreState` on the answer,
-    /// so a false `true` is remembered and the library opens empty over a real one.
+    /// not be mistakable for a restore: the front door routes into the app on that answer, so a
+    /// false `true` opens an empty library over a real one.
     @MainActor
     @Test func aCleanPushCycleIsNotMistakenForARestore() async throws {
         let server = FakeSyncServer()

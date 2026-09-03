@@ -36,7 +36,11 @@ struct TranscriptionSyncConfiguration {
     /// The Realtime channel a foregrounding subscribes for nudges — rung 2 of the ping ladder.
     /// `nil` where no socket may be opened at all, which is every test process: there is no
     /// server to join, and correctness never rides this rung.
-    var makeNudgeChannel: (any SyncAccount) -> SyncNudgeChannel?
+    ///
+    /// It takes the engine's own state file because that is where this install's device id lives,
+    /// and the id is what the admission door names a device by: without it a renewal could not
+    /// find its own lease row and a release would give back nothing.
+    var makeNudgeChannel: (any SyncAccount, SyncStateFile) -> SyncNudgeChannel?
 
     init(
         stateFileURL: @escaping () throws -> URL,
@@ -47,7 +51,7 @@ struct TranscriptionSyncConfiguration {
         makeTransport: @escaping (any SyncAccount) -> any SyncTransport,
         makeBlobTransport: @escaping (any SyncAccount) -> any BlobTransport,
         makeTriggers: @escaping (ModelContainer) -> [any HistoryChangeTrigger],
-        makeNudgeChannel: @escaping (any SyncAccount) -> SyncNudgeChannel? = { _ in nil }
+        makeNudgeChannel: @escaping (any SyncAccount, SyncStateFile) -> SyncNudgeChannel? = { _, _ in nil }
     ) {
         self.stateFileURL = stateFileURL
         self.blobStateFileURL = blobStateFileURL
@@ -93,11 +97,19 @@ struct TranscriptionSyncConfiguration {
                     ignoring: [TranscriptionSync.heartbeatEntityName]
                 )
             },
-            makeNudgeChannel: { account in
+            makeNudgeChannel: { account, stateFile in
                 SyncNudgeChannel(
                     baseURL: AccountEnvironment.fct.baseURL,
                     publishableKey: AccountEnvironment.fct.publishableKey,
-                    account: account
+                    account: account,
+                    stateFile: stateFile,
+                    // The slot is asked for before the join, through the same door the records go
+                    // out of: one project, one account, one bearer.
+                    leasing: PostgRESTTransport(
+                        baseURL: AccountEnvironment.fct.baseURL,
+                        publishableKey: AccountEnvironment.fct.publishableKey,
+                        account: account
+                    )
                 )
             }
         )
@@ -360,6 +372,30 @@ final class TranscriptionSync {
         }
         await syncNow(.full)
         return status == .idle
+    }
+
+    /// Whether this device has ever walked this account's feed to its end — the fact that
+    /// separates "this account is new" from "this account's library has not arrived yet".
+    ///
+    /// The engine answers when there is one; before it exists — the launch read, which happens
+    /// while the account's event stream is still building it — the same fact is read straight off
+    /// the state file. It is durable and per account, so a returning launch is settled from the
+    /// first frame, and every path that destroys the rows drops it with them.
+    func hasCompletedFirstPull(for accountID: UUID) -> Bool {
+        if let engine, engine.accountID == accountID { return engine.hasCompletedFirstPull }
+        return SyncFreshness.current(fileURL: try? configuration.stateFileURL())
+            .hasCompletedFirstPull(for: accountID)
+    }
+
+    /// The merge's local half: these rows belong to another account now, under the same ids, so
+    /// the store changes owner and nothing is deleted. The engine rewrites its state file and
+    /// marks every row dirty, and LWW settles the rest exactly as two ordinary devices do.
+    func reHome(into account: UUID) {
+        do {
+            try engine?.reHome(into: account)
+        } catch {
+            lastError = "\(error)"
+        }
     }
 
     /// **The one way back from a refusal**, across both wires: everything the server judged and
@@ -630,7 +666,7 @@ final class TranscriptionSync {
         self.engine = engine
         self.blobStore = blobs
         self.accountBlobs = accountStore
-        self.nudgeChannel = configuration.makeNudgeChannel(credentials)
+        self.nudgeChannel = configuration.makeNudgeChannel(credentials, stateFile)
         engineBuildCountForTesting += 1
 
         scheduler.observe(configuration.makeTriggers(container))

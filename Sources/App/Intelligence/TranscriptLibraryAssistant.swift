@@ -4,6 +4,7 @@ import FoundationModels
 import UniformTypeIdentifiers
 import OSLog
 import FCTIntelligence
+import FCTMetrics
 // `SpotlightSearchTool` / `SearchSource.coreSpotlight` come from the `_CoreSpotlight_FoundationModels`
 // cross-import overlay, which the compiler auto-imports only when BOTH CoreSpotlight and
 // FoundationModels are imported together in this file.
@@ -51,7 +52,8 @@ enum TranscriptLibraryAssistant {
     /// Answer a question from the whole library, on-device. Never throws; returns the assistant's
     /// availability/failure reason so the caller degrades to ordinary library search.
     static func ask(_ question: String) async -> Result<String, SemanticAssistant.AskError> {
-        await makeAssistant().ask(question)
+        Diag.count(TranscriptionCounter.assistantQuestions)
+        return await makeAssistant().ask(question)
     }
 
     // MARK: - Spotlight tool + full-text hydration

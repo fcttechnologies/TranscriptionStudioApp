@@ -1,5 +1,6 @@
 import Foundation
 import AppIntents
+import FCTMetrics
 import UniformTypeIdentifiers
 
 // App Intents exposing Transcription Studio to Siri, Shortcuts, and Apple Intelligence.
@@ -421,6 +422,7 @@ struct ExportTranscriptIntent: AppIntent {
         try resolved.data.write(to: fileURL)
 
         let entity = try ExportedTranscriptFileEntity(id: .file(url: fileURL), title: safeName)
+        Diag.count(TranscriptionCounter.transcriptsExported)
         return .result(value: entity, dialog: "Exported \(safeName).")
     }
 }

@@ -101,6 +101,11 @@ targets:
         product: FCTAccountProfile
       - package: FCTFoundation
         product: FCTSupport
+      # The feedback board, as a window onto the one the website hosts: posting, voting, the
+      # allowance and every refusal are the platform's contract, so the sheet opens that page
+      # rather than restating it thirteen times.
+      - package: FCTFoundation
+        product: FCTFeedback
       # The front door: the intro carousel and the required sign-in that ends it. The app supplies
       # its pages and nothing else — no pager, no dots, no sign-in surface of its own.
       - package: FCTFoundation
@@ -346,6 +351,10 @@ targets:
         product: FCTAccountProfile
       - package: FCTFoundation
         product: FCTSupport
+      # Same reason as `FCTSupport` above: the Settings sources this target compiles by membership
+      # carry the feedback row, and a target that compiles a file must link what that file imports.
+      - package: FCTFoundation
+        product: FCTFeedback
       - package: FCTFoundation
         product: FCTGlanceables
       # This target compiles the app's Settings sources by membership, and the debug tools there

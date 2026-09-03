@@ -151,12 +151,13 @@ struct SignedInRootView: View {
         app.playback.cachedRecordingBytes = { sync.cachedRecordingData(for: $0) }
         app.playback.recordingBytes = { try await sync.recordingData(for: $0) }
         // A sign-out, switch or deletion wipes this device's copy. The account gate takes the
-        // window back on its own; this only forgets that this device ever restored, so the next
-        // sign-in pulls the library down rather than opening onto an empty store.
+        // window back on its own; this puts the door back at the top, so the next sign-in pulls
+        // the library down rather than opening onto an empty store.
         sync.onLocalDataCleared = { frontDoor.localDataCleared() }
 
         frontDoor.attachAccount(account)
         frontDoor.restoreAccountData = { await sync.restoreAccountData() }
+        frontDoor.hasCompletedFirstPull = { sync.hasCompletedFirstPull(for: $0) }
         frontDoor.isSpeechModelInstalled = {
             ModelStorageScanner.isWhisperModelInstalled(app.settings.whisperModel)
         }

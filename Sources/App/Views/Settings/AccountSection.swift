@@ -62,6 +62,21 @@ struct AccountSection: View {
             in until sync finishes, or sign out and keep the library here.
             """)
         }
+
+        // The repair for a person who ended up with two accounts. It shows only while signed in,
+        // and its screen is pushed, so it rides the `NavigationStack` the settings sheet is
+        // already inside. Its barrier refuses rather than offering a discard: nothing is being
+        // destroyed, so work the server has never seen simply has nowhere to go until the device
+        // is signed in as the other account.
+        AccountMergeSection(
+            controller: account,
+            barrier: DeletionBarrier { [sync] in
+                await sync.syncNow(.full)
+                guard let census = await sync.unsyncedWork else { throw AccountSectionError.uncountable }
+                return .counted(retrying: census.retrying, stuck: census.stuck)
+            },
+            reHome: { [sync] target in sync.reHome(into: target) }
+        )
     }
 
     /// Sign-out is the one act with no way back: after `.signedOut` there is no token left to
@@ -85,6 +100,11 @@ struct AccountSection: View {
         outstandingAtSignOut = 0
         continuation.resume(returning: proceed)
     }
+}
+
+private enum AccountSectionError: Error {
+    /// "I could not tell" must never be spelled as zero at the moment a merge is decided.
+    case uncountable
 }
 
 /// The sync state, said out loud.

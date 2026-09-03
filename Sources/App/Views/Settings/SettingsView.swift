@@ -1,5 +1,7 @@
 import FCTAccount
 import FCTAccountProfile
+import FCTBlobSync
+import FCTFeedback
 import FCTSupport
 import SwiftUI
 
@@ -103,6 +105,15 @@ struct SettingsView: View {
                     trusted: AccountTrusted(account: credentials),
                     avatars: avatars
                 )
+                // Silent while the blob layer is healthy, which is nearly always: it appears only
+                // when an upload is stuck on something the person can act on.
+                BlobStatusRow(store: avatars.blobs)
+            }
+            // Both stores, because they get stuck for different reasons and only one of them is
+            // where an account's storage actually goes: the avatar above is kilobytes, and this
+            // one holds the recordings.
+            if let recordings = sync.blobStore {
+                BlobStatusRow(store: recordings)
             }
             AccountSection(account: account, sync: sync)
         }
@@ -178,6 +189,15 @@ struct SettingsView: View {
             Text("Speech recognition, speaker identification and synthesis run entirely on this device — your audio is never sent anywhere to be transcribed. Your library is stored in your private FCT account so it reaches your other devices: the transcripts, the highlights, the speakers, any place you tagged, and the recordings themselves. Summaries and transcript questions use Apple Intelligence, which runs on this device and may use Apple's Private Cloud Compute for a long transcript.")
         }
         SupportSettingsSection(appName: "Transcription Studio")
+        // Below support, which is where the fleet puts it: support is for something that went
+        // wrong and wants a reply; this is for what the app should do next, answered on the board
+        // in front of the app's other users.
+        if let account {
+            FeedbackSettingsSection(
+                board: FeedbackBoard(slug: "transcription-studio"),
+                controller: account
+            )
+        }
     }
 
     /// iOS can never provision the Sortformer model — `DiarizationBackend.makeEngine`'s guard
