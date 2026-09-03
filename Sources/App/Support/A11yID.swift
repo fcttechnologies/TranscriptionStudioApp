@@ -80,6 +80,10 @@ enum A11yID {
     static let recordPreparing = "record.preparing"
     static let recordStop = "record.stop"
 
+    // MARK: Dictation
+    static let dictationDone = "dictation.done"
+    static let dictationText = "dictation.text"
+
     // MARK: Captions
     static let captionJumpToLive = "caption.jumpToLive"
     static let captionSizeControl = "caption.sizeControl"

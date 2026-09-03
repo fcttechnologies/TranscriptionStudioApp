@@ -79,10 +79,15 @@ struct TranscriptionStudioApp: App {
                 .environment(app)
                 .environment(account)
                 .environment(sync)
-                // A shared item arrives via the Share extension's URL-scheme ping; drain the
-                // App Group drop-box and enqueue it as a job. Harmless while the gate is up —
-                // the drop-box keeps, and the app drains it again on every foreground.
-                .onOpenURL { url in app.handleIngestURL(url) }
+                // Two consumers on the app's one scheme, told apart by the URL's host. A
+                // dictation hand-off carries a finished result's id, which is read out of the App
+                // Group container and shown. Anything else is the Share extension's ping: drain
+                // the drop-box and enqueue what it staged. Harmless while the gate is up — the
+                // drop-box keeps, and the app drains it again on every foreground.
+                .onOpenURL { url in
+                    guard !app.handleDictationURL(url) else { return }
+                    app.handleIngestURL(url)
+                }
                 .task { await launch() }
                 #if DEBUG
                 .environment(\.debugStoreSwitch, debugStore)

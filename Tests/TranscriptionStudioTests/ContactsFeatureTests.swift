@@ -79,6 +79,9 @@ private struct FixtureResolver: ContactResolving {
     func candidates(matchingName name: String) async -> [ContactCandidate] {
         status.canRead ? (byName[name] ?? []) : []
     }
+    /// Mention resolution never reads the catalog; the whole book is what a dictation vocabulary
+    /// asks for, and this fixture answers by name only.
+    func allCandidates(limit: Int) async -> [ContactCandidate] { [] }
 }
 
 struct MentionResolverTests {

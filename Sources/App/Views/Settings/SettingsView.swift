@@ -133,6 +133,20 @@ struct SettingsView: View {
             Toggle("Auto-follow the live transcript", isOn: $settings.autoFollowTranscript)
                 .accessibilityIdentifier(A11yID.settingsAutoFollow)
         }
+        Section {
+            Picker("Engine", selection: $settings.dictationEngine) {
+                ForEach(AppSettings.DictationEngineChoice.allCases) { engine in
+                    Text(engine.displayName).tag(engine)
+                }
+            }
+            Text(settings.dictationEngine.detail)
+                .font(.caption).foregroundStyle(.secondary)
+            Toggle("Identify speakers", isOn: $settings.dictationIdentifiesSpeakers)
+        } header: {
+            Text("Dictation")
+        } footer: {
+            Text("Dictation records, transcribes and cleans up your words entirely on this device, then puts the text on your clipboard. Apple Speech needs no download; Whisper and speaker identification each download a model the first time you use them.")
+        }
     }
 
     @ViewBuilder

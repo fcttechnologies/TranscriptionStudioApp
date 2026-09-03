@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import SwiftData
 import FCTComponentsUI
+import FCTDictation
 
 /// The top-level app model — the one object every surface reads. It owns the injected
 /// engines (behind their protocols, so the real WhisperKit / Sortformer engines drop in
@@ -24,6 +25,11 @@ final class AppModel {
     /// Biometric gate for opening a private session. A `var` (not an init param) so tests can
     /// swap in a fake without threading it through every constructor.
     @ObservationIgnored var authenticator: any BiometricAuthenticating = BiometricAuthenticator()
+
+    /// Where a dictation's run comes from. Nil means `makeDictationRun()`, which is a real
+    /// microphone and a real transcriber — so a test that drives the dictation surface swaps in a
+    /// faked assembly here, the same way it swaps the authenticator.
+    @ObservationIgnored var dictationRunFactory: (@MainActor () throws -> DictationRun)?
 
     // Engines behind their contracts — mocks today, real engines later, same UI. These are
     // the launch-time engines the live recorder uses; transcription jobs pull their engines
@@ -60,6 +66,9 @@ final class AppModel {
     let recording: RecordingController
     let playback: PlaybackController
     let readAloud: ReadAloudController
+    /// The live state of a dictation and the Done affordance an intent waits on. The sequence
+    /// itself is FCTDictation's; what this app composes is in `Dictation/DictationService.swift`.
+    let dictation = StudioDictation()
 
     // Shell state — the single-view home presents at most one sheet at a time.
     /// The sheet the shell is presenting (nil → the bare feed). Set by the toolbar
@@ -222,6 +231,14 @@ final class AppModel {
         // `startReadAloud`, and recording clears both in `requestRecording`).
         playback.onTransportWillStart = { [weak self] in self?.readAloud.stop() }
         registerActivityActions()
+        registerDictationActions()
+    }
+
+    /// Wire the dictation control's app-process trampoline. `OpenDictationIntent` performs in this
+    /// process (`.foreground`), so registering here — once, when the model is built — is what makes
+    /// the Control Center tile actually open a dictation.
+    private func registerDictationActions() {
+        StudioDictationActions.beginDictation = { [weak self] in self?.beginDictation() }
     }
 
     /// Wire the Live Activity buttons' app-process trampolines (GlanceKit's
@@ -406,7 +423,7 @@ final class AppModel {
 
     /// The cached ASR engine for a chosen model (built once per variant). Mock/preview app
     /// models have no provider and reuse the injected `asr`.
-    private func transcriptionAsrEngine(for model: AppSettings.WhisperModel) -> any AsrEngine {
+    func transcriptionAsrEngine(for model: AppSettings.WhisperModel) -> any AsrEngine {
         let variant = model.whisperKitVariant
         if let cached = asrEngineCache[variant] { return cached }
         let engine = asrEngineProvider?(variant) ?? asr
@@ -415,7 +432,7 @@ final class AppModel {
     }
 
     /// The cached diarizer for a chosen backend. Mock/preview app models reuse `diarizer`.
-    private func transcriptionDiarizer(for backend: AppSettings.DiarizerBackend) -> any DiarizationEngine {
+    func transcriptionDiarizer(for backend: AppSettings.DiarizerBackend) -> any DiarizationEngine {
         if let cached = diarizerCache[backend.rawValue] { return cached }
         let engine = diarizerProvider?(backend) ?? diarizer
         diarizerCache[backend.rawValue] = engine
@@ -487,6 +504,8 @@ enum TranscriptionSource: Sendable {
 enum StudioSheet: Equatable, Identifiable, Sendable {
     case settings
     case inspector
+    /// Speak, get clean text — the dictation surface (its Done button is what an intent waits on).
+    case dictation
     /// The full live-recording view (the mini-player's expanded form while recording).
     case liveRecording
     /// The macOS "Insert link" prompt (URL ingest is Mac-only).
@@ -508,6 +527,7 @@ enum StudioSheet: Equatable, Identifiable, Sendable {
         switch self {
         case .settings: "settings"
         case .inspector: "inspector"
+        case .dictation: "dictation"
         case .liveRecording: "liveRecording"
         case .insertLink: "insertLink"
         case .askLibrary: "askLibrary"

@@ -83,6 +83,10 @@ targets:
         product: FCTIntelligence
       - package: FCTFoundation
         product: FCTContacts
+      # Speak → clean text: the record → transcribe → clean → copy → hand-off sequence behind
+      # DictateIntent and the Control Center tile.
+      - package: FCTFoundation
+        product: FCTDictation
       - package: FCTFoundation
         product: FCTSync
       - package: FCTFoundation
@@ -231,11 +235,14 @@ targets:
             - "*.huggingface.co"
             - "*.hf.co"
             - "*.cloudfront.net"
-        # Custom URL scheme the Share extension opens to hand a staged item to this app. The name
-        # is a label nothing resolves against; deriving it from the bundle id keeps it
-        # per-platform through the one shared entry.
+        # The app's one custom URL scheme, serving two hosts. `//ingest` is the Share
+        # extension's ping to hand a staged item over; `//dictation?id=` is FCTDictation's
+        # hand-off, opening the app onto a finished dictation the App Group container holds —
+        # only the id crosses, never the words. Registering a scheme registers it for every host,
+        # so one entry covers both; the name is a label nothing resolves against, and deriving it
+        # from the bundle id keeps it per-platform through the one shared entry.
         CFBundleURLTypes:
-          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).ingest
+          - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER).urls
             CFBundleURLSchemes:
               - transcriptionstudio
     settings:
@@ -314,6 +321,10 @@ targets:
         product: FCTIntelligence
       - package: FCTFoundation
         product: FCTContacts
+      # Compiled by membership from Sources/App/Dictation — a target that compiles a file must
+      # link what that file imports, even though a headless tool has no dictation surface.
+      - package: FCTFoundation
+        product: FCTDictation
       - package: FCTFoundation
         product: FCTSync
       - package: FCTFoundation
@@ -390,11 +401,13 @@ targets:
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/ShareExtension/macOS/ShareExtensionMac.entitlements
 
   # The widget extension (iOS only) — hosts the recording + playback Live Activities (Dynamic
-  # Island + Lock Screen). Compiles only the lean glance sources (attributes + button intents +
+  # Island + Lock Screen) and the Dictate control. Compiles only the lean glance sources (attributes + button intents +
   # pure clock/level math) by membership; the heavy engine code never enters the extension's
-  # memory sandbox. The intents perform in the app's process (LiveActivityIntent), so the
-  # extension stays a renderer. One SDK, one Info.plist — so it keeps `platform:`, and the app
-  # filters its edge.
+  # memory sandbox. Every intent it carries performs in the app's process — the activity buttons
+  # by `LiveActivityIntent`, the dictation control by `.foreground` — so the extension renders and
+  # hands off, and never opens a microphone or a model. It keeps metadata extraction, because a
+  # control's action is an App Intent the HOSTING extension has to carry. One SDK, one
+  # Info.plist — so it keeps `platform:`, and the app filters its edge.
   WidgetExtensioniOS:
     type: app-extension
     platform: iOS
@@ -405,13 +418,16 @@ targets:
         excludes:
           - "iOS/**"
       - path: Sources/App/Glance
+      # The dictation control's intent, and nothing else from that folder: a control performs its
+      # action through an intent the hosting extension carries, and this one is a foreground
+      # trampoline with no dependencies — the app's own dictation sources stay out.
+      - path: Sources/App/Dictation/OpenDictationIntent.swift
     settings:
       groups: [fct]
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.fcttechnologies.TranscriptionStudio.WidgetExtension
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/WidgetExtension/iOS/Info.plist
-        LM_SKIP_METADATA_EXTRACTION: YES
 
   # The Background Assets downloader extension (iOS only). An ExtensionKit extension — no
   # NSExtension dict; the extension point is declared via EXAppExtensionAttributes in its

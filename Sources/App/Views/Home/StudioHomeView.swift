@@ -244,6 +244,8 @@ struct StudioHomeView: View {
             InspectorSheet()
         case .liveRecording:
             LiveRecordingSheet()
+        case .dictation:
+            DictationSheet()
         case .insertLink:
             InsertLinkSheet()
         case .askLibrary:

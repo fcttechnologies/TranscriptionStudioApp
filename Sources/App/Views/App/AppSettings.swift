@@ -73,6 +73,30 @@ final class AppSettings {
         }
     }
 
+    /// Which engine a dictation transcribes with.
+    ///
+    /// Apple's `SpeechTranscriber` is the default and downloads nothing of ours — the system's
+    /// per-locale speech assets are shared between apps, so on most devices there is nothing to
+    /// install. WhisperKit is the improvement the person opts into, and the opt-in is what pays
+    /// for its model download; it is the same variant this app already transcribes files with, so
+    /// choosing it costs no second model.
+    enum DictationEngineChoice: String, CaseIterable, Identifiable, Sendable {
+        case appleSpeech, whisperKit
+        var id: String { rawValue }
+        var displayName: String {
+            switch self {
+            case .appleSpeech: "Apple Speech"
+            case .whisperKit: "Whisper"
+            }
+        }
+        var detail: String {
+            switch self {
+            case .appleSpeech: "On-device · nothing to download"
+            case .whisperKit: "On-device · more accurate · downloads a model"
+            }
+        }
+    }
+
     private enum Keys {
         static let whisperModel = "settings.whisperModel"
         static let diarizerBackend = "settings.diarizerBackend"
@@ -80,6 +104,8 @@ final class AppSettings {
         static let autoFollowTranscript = "settings.autoFollowTranscript"
         static let showConfidence = "settings.showConfidence"
         static let locationCaptureEnabled = "settings.locationCaptureEnabled"
+        static let dictationEngine = "settings.dictationEngine"
+        static let dictationIdentifiesSpeakers = "settings.dictationIdentifiesSpeakers"
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -111,6 +137,16 @@ final class AppSettings {
         didSet { defaults.set(locationCaptureEnabled, forKey: Keys.locationCaptureEnabled) }
     }
 
+    /// Which engine a dictation uses. Apple's, until the person chooses otherwise.
+    var dictationEngine: DictationEngineChoice {
+        didSet { defaults.set(dictationEngine.rawValue, forKey: Keys.dictationEngine) }
+    }
+    /// Run the diarizer over a dictation and label each segment's speaker. **Off by default**: a
+    /// dictation is usually one voice, and the pass is a second model over the same audio.
+    var dictationIdentifiesSpeakers: Bool {
+        didSet { defaults.set(dictationIdentifiesSpeakers, forKey: Keys.dictationIdentifiesSpeakers) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         // didSet doesn't fire during init, so these loads never write back the default.
@@ -122,5 +158,9 @@ final class AppSettings {
         self.autoFollowTranscript = defaults.object(forKey: Keys.autoFollowTranscript) as? Bool ?? true
         self.showConfidence = defaults.object(forKey: Keys.showConfidence) as? Bool ?? false
         self.locationCaptureEnabled = defaults.object(forKey: Keys.locationCaptureEnabled) as? Bool ?? false
+        self.dictationEngine = defaults.string(forKey: Keys.dictationEngine)
+            .flatMap(DictationEngineChoice.init(rawValue:)) ?? .appleSpeech
+        self.dictationIdentifiesSpeakers =
+            defaults.object(forKey: Keys.dictationIdentifiesSpeakers) as? Bool ?? false
     }
 }

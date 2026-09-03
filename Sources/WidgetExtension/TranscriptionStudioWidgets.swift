@@ -1,13 +1,14 @@
 import SwiftUI
 import WidgetKit
 
-/// The widget extension's entry point — the two Live Activities (recording + playback).
-/// Home-screen widgets, when they come, join this bundle.
+/// The widget extension's entry point — the two Live Activities (recording + playback) and the
+/// dictation control. Home-screen widgets, when they come, join this bundle.
 @main
 struct TranscriptionStudioWidgets: WidgetBundle {
     var body: some Widget {
         RecordingLiveActivity()
         PlaybackLiveActivity()
+        DictateControl()
     }
 }
 
