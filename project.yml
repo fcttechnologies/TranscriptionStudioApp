@@ -286,7 +286,14 @@ targets:
         Release:
           "ENABLE_HARDENED_RUNTIME[sdk=macosx*]": YES
           ENABLE_ENHANCED_SECURITY: YES
+          # Enhanced Security implies pointer authentication, which builds the app arm64e — and
+          # every local SwiftPM product (FCTFoundation, WhisperKit, SpeakerKit, TTSKit,
+          # FluidAudio) builds arm64 only, so the arm64e slice resolves none of them. Apple's
+          # documented per-setting opt-out, on BOTH shipping SDKs: the rest of the cascade stays
+          # on. The simulator leg hides this behind its `ARCHS=arm64` pin, so a device Release
+          # build (scripts/install-ios.sh) is the only thing that reads it.
           "ENABLE_POINTER_AUTHENTICATION[sdk=macosx*]": NO
+          "ENABLE_POINTER_AUTHENTICATION[sdk=iphoneos*]": NO
           "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": Sources/App/TranscriptionStudio-macOS-release.entitlements
         Debug:
           "EMBED_PROVISIONING_PROFILE[sdk=macosx*]": NO
