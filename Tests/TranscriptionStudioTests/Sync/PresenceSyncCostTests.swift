@@ -35,11 +35,11 @@ struct PresenceSyncCostTests {
         transport.reset()
         await device.sync.syncNow(.full)
 
-        // One call carrying all eleven cursors, and NO push: the engine skips the push entirely when
-        // the outbox is empty. That last part is why a cost derived from the call graph missed
-        // that a dirty presence row adds the push back.
+        // One call carrying all twelve cursors, and NO push: the engine skips the push entirely
+        // when the outbox is empty. That last part is why a cost derived from the call graph
+        // missed that a dirty presence row adds the push back.
         let declared = Set(TranscriptionSyncSchema.schema.tables.map(\.name))
-        #expect(declared.count == 11, "this app's nine tables plus the account fragment's two")
+        #expect(declared.count == 12, "this app's nine tables plus the account fragment's three")
         #expect(transport.reads == 1)
         #expect(Set(transport.lastReadCursors.keys) == declared,
                 "every declared table's cursor rides the one call, or a quiet table is never asked about")

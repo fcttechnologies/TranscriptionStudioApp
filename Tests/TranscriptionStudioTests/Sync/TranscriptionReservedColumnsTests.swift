@@ -74,6 +74,8 @@ struct TranscriptionReservedColumnsTests {
              AccountOnboardingRecord(completedIn: TranscriptionSyncSchema.postgresSchema).syncRow()),
             (AccountProfileField.syncTableName,
              AccountProfileField(kind: .givenName, value: "Fernando").syncRow()),
+            (AccountEngineDonation.syncTableName,
+             AccountEngineDonation(donating: true).syncRow()),
         ]
         #expect(rows.count == TranscriptionSyncSchema.schema.tables.count, "every synced table is pinned here")
         for (table, row) in rows {
@@ -116,6 +118,7 @@ struct TranscriptionReservedColumnsTests {
             // The shared account fragment, declared by this app and migrated by the platform.
             AccountOnboardingRecord.syncTableName: ["completed_at", "flow_version", "completed_in"],
             AccountProfileField.syncTableName: ["field", "value", "edited_at"],
+            AccountEngineDonation.syncTableName: ["donating", "decided_at"],
         ]
 
         let session = TranscriptSession(title: "t", kind: .roomRecording)
@@ -134,6 +137,7 @@ struct TranscriptionReservedColumnsTests {
                 AccountOnboardingRecord(completedIn: "x").syncRow(),
             AccountProfileField.syncTableName:
                 AccountProfileField(kind: .givenName, value: "x").syncRow(),
+            AccountEngineDonation.syncTableName: AccountEngineDonation(donating: false).syncRow(),
         ]
 
         #expect(Set(expected.keys) == Set(TranscriptionSyncSchema.schema.tables.map(\.name)))
