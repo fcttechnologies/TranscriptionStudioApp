@@ -1,10 +1,11 @@
 // The dictation adoption's own logic: the URL route this app shares with the Share extension's
 // ping, the diarizer pass's segment labelling, the vocabulary the cleanup is handed, and the
-// suspension an intent waits on between "start recording" and "Done".
+// app's own entry point driving a dictation to a result in this app's container.
 //
 // The recorder, Apple's transcriber and the model are all absent here by design — `DictationRun`
 // is built over protocols precisely so the assembly can be proven without hardware, and what the
-// package's own suite already covers is not re-covered.
+// package's own suite already covers — the phase machine, the Done wait, cancel — is not
+// re-covered.
 
 import FCTDictation
 import FCTIntelligence
@@ -216,61 +217,14 @@ struct DictationVocabularyTests {
     }
 }
 
-// MARK: - The suspension an intent waits on
+// MARK: - The app's own entry point
 
-@Suite("StudioDictation — the Done affordance")
+// The phase machine, the Done wait, cancel and the assembly failure are `DictationController`'s
+// and are proven in the package's own suite. What is the app's is the sequence being DRIVEN from
+// here at all, and the container it lands in.
+@Suite("Dictation from the app's own entry point")
 @MainActor
 struct StudioDictationTests {
-
-    @Test("Done taken before the intent reaches waitForDone does not hang it")
-    func doneBeforeWaitReturnsImmediately() async throws {
-        let dictation = StudioDictation()
-        let clipboard = FakeClipboard()
-        let (run, _) = try makeTestRun(text: "hello there", clipboard: clipboard)
-        try await dictation.begin { run }
-        #expect(dictation.isRecording)
-
-        // A two-word dictation can be finished before the intent's next line runs. If the wait
-        // only ever resumed a continuation stored later, this would never return.
-        dictation.markDone()
-        await dictation.waitForDone()
-    }
-
-    @Test("Done, then finish: the text is the result and it reaches the clipboard")
-    func finishProducesTheResult() async throws {
-        let dictation = StudioDictation()
-        let clipboard = FakeClipboard()
-        let (run, store) = try makeTestRun(text: "hello there", clipboard: clipboard)
-        try await dictation.begin { run }
-        dictation.markDone()
-        await dictation.waitForDone()
-        let handoff = try await dictation.finish(vocabulary: .empty)
-
-        #expect(handoff.result.rawText == "hello there")
-        #expect(clipboard.copied == [handoff.result.text])
-        #expect(dictation.phase == .finished)
-        #expect(dictation.result?.id == handoff.result.id)
-        // The hand-off's whole point: the app the URL opens reads the result out of the
-        // container, so it has to be there before the URL is handed back.
-        #expect(StudioDictation.route.resultID(in: handoff.openURL) == handoff.result.id)
-        #expect(try store.consume(handoff.result.id)?.text == handoff.result.text)
-    }
-
-    @Test("Cancel stops the recorder and refuses to hand anything back")
-    func cancelThrows() async throws {
-        let dictation = StudioDictation()
-        let clipboard = FakeClipboard()
-        let (run, _) = try makeTestRun(text: "never mind", clipboard: clipboard)
-        try await dictation.begin { run }
-        dictation.cancel()
-        await dictation.waitForDone()
-
-        await #expect(throws: DictationError.self) {
-            try await dictation.finish(vocabulary: .empty)
-        }
-        #expect(dictation.result == nil)
-        #expect(dictation.phase == .idle)
-    }
 
     // The control returns the moment the app is foregrounded — nobody is left waiting on Done —
     // so the app has to drive the rest itself. A `begin()` with no `finish()` behind it is a Done
@@ -291,19 +245,9 @@ struct StudioDictationTests {
 
         #expect(app.dictation.result?.rawText == "note to self")
         #expect(clipboard.copied == ["note to self"])
-        if let id = app.dictation.result?.id { _ = try? store.consume(id) }
-    }
-
-    @Test("An assembly that throws lands on the phase rather than a silent no-op")
-    func assemblyFailureIsRecorded() async {
-        let dictation = StudioDictation()
-        struct Refused: Error {}
-        await #expect(throws: Refused.self) {
-            try await dictation.begin { throw Refused() }
-        }
-        guard case .failed = dictation.phase else {
-            Issue.record("expected a failed phase, got \(dictation.phase)")
-            return
-        }
+        // The hand-off's whole point, and the half only this app can prove: the result is written
+        // to the App Group THIS app declares, so the process the URL opens can read it back.
+        let id = try #require(app.dictation.result?.id)
+        #expect(try store.consume(id)?.text == "note to self")
     }
 }

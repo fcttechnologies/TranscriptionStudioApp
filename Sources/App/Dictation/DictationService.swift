@@ -1,4 +1,3 @@
-import FCTContacts
 import FCTDictation
 import Foundation
 import SwiftData
@@ -77,14 +76,13 @@ extension AppModel {
     ///
     /// Speakers the person bound by hand come first: a name they typed into this app is more
     /// likely to be dictated than an arbitrary card, and `DictationVocabulary.normalized(limit:)`
-    /// cuts from the end. Contacts are read only where access is already granted — a dictation is
-    /// the wrong moment to raise a permission sheet, and the pass degrades to "no names" cleanly.
+    /// cuts from the end. `contactNames` reads the address book only where access is already
+    /// granted — a dictation is the wrong moment to raise a permission sheet, and the pass
+    /// degrades to "no names" cleanly.
     func dictationVocabulary() async -> DictationVocabulary {
-        let resolver = ContactResolver(provider: ContactStoreResolver())
-        let contacts = resolver.authorizationStatus.canRead
-            ? await resolver.allNames(limit: DictationVocabularyBudget.contacts)
-            : []
-        return DictationVocabularyBudget.vocabulary(speakers: boundSpeakerNames(), contacts: contacts)
+        DictationVocabularyBudget.vocabulary(
+            speakers: boundSpeakerNames(),
+            contacts: await DictationVocabulary.contactNames(limit: DictationVocabularyBudget.contacts))
     }
 
     /// Every name the person has bound to a speaker anywhere in the library, newest sessions

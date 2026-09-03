@@ -68,7 +68,7 @@ final class AppModel {
     let readAloud: ReadAloudController
     /// The live state of a dictation and the Done affordance an intent waits on. The sequence
     /// itself is FCTDictation's; what this app composes is in `Dictation/DictationService.swift`.
-    let dictation = StudioDictation()
+    let dictation = DictationController()
 
     // Shell state — the single-view home presents at most one sheet at a time.
     /// The sheet the shell is presenting (nil → the bare feed). Set by the toolbar
