@@ -133,8 +133,14 @@ struct SyncStatusRow: View {
     var body: some View {
         Group {
             LabeledContent {
-                Text(headline)
-                    .foregroundStyle(needsAttention ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                Label {
+                    Text(SyncStatusCopy.headline(for: sync.status))
+                } icon: {
+                    if let symbol = SyncStatusCopy.symbol(for: sync.status) {
+                        Image(systemName: symbol)
+                    }
+                }
+                .foregroundStyle(needsAttention ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             } label: {
                 Text("Sync")
             }
@@ -192,7 +198,7 @@ struct SyncStatusRow: View {
                     if isResyncing {
                         ProgressView()
                     } else {
-                        Text("Rebuild from the server")
+                        Text(SyncStatusCopy.rebuildLabel)
                     }
                 }
                 .disabled(isResyncing)
@@ -227,33 +233,17 @@ struct SyncStatusRow: View {
             if isRetrying {
                 ProgressView()
             } else {
-                Text("Try these again")
+                Text(SyncStatusCopy.retryLabel)
             }
         }
         .disabled(isRetrying)
         .accessibilityIdentifier(A11yID.settingsRetryRefused)
     }
 
-    private var headline: String {
-        switch sync.status {
-        case .off: String(localized: "Off — this device only")
-        case .idle: String(localized: "Up to date")
-        case .syncing: String(localized: "Syncing…")
-        case .offline(let retryingIn):
-            String(localized: "Offline — retrying in \(Int(retryingIn.rounded()))s")
-        case .failed(let count): String(localized: "\(count) change(s) the server refused")
-        case .needsReauthentication: String(localized: "Sign in again to resume")
-        case .resyncRequired: String(localized: "This device needs to rebuild")
-        case .merged: String(localized: "Your account moved — sign in again")
-        }
-    }
-
     private var needsAttentionCount: Int { sync.counted.stuck + sync.blobCounted.stuck }
 
-    private var needsAttention: Bool {
-        switch sync.status {
-        case .off, .idle, .syncing: false
-        case .offline, .needsReauthentication, .resyncRequired, .failed, .merged: true
-        }
-    }
+    /// The status is `SyncStatusCopy`'s to say: every headline, symbol and attention flag the
+    /// engine can report is written and translated once in `FCTServerSync`. What stays here is
+    /// this app's own — the queued counts, the last-synced time, and the two buttons.
+    private var needsAttention: Bool { SyncStatusCopy.needsAttention(sync.status) }
 }

@@ -26,7 +26,8 @@ nonisolated enum TranscriptionDiagnostics {
     static func start() {
         service.register(enabledDomains: Domain.allCases)
         Diag.start(DiagConfiguration(
-            endpoint: AccountEnvironment.fct.baseURL.appendingPathComponent("functions/v1/diag-ingest"),
+            projectURL: AccountEnvironment.fct.baseURL,
+            publishableKey: AccountEnvironment.fct.publishableKey,
             appGroupID: AppModelContainer.appGroupID
         ))
     }

@@ -281,13 +281,20 @@ final class TranscriptionSync {
     static let heartbeatEntityName = "MacPresence"
 
     /// Rung 2, held for this foreground only: each nudge is the account saying another device
-    /// wrote, which only a full cycle can act on.
+    /// wrote, which only a full cycle can act on — **when the engine says the nudge is worth a
+    /// cycle**.
+    ///
+    /// The gate is the package's, consulted ahead of the blob passes a full cycle costs: the
+    /// commonest nudge a foregrounded device gets is the one its own push emitted on its own
+    /// topic, and a tick inside a backoff or against a dead session is a round trip spent on a
+    /// refusal already known.
     private func startNudges() {
         guard nudgeTask == nil, let channel = nudgeChannel else { return }
         nudgeTask = Task { [weak self] in
             do {
-                for try await _ in channel.nudges() {
-                    await self?.syncNow(.full)
+                for try await nudge in channel.nudges() {
+                    guard let self, self.engine?.shouldSync(for: nudge) == true else { continue }
+                    await self.syncNow(.full)
                 }
             } catch {
                 // Every way this stream ends is ordinary — a refused join, a socket that would not

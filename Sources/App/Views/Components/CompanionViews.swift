@@ -20,7 +20,9 @@ struct SyncStatusIndicator: View {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Offline — will retry")
-        case .failed, .resyncRequired, .needsReauthentication, .merged:
+        // A ceiling is a state a person can act on — an account over its quota clears only by
+        // deleting something — so it carries the attention glyph rather than passing unmarked.
+        case .failed, .resyncRequired, .needsReauthentication, .merged, .capped:
             Image(systemName: "exclamationmark.triangle")
                 .foregroundStyle(.orange)
                 .accessibilityLabel("Sync needs attention")
