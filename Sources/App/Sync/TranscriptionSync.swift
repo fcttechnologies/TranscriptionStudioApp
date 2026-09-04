@@ -283,18 +283,13 @@ final class TranscriptionSync {
     /// Rung 2, held for this foreground only: each nudge is the account saying another device
     /// wrote, which only a full cycle can act on — **when the engine says the nudge is worth a
     /// cycle**.
-    ///
-    /// The gate is the package's, consulted ahead of the blob passes a full cycle costs: the
-    /// commonest nudge a foregrounded device gets is the one its own push emitted on its own
-    /// topic, and a tick inside a backoff or against a dead session is a round trip spent on a
-    /// refusal already known.
     private func startNudges() {
-        guard nudgeTask == nil, let channel = nudgeChannel else { return }
+        guard nudgeTask == nil, let channel = nudgeChannel, let engine else { return }
+        let nudges = channel.nudges(gatedBy: engine)
         nudgeTask = Task { [weak self] in
             do {
-                for try await nudge in channel.nudges() {
-                    guard let self, self.engine?.shouldSync(for: nudge) == true else { continue }
-                    await self.syncNow(.full)
+                for try await _ in nudges {
+                    await self?.syncNow(.full)
                 }
             } catch {
                 // Every way this stream ends is ordinary — a refused join, a socket that would not
@@ -378,7 +373,11 @@ final class TranscriptionSync {
             try? await Task.sleep(for: .milliseconds(50))
         }
         await syncNow(.full)
-        return status == .idle
+        // The marker, not the status: it is stamped once a pull has walked the feed to its end,
+        // which is the only question this call asks. A status cannot answer it — a refused record
+        // leaves a clean pull reading `.failed`, and gating on `.idle` would block the front door
+        // forever on a push-side fact.
+        return engine?.hasCompletedFirstPull ?? false
     }
 
     /// Whether this device has ever walked this account's feed to its end — the fact that

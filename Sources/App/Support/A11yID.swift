@@ -133,8 +133,6 @@ enum A11yID {
     static let settingsPermissionLocation = "settings.permission.location"
     static let settingsPermissionMicrophone = "settings.permission.microphone"
     static let settingsPermissionScreenRecording = "settings.permission.screenRecording"
-    static let settingsSyncStatus = "settings.syncStatus"
-    static let settingsRetryRefused = "settings.retryRefused"
     static let settingsWordTimestamps = "settings.wordTimestamps"
     static let settingsAutoFollow = "settings.autoFollowTranscript"
     static let settingsOpenMicrophoneSettings = "settings.permission.microphone.open"

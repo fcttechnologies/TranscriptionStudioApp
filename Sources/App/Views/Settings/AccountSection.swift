@@ -44,7 +44,18 @@ struct AccountSection: View {
                 appName: "Transcription Studio",
                 barrier: deletionBarrier
             ) { [sync] in await sync.eraseLocalData() },
-            syncStatus: { SyncStatusRow(sync: sync) },
+            syncStatus: {
+                SyncStatusRow(
+                    status: sync.status,
+                    counted: sync.counted,
+                    blobCounted: sync.blobCounted,
+                    lastSyncedAt: sync.lastSyncedAt,
+                    lastError: sync.lastError,
+                    retryRefused: { await sync.retryRefused() },
+                    rebuild: { await sync.fullResync() }
+                )
+                keptLibraryNote
+            },
             beforeSignOut: { await preflightSignOut() }
         )
         .confirmationDialog(
@@ -78,6 +89,21 @@ struct AccountSection: View {
             barrier: deletionBarrier,
             reHome: { [sync] target in sync.reHome(into: target) }
         )
+    }
+
+    /// What a sign-out left behind. Not the shared row's to say: it is a fact about a sign-out this
+    /// device already ran, rather than about the state of the queue now.
+    @ViewBuilder
+    private var keptLibraryNote: some View {
+        if sync.keptOnSignOut > 0 {
+            Label {
+                Text("\(sync.keptOnSignOut) change(s) hadn't reached the server, so this device kept its library at sign-out.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } icon: {
+                Image(systemName: "externaldrive.badge.exclamationmark")
+            }
+        }
     }
 
     /// The unpushed-work barrier both destructive doors run: push everything that still can go,
@@ -120,130 +146,3 @@ private enum AccountSectionError: Error {
     case uncountable
 }
 
-/// The sync state, said out loud.
-///
-/// R3: an empty library and an unreachable server look identical and mean opposite things, so
-/// this never infers — every line below is a state the engine reported.
-struct SyncStatusRow: View {
-    let sync: TranscriptionSync
-
-    @State private var isResyncing = false
-    @State private var isRetrying = false
-
-    var body: some View {
-        Group {
-            LabeledContent {
-                Label {
-                    Text(SyncStatusCopy.headline(for: sync.status))
-                } icon: {
-                    if let symbol = SyncStatusCopy.symbol(for: sync.status) {
-                        Image(systemName: symbol)
-                    }
-                }
-                .foregroundStyle(needsAttention ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-            } label: {
-                Text("Sync")
-            }
-            .accessibilityIdentifier(A11yID.settingsSyncStatus)
-
-            if sync.counted.retrying > 0 {
-                LabeledContent("Waiting to upload", value: "\(sync.counted.retrying)")
-            }
-
-            // The blob queue's own waiting half. "Syncing" rather than "uploading" because the
-            // queue holds object deletes beside uploads, and a recording the user deleted is not
-            // a recording going up.
-            if sync.blobCounted.retrying > 0 {
-                LabeledContent("Syncing recordings", value: "\(sync.blobCounted.retrying)")
-            }
-
-            // Both queues' refused half, which waiting never clears — the same condition and the
-            // same advice whether the server judged a record or the object store refused a
-            // recording. Said separately from the queued counts because a judged entry leaves the
-            // pending set, so a queued-only count reads zero for work stranded here forever.
-            if needsAttentionCount > 0 {
-                LabeledContent("Needs attention") {
-                    Text("\(needsAttentionCount)")
-                        .foregroundStyle(.tint)
-                }
-                retryRefusedButton
-            }
-
-            if sync.keptOnSignOut > 0 {
-                Label {
-                    Text("\(sync.keptOnSignOut) change(s) hadn't reached the server, so this device kept its library at sign-out.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                } icon: {
-                    Image(systemName: "externaldrive.badge.exclamationmark")
-                }
-            }
-
-            if let lastSyncedAt = sync.lastSyncedAt {
-                LabeledContent {
-                    Text(lastSyncedAt, format: .relative(presentation: .named))
-                } label: {
-                    Text("Last synced")
-                }
-            }
-
-            if sync.status == .resyncRequired {
-                Button {
-                    isResyncing = true
-                    Task {
-                        await sync.fullResync()
-                        isResyncing = false
-                    }
-                } label: {
-                    if isResyncing {
-                        ProgressView()
-                    } else {
-                        Text(SyncStatusCopy.rebuildLabel)
-                    }
-                }
-                .disabled(isResyncing)
-            }
-
-            if let error = sync.lastError, sync.status != .off {
-                Text(error)
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-    }
-
-    /// The way back from a refusal, beside the count that reports it. A row reading "3 changes the
-    /// server refused" with nothing next to it is a dead end, and the refusal blocks its own
-    /// recovery: the drained-outbox barrier counts stuck entries, so a poisoned outbox refuses both
-    /// the full resync and the sign-out, leaving deleting the app as the only route back.
-    ///
-    /// One button for both wires, because that is how the count above reads them — a judged record
-    /// and a refused recording pose the same question. Here that matters more than in any other app
-    /// in the fleet: the recordings ride the blob layer, so the bytes a refusal strands are the
-    /// audio itself.
-    @ViewBuilder
-    private var retryRefusedButton: some View {
-        Button {
-            isRetrying = true
-            Task {
-                await sync.retryRefused()
-                isRetrying = false
-            }
-        } label: {
-            if isRetrying {
-                ProgressView()
-            } else {
-                Text(SyncStatusCopy.retryLabel)
-            }
-        }
-        .disabled(isRetrying)
-        .accessibilityIdentifier(A11yID.settingsRetryRefused)
-    }
-
-    private var needsAttentionCount: Int { sync.counted.stuck + sync.blobCounted.stuck }
-
-    /// The status is `SyncStatusCopy`'s to say: every headline, symbol and attention flag the
-    /// engine can report is written and translated once in `FCTServerSync`. What stays here is
-    /// this app's own — the queued counts, the last-synced time, and the two buttons.
-    private var needsAttention: Bool { SyncStatusCopy.needsAttention(sync.status) }
-}
