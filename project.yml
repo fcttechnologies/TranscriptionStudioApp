@@ -24,6 +24,10 @@ attributes:
 packages:
   FCTFoundation:
     path: ../FCTFoundation
+  # FCT's own speech runtime (Parakeet TDT on the Neural Engine), the sibling checkout as a local
+  # package like Foundation.
+  FCTSpeech:
+    path: ../FCTSpeech
   # On-device speech vendors: WhisperKit (ASR) + SpeakerKit (diarizer cross-check) + TTSKit
   # (synthesis) from the argmax monorepo, and FluidAudio (CoreML LuxTTS voice cloning), pinned
   # to the revision the cloning bench fixture-verified — move that pin only with a re-listen.
@@ -71,6 +75,8 @@ targets:
           # also carries the executable's @main. Never compile them into the app target.
           - "**/CLI/**"
     dependencies:
+      - package: FCTSpeech
+        product: FCTSpeech
       - package: FCTFoundation
         product: FCTMetrics
       # Granular FCTFoundation products only — every one is imported by some file in the target;
