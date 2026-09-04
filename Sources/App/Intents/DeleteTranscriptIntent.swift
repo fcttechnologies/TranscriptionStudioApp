@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 import SwiftData
 
 /// Delete a saved transcript, through the same `SessionDeletion` transaction the feed's swipe
@@ -20,25 +21,28 @@ struct DeleteTranscriptIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let id = UUID(uuidString: target.id) else {
-            throw DeleteTranscriptIntentError.transcriptNotFound
+        func run() async throws -> some IntentResult & ProvidesDialog {
+            guard let id = UUID(uuidString: target.id) else {
+                throw DeleteTranscriptIntentError.transcriptNotFound
+            }
+            let context = appModel.modelContext
+            let predicate = #Predicate<TranscriptSession> { $0.id == id }
+            var descriptor = FetchDescriptor(predicate: predicate)
+            descriptor.fetchLimit = 1
+            guard let session = try context.fetch(descriptor).first else {
+                throw DeleteTranscriptIntentError.transcriptNotFound
+            }
+
+            let choice = try await requestChoice(
+                between: [IntentChoiceOption(title: "Delete Transcript", style: .destructive), .cancel],
+                dialog: IntentDialog("Delete \"\(session.title)\"? This action cannot be undone."))
+            guard choice.style == .destructive else { throw DeleteTranscriptIntentError.cancelled }
+
+            SessionDeletion.delete(session, in: context, app: appModel)
+
+            return .result(dialog: "Transcript deleted.")
         }
-        let context = appModel.modelContext
-        let predicate = #Predicate<TranscriptSession> { $0.id == id }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        guard let session = try context.fetch(descriptor).first else {
-            throw DeleteTranscriptIntentError.transcriptNotFound
-        }
-
-        let choice = try await requestChoice(
-            between: [IntentChoiceOption(title: "Delete Transcript", style: .destructive), .cancel],
-            dialog: IntentDialog("Delete \"\(session.title)\"? This action cannot be undone."))
-        guard choice.style == .destructive else { throw DeleteTranscriptIntentError.cancelled }
-
-        SessionDeletion.delete(session, in: context, app: appModel)
-
-        return .result(dialog: "Transcript deleted.")
+        return try await Diag.intent(TranscriptionCrumb.deleteTranscriptIntent, run)
     }
 }
 

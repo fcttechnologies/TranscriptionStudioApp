@@ -438,6 +438,16 @@ targets:
       # action through an intent the hosting extension carries, and this one is a foreground
       # trampoline with no dependencies — the app's own dictation sources stay out.
       - path: Sources/App/Dictation/OpenDictationIntent.swift
+      # The crumb vocabulary the intents above report under. `Diag` is a no-op in a process that
+      # never called `start`, so this target records nothing — but a target that compiles a file
+      # must be able to see every name in it.
+      - path: Sources/App/Diagnostics/TranscriptionCrumb.swift
+    dependencies:
+      # The diagnostics client, because the Live Activity's intents and the dictation control's
+      # trampoline run their bodies inside `Diag.intent(_:_:)` — an intent firing from a Lock
+      # Screen button is exactly the run nobody is watching.
+      - package: FCTFoundation
+        product: FCTMetrics
     settings:
       groups: [fct]
       base:

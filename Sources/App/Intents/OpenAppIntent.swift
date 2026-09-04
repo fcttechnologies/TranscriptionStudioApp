@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 
 /// The system-provided "open the app" action other intents hand back via
 /// `.result(opensIntent:)` once they've set the router/model state the app should land on —
@@ -9,5 +10,10 @@ struct OpenAppIntent: AppIntent {
 
     init() {}
 
-    func perform() async throws -> some IntentResult { .result() }
+    func perform() async throws -> some IntentResult {
+        func run() async throws -> some IntentResult {
+            .result()
+        }
+        return try await Diag.intent(TranscriptionCrumb.openAppIntent, run)
+    }
 }

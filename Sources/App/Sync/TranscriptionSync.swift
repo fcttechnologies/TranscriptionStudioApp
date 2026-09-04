@@ -735,6 +735,15 @@ final class TranscriptionSync {
         if keptOnSignOut == 0 { onLocalDataCleared?() }
     }
 
+    /// Erase this app's local data after a **non-escalated** server erase succeeded: the same
+    /// local sequence a switch runs, because the question is the same one — this device's copy of
+    /// an account's rows has to go, and nothing may be left for an outbox entry to push to.
+    ///
+    /// The account survives, so the keychain is untouched and the app is left signed in and empty.
+    func eraseLocalData() {
+        discardLocalData()
+    }
+
     /// Every synced row, the sync state, the upload queue and the whole recording cache — gone.
     /// Switch and delete only.
     private func discardLocalData() {

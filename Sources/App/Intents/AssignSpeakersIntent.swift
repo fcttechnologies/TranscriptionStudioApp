@@ -1,4 +1,5 @@
 #if os(iOS)
+import FCTMetrics
 import Foundation
 import AppIntents
 
@@ -22,9 +23,12 @@ struct AssignSpeakersIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        guard let id = UUID(uuidString: session.id) else { throw EcosystemIntentError.transcriptNotFound }
-        await MainActor.run { appModel.activeSheet = .assignSpeakers(id) }
-        return .result(opensIntent: OpenAppIntent())
+        func run() async throws -> some IntentResult & OpensIntent {
+            guard let id = UUID(uuidString: session.id) else { throw EcosystemIntentError.transcriptNotFound }
+            await MainActor.run { appModel.activeSheet = .assignSpeakers(id) }
+            return .result(opensIntent: OpenAppIntent())
+        }
+        return try await Diag.intent(TranscriptionCrumb.assignSpeakersIntent, run)
     }
 }
 #endif

@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 
 /// Open Settings. A `perform()` isn't a View, so it routes through the same shell state the
 /// floating controls use: `AppModel.activeSheet` — both platforms present Settings as a sheet
@@ -13,7 +14,10 @@ struct OpenSettingsIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        await MainActor.run { appModel.activeSheet = .settings }
-        return .result(opensIntent: OpenAppIntent())
+        func run() async throws -> some IntentResult & OpensIntent {
+            await MainActor.run { appModel.activeSheet = .settings }
+            return .result(opensIntent: OpenAppIntent())
+        }
+        return try await Diag.intent(TranscriptionCrumb.openSettingsIntent, run)
     }
 }

@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 import Foundation
 
 /// The app-process trampoline a dictation control fires through, in the shape the Live Activity
@@ -31,7 +32,10 @@ struct OpenDictationIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        StudioDictationActions.beginDictation?()
-        return .result()
+        func run() async throws -> some IntentResult {
+            StudioDictationActions.beginDictation?()
+            return .result()
+        }
+        return try await Diag.intent(TranscriptionCrumb.openDictationIntent, run)
     }
 }

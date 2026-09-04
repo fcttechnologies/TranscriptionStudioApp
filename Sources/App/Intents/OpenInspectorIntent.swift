@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 
 /// Open the Inspector. Mirrors `OpenSettingsIntent` — a `perform()` isn't a View, so it routes
 /// through the same shell state the toolbar's Inspector button uses: `AppModel.activeSheet` —
@@ -13,7 +14,10 @@ struct OpenInspectorIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        await MainActor.run { appModel.activeSheet = .inspector }
-        return .result(opensIntent: OpenAppIntent())
+        func run() async throws -> some IntentResult & OpensIntent {
+            await MainActor.run { appModel.activeSheet = .inspector }
+            return .result(opensIntent: OpenAppIntent())
+        }
+        return try await Diag.intent(TranscriptionCrumb.openInspectorIntent, run)
     }
 }

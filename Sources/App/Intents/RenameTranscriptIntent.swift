@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 import SwiftData
 
 /// Rename a saved transcript — mirrors the session detail view's title-bar Rename action.
@@ -23,24 +24,27 @@ struct RenameTranscriptIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard let id = UUID(uuidString: target.id) else {
-            throw RenameTranscriptIntentError.transcriptNotFound
-        }
-        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { throw RenameTranscriptIntentError.emptyTitle }
+        func run() async throws -> some IntentResult & ProvidesDialog {
+            guard let id = UUID(uuidString: target.id) else {
+                throw RenameTranscriptIntentError.transcriptNotFound
+            }
+            let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw RenameTranscriptIntentError.emptyTitle }
 
-        let context = appModel.modelContext
-        let predicate = #Predicate<TranscriptSession> { $0.id == id }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        guard let session = try context.fetch(descriptor).first else {
-            throw RenameTranscriptIntentError.transcriptNotFound
-        }
+            let context = appModel.modelContext
+            let predicate = #Predicate<TranscriptSession> { $0.id == id }
+            var descriptor = FetchDescriptor(predicate: predicate)
+            descriptor.fetchLimit = 1
+            guard let session = try context.fetch(descriptor).first else {
+                throw RenameTranscriptIntentError.transcriptNotFound
+            }
 
-        session.title = trimmed
-        try? context.save()
-        TranscriptSpotlightIndex.index(session)
-        return .result(dialog: "Renamed to \"\(trimmed)\".")
+            session.title = trimmed
+            try? context.save()
+            TranscriptSpotlightIndex.index(session)
+            return .result(dialog: "Renamed to \"\(trimmed)\".")
+        }
+        return try await Diag.intent(TranscriptionCrumb.renameTranscriptIntent, run)
     }
 }
 

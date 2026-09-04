@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 import Foundation
 
 /// Kick a link transcription and follow it to completion — the "+ → Insert Link" prompt's intent
@@ -23,19 +24,23 @@ struct TranscribeLinkIntent: LongRunningIntent, CancellableIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
-        guard await MainActor.run(body: { appModel.urlDownloader != nil }) else {
-            throw TranscribeLinkIntentError.unavailableOnThisDevice
+        func run() async throws
+        -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
+            guard await MainActor.run(body: { appModel.urlDownloader != nil }) else {
+                throw TranscribeLinkIntentError.unavailableOnThisDevice
+            }
+            let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard URLValidation.isTranscribableURL(trimmed) else {
+                throw TranscribeLinkIntentError.invalidLink
+            }
+            let displayTitle = URLValidation.suggestedTitle(for: trimmed)
+            let job = await MainActor.run { () -> TranscriptionJob in
+                appModel.returnHome()   // the job's progress lives in the feed's In Progress section
+                return appModel.startTranscription(title: displayTitle, source: .url(trimmed))
+            }
+            return try await completeTranscription(job: job, displayTitle: displayTitle, appModel: appModel)
         }
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard URLValidation.isTranscribableURL(trimmed) else {
-            throw TranscribeLinkIntentError.invalidLink
-        }
-        let displayTitle = URLValidation.suggestedTitle(for: trimmed)
-        let job = await MainActor.run { () -> TranscriptionJob in
-            appModel.returnHome()   // the job's progress lives in the feed's In Progress section
-            return appModel.startTranscription(title: displayTitle, source: .url(trimmed))
-        }
-        return try await completeTranscription(job: job, displayTitle: displayTitle, appModel: appModel)
+        return try await Diag.intent(TranscriptionCrumb.transcribeLinkIntent, run)
     }
 }
 

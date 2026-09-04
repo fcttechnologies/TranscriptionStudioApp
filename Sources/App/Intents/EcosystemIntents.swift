@@ -1,3 +1,4 @@
+import FCTMetrics
 import Foundation
 import AppIntents
 
@@ -53,14 +54,17 @@ struct AddEventToCalendarIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
-        guard let sessionID = UUID(uuidString: session.id) else { throw EcosystemIntentError.transcriptNotFound }
-        let events = await EcosystemActionStore.events(forSessionID: sessionID)
-        guard let chosen = try await EcosystemChoice.pick(events, kind: .event, from: self) else {
-            throw EcosystemIntentError.nothingToAdd(.event)
+        func run() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+            guard let sessionID = UUID(uuidString: session.id) else { throw EcosystemIntentError.transcriptNotFound }
+            let events = await EcosystemActionStore.events(forSessionID: sessionID)
+            guard let chosen = try await EcosystemChoice.pick(events, kind: .event, from: self) else {
+                throw EcosystemIntentError.nothingToAdd(.event)
+            }
+            await MainActor.run { appModel.activeSheet = .confirmCalendarEvent(chosen.id) }
+            return .result(opensIntent: OpenAppIntent(),
+                           dialog: "Review “\(chosen.label)” before adding it to your calendar.")
         }
-        await MainActor.run { appModel.activeSheet = .confirmCalendarEvent(chosen.id) }
-        return .result(opensIntent: OpenAppIntent(),
-                       dialog: "Review “\(chosen.label)” before adding it to your calendar.")
+        return try await Diag.intent(TranscriptionCrumb.addEventToCalendarIntent, run)
     }
 }
 
@@ -83,14 +87,17 @@ struct AddActionItemReminderIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
-        guard let sessionID = UUID(uuidString: session.id) else { throw EcosystemIntentError.transcriptNotFound }
-        let items = await EcosystemActionStore.actionItems(forSessionID: sessionID)
-        guard let chosen = try await EcosystemChoice.pick(items, kind: .actionItem, from: self) else {
-            throw EcosystemIntentError.nothingToAdd(.actionItem)
+        func run() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+            guard let sessionID = UUID(uuidString: session.id) else { throw EcosystemIntentError.transcriptNotFound }
+            let items = await EcosystemActionStore.actionItems(forSessionID: sessionID)
+            guard let chosen = try await EcosystemChoice.pick(items, kind: .actionItem, from: self) else {
+                throw EcosystemIntentError.nothingToAdd(.actionItem)
+            }
+            await MainActor.run { appModel.activeSheet = .confirmReminder(chosen.id) }
+            return .result(opensIntent: OpenAppIntent(),
+                           dialog: "Review “\(chosen.label)” before adding it to Reminders.")
         }
-        await MainActor.run { appModel.activeSheet = .confirmReminder(chosen.id) }
-        return .result(opensIntent: OpenAppIntent(),
-                       dialog: "Review “\(chosen.label)” before adding it to Reminders.")
+        return try await Diag.intent(TranscriptionCrumb.addActionItemReminderIntent, run)
     }
 }
 

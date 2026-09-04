@@ -1,5 +1,6 @@
 #if os(iOS)
 import AppIntents
+import FCTMetrics
 import Foundation
 
 // The Live Activity buttons' intents. `LiveActivityIntent` runs `perform()` in the app's
@@ -17,8 +18,11 @@ struct StopRecordingActivityIntent: LiveActivityIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        await StudioActivityActions.stopRecording?()
-        return .result()
+        func run() async throws -> some IntentResult {
+            await StudioActivityActions.stopRecording?()
+            return .result()
+        }
+        return try await Diag.intent(TranscriptionCrumb.stopRecordingActivityIntent, run)
     }
 }
 
@@ -31,8 +35,11 @@ struct ToggleRecordingPauseActivityIntent: LiveActivityIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        StudioActivityActions.toggleRecordingPause?()
-        return .result()
+        func run() async throws -> some IntentResult {
+            StudioActivityActions.toggleRecordingPause?()
+            return .result()
+        }
+        return try await Diag.intent(TranscriptionCrumb.toggleRecordingPauseActivityIntent, run)
     }
 }
 
@@ -45,8 +52,11 @@ struct TogglePlaybackActivityIntent: LiveActivityIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        StudioActivityActions.togglePlayback?()
-        return .result()
+        func run() async throws -> some IntentResult {
+            StudioActivityActions.togglePlayback?()
+            return .result()
+        }
+        return try await Diag.intent(TranscriptionCrumb.togglePlaybackActivityIntent, run)
     }
 }
 #endif

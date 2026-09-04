@@ -89,14 +89,17 @@ struct StartRecordingIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
-        try await MainActor.run {
-            guard !appModel.recording.isRecording else { throw TranscriptionIntentError.alreadyRecording }
-            appModel.playback.unload()
-            appModel.readAloud.stop()
-            appModel.recording.start(mode: mode.controllerMode)
-            appModel.activeSheet = .liveRecording
+        func run() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+            try await MainActor.run {
+                guard !appModel.recording.isRecording else { throw TranscriptionIntentError.alreadyRecording }
+                appModel.playback.unload()
+                appModel.readAloud.stop()
+                appModel.recording.start(mode: mode.controllerMode)
+                appModel.activeSheet = .liveRecording
+            }
+            return .result(opensIntent: OpenAppIntent(), dialog: "Recording started.")
         }
-        return .result(opensIntent: OpenAppIntent(), dialog: "Recording started.")
+        return try await Diag.intent(TranscriptionCrumb.startRecordingIntent, run)
     }
 }
 
@@ -112,17 +115,21 @@ struct StopRecordingIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
-        let recording = await MainActor.run { appModel.recording }
-        guard await recording.isRecording else { throw TranscriptionIntentError.notRecording }
-        let id = await recording.stop()
-        guard let id, let saved = await TranscriptSessionStore.entityAndText(forID: id) else {
-            throw TranscriptionIntentError.notRecording
+        func run() async throws
+        -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
+            let recording = await MainActor.run { appModel.recording }
+            guard await recording.isRecording else { throw TranscriptionIntentError.notRecording }
+            let id = await recording.stop()
+            guard let id, let saved = await TranscriptSessionStore.entityAndText(forID: id) else {
+                throw TranscriptionIntentError.notRecording
+            }
+            let snippet = String(saved.fullText.prefix(240))
+            let dialog: IntentDialog = snippet.isEmpty
+                ? "Recording saved."
+                : "Recording saved. \(snippet)"
+            return .result(value: saved.entity, dialog: dialog)
         }
-        let snippet = String(saved.fullText.prefix(240))
-        let dialog: IntentDialog = snippet.isEmpty
-            ? "Recording saved."
-            : "Recording saved. \(snippet)"
-        return .result(value: saved.entity, dialog: dialog)
+        return try await Diag.intent(TranscriptionCrumb.stopRecordingIntent, run)
     }
 }
 
@@ -138,16 +145,20 @@ struct GetRecordingStatusIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<Bool> & ProvidesDialog {
-        let recording = await MainActor.run { appModel.recording }
-        let isRecording = await recording.isRecording
-        let dialog: IntentDialog
-        if isRecording {
-            let elapsed = await recording.elapsed
-            dialog = "Recording — \(TimeFormat.clock(elapsed)) elapsed."
-        } else {
-            dialog = "Not recording."
+        func run() async throws
+        -> some IntentResult & ReturnsValue<Bool> & ProvidesDialog {
+            let recording = await MainActor.run { appModel.recording }
+            let isRecording = await recording.isRecording
+            let dialog: IntentDialog
+            if isRecording {
+                let elapsed = await recording.elapsed
+                dialog = "Recording — \(TimeFormat.clock(elapsed)) elapsed."
+            } else {
+                dialog = "Not recording."
+            }
+            return .result(value: isRecording, dialog: dialog)
         }
-        return .result(value: isRecording, dialog: dialog)
+        return try await Diag.intent(TranscriptionCrumb.getRecordingStatusIntent, run)
     }
 }
 
@@ -178,27 +189,31 @@ struct TranscribeFileIntent: LongRunningIntent, CancellableIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
-        let name = file.filename
-        let title = (name as NSString).deletingPathExtension
-        let displayTitle = title.isEmpty ? "Audio file" : title
-        // The real pipeline ingests from a URL. Use the provided file URL when the intent
-        // carries one; otherwise materialize the bytes into a temp file the ingest can read.
-        let url: URL
-        if let fileURL = file.fileURL {
-            url = fileURL
-        } else {
-            let dir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("IntentImports", isDirectory: true)
-            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-            let dest = dir.appendingPathComponent("\(UUID().uuidString)-\(name)")
-            try file.data.write(to: dest)
-            url = dest
+        func run() async throws
+        -> some IntentResult & ReturnsValue<TranscriptSessionEntity> & ProvidesDialog {
+            let name = file.filename
+            let title = (name as NSString).deletingPathExtension
+            let displayTitle = title.isEmpty ? "Audio file" : title
+            // The real pipeline ingests from a URL. Use the provided file URL when the intent
+            // carries one; otherwise materialize the bytes into a temp file the ingest can read.
+            let url: URL
+            if let fileURL = file.fileURL {
+                url = fileURL
+            } else {
+                let dir = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("IntentImports", isDirectory: true)
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                let dest = dir.appendingPathComponent("\(UUID().uuidString)-\(name)")
+                try file.data.write(to: dest)
+                url = dest
+            }
+            let job = await MainActor.run { () -> TranscriptionJob in
+                appModel.returnHome()   // the job's progress lives in the feed's In Progress section
+                return appModel.startTranscription(title: displayTitle, source: .file(url))
+            }
+            return try await completeTranscription(job: job, displayTitle: displayTitle, appModel: appModel)
         }
-        let job = await MainActor.run { () -> TranscriptionJob in
-            appModel.returnHome()   // the job's progress lives in the feed's In Progress section
-            return appModel.startTranscription(title: displayTitle, source: .file(url))
-        }
-        return try await completeTranscription(job: job, displayTitle: displayTitle, appModel: appModel)
+        return try await Diag.intent(TranscriptionCrumb.transcribeFileIntent, run)
     }
 }
 
@@ -249,20 +264,24 @@ struct SearchTranscriptsIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<[TranscriptSessionEntity]> & ProvidesDialog {
-        let results = await TranscriptSessionStore.entities(matching: query)
-        if openLibrary {
-            try await continueInForeground(alwaysConfirm: false)
-            await MainActor.run { appModel.returnHome() }
+        func run() async throws
+        -> some IntentResult & ReturnsValue<[TranscriptSessionEntity]> & ProvidesDialog {
+            let results = await TranscriptSessionStore.entities(matching: query)
+            if openLibrary {
+                try await continueInForeground(alwaysConfirm: false)
+                await MainActor.run { appModel.returnHome() }
+            }
+            // One key with one `%lld`, pluralized by the CATALOG rather than by picking an English
+            // "s" here. A suffix chosen in Swift can only ever be right for English: Spanish needs
+            // "transcripciones", not a letter appended, and Russian selects among three forms by the
+            // count's last digits — neither is reachable from a boolean. The plural variation per
+            // language is the only place that knowledge can live.
+            let dialog: IntentDialog = results.isEmpty
+                ? "No transcripts match “\(query)”."
+                : "Found \(results.count) transcripts."
+            return .result(value: results, dialog: dialog)
         }
-        // One key with one `%lld`, pluralized by the CATALOG rather than by picking an English
-        // "s" here. A suffix chosen in Swift can only ever be right for English: Spanish needs
-        // "transcripciones", not a letter appended, and Russian selects among three forms by the
-        // count's last digits — neither is reachable from a boolean. The plural variation per
-        // language is the only place that knowledge can live.
-        let dialog: IntentDialog = results.isEmpty
-            ? "No transcripts match “\(query)”."
-            : "Found \(results.count) transcripts."
-        return .result(value: results, dialog: dialog)
+        return try await Diag.intent(TranscriptionCrumb.searchTranscriptsIntent, run)
     }
 }
 
@@ -278,12 +297,16 @@ struct GetLatestTranscriptIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        guard let latest = await TranscriptSessionStore.latestEntityAndText() else {
-            throw TranscriptionIntentError.noTranscripts
+        func run() async throws
+        -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+            guard let latest = await TranscriptSessionStore.latestEntityAndText() else {
+                throw TranscriptionIntentError.noTranscripts
+            }
+            let text = latest.fullText
+            let dialog: IntentDialog = text.isEmpty ? "Your latest transcript is empty." : "\(text)"
+            return .result(value: text, dialog: dialog)
         }
-        let text = latest.fullText
-        let dialog: IntentDialog = text.isEmpty ? "Your latest transcript is empty." : "\(text)"
-        return .result(value: text, dialog: dialog)
+        return try await Diag.intent(TranscriptionCrumb.getLatestTranscriptIntent, run)
     }
 }
 
@@ -312,32 +335,36 @@ struct AskTranscriptIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        // A specific transcript → grounded single-session Q&A (the existing behavior).
-        if let session, let id = UUID(uuidString: session.id) {
-            guard let target = await TranscriptSessionStore.entityAndText(forID: id) else {
-                throw TranscriptionIntentError.noTranscripts
+        func run() async throws
+        -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+            // A specific transcript → grounded single-session Q&A (the existing behavior).
+            if let session, let id = UUID(uuidString: session.id) {
+                guard let target = await TranscriptSessionStore.entityAndText(forID: id) else {
+                    throw TranscriptionIntentError.noTranscripts
+                }
+                let intelligence = SessionIntelligence()
+                guard intelligence.status.isAvailable else {
+                    return .result(value: "", dialog: "\(intelligence.status.message)")
+                }
+                do {
+                    let answer = try await intelligence.answer(question: question, transcript: target.fullText)
+                    return .result(value: answer, dialog: "\(answer)")
+                } catch {
+                    return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
+                }
             }
-            let intelligence = SessionIntelligence()
-            guard intelligence.status.isAvailable else {
-                return .result(value: "", dialog: "\(intelligence.status.message)")
-            }
-            do {
-                let answer = try await intelligence.answer(question: question, transcript: target.fullText)
-                return .result(value: answer, dialog: "\(answer)")
-            } catch {
-                return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
-            }
-        }
 
-        // No transcript chosen → library-wide semantic RAG over the named Spotlight index.
-        switch await TranscriptLibraryAssistant.ask(question) {
-        case .success(let answer):
-            return .result(value: answer, dialog: "\(answer)")
-        case .failure(.unavailable):
-            return .result(value: "", dialog: "\(SessionIntelligence.currentStatus().message)")
-        case .failure(.failed):
-            return .result(value: "", dialog: "Something went wrong. Please try again.")
+            // No transcript chosen → library-wide semantic RAG over the named Spotlight index.
+            switch await TranscriptLibraryAssistant.ask(question) {
+            case .success(let answer):
+                return .result(value: answer, dialog: "\(answer)")
+            case .failure(.unavailable):
+                return .result(value: "", dialog: "\(SessionIntelligence.currentStatus().message)")
+            case .failure(.failed):
+                return .result(value: "", dialog: "Something went wrong. Please try again.")
+            }
         }
+        return try await Diag.intent(TranscriptionCrumb.askTranscriptIntent, run)
     }
 }
 
@@ -359,24 +386,28 @@ struct SummarizeTranscriptIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        let target: (entity: TranscriptSessionEntity, fullText: String)?
-        if let session, let id = UUID(uuidString: session.id) {
-            target = await TranscriptSessionStore.entityAndText(forID: id)
-        } else {
-            target = await TranscriptSessionStore.latestEntityAndText()
-        }
-        guard let target else { throw TranscriptionIntentError.noTranscripts }
+        func run() async throws
+        -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+            let target: (entity: TranscriptSessionEntity, fullText: String)?
+            if let session, let id = UUID(uuidString: session.id) {
+                target = await TranscriptSessionStore.entityAndText(forID: id)
+            } else {
+                target = await TranscriptSessionStore.latestEntityAndText()
+            }
+            guard let target else { throw TranscriptionIntentError.noTranscripts }
 
-        let intelligence = SessionIntelligence()
-        guard intelligence.status.isAvailable else {
-            return .result(value: "", dialog: "\(intelligence.status.message)")
+            let intelligence = SessionIntelligence()
+            guard intelligence.status.isAvailable else {
+                return .result(value: "", dialog: "\(intelligence.status.message)")
+            }
+            do {
+                let summary = try await intelligence.summarize(transcript: target.fullText)
+                return .result(value: summary, dialog: "\(summary)")
+            } catch {
+                return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
+            }
         }
-        do {
-            let summary = try await intelligence.summarize(transcript: target.fullText)
-            return .result(value: summary, dialog: "\(summary)")
-        } catch {
-            return .result(value: "", dialog: "\(SessionIntelligence.errorMessage(for: error))")
-        }
+        return try await Diag.intent(TranscriptionCrumb.summarizeTranscriptIntent, run)
     }
 }
 
@@ -402,28 +433,32 @@ struct ExportTranscriptIntent: AppIntent {
 
     func perform() async throws
         -> some IntentResult & ReturnsValue<ExportedTranscriptFileEntity> & ProvidesDialog {
-        let resolved: (title: String, data: Data)?
-        if let session, let id = UUID(uuidString: session.id) {
-            resolved = await TranscriptSessionStore.exportedData(forID: id, as: format)
-        } else {
-            resolved = await TranscriptSessionStore.latestExportedData(as: format)
+        func run() async throws
+        -> some IntentResult & ReturnsValue<ExportedTranscriptFileEntity> & ProvidesDialog {
+            let resolved: (title: String, data: Data)?
+            if let session, let id = UUID(uuidString: session.id) {
+                resolved = await TranscriptSessionStore.exportedData(forID: id, as: format)
+            } else {
+                resolved = await TranscriptSessionStore.latestExportedData(as: format)
+            }
+            guard let resolved, !resolved.data.isEmpty else { throw TranscriptionIntentError.noTranscripts }
+
+            let safeName = resolved.title.isEmpty ? "Transcript" : resolved.title
+            // Write the rendered transcript to a uniquely-scoped temp file so the returned
+            // `FileEntity` has a real on-disk URL (its identity), while the file the user sees keeps
+            // a clean `title.ext` name and repeated exports never collide.
+            let dir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("IntentExports", isDirectory: true)
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            let fileURL = dir.appendingPathComponent("\(safeName).\(format.fileExtension)")
+            try resolved.data.write(to: fileURL)
+
+            let entity = try ExportedTranscriptFileEntity(id: .file(url: fileURL), title: safeName)
+            Diag.count(TranscriptionCounter.transcriptsExported)
+            return .result(value: entity, dialog: "Exported \(safeName).")
         }
-        guard let resolved, !resolved.data.isEmpty else { throw TranscriptionIntentError.noTranscripts }
-
-        let safeName = resolved.title.isEmpty ? "Transcript" : resolved.title
-        // Write the rendered transcript to a uniquely-scoped temp file so the returned
-        // `FileEntity` has a real on-disk URL (its identity), while the file the user sees keeps
-        // a clean `title.ext` name and repeated exports never collide.
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("IntentExports", isDirectory: true)
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let fileURL = dir.appendingPathComponent("\(safeName).\(format.fileExtension)")
-        try resolved.data.write(to: fileURL)
-
-        let entity = try ExportedTranscriptFileEntity(id: .file(url: fileURL), title: safeName)
-        Diag.count(TranscriptionCounter.transcriptsExported)
-        return .result(value: entity, dialog: "Exported \(safeName).")
+        return try await Diag.intent(TranscriptionCrumb.exportTranscriptIntent, run)
     }
 }
 
@@ -454,11 +489,14 @@ struct OpenTranscriptIntent: AppIntent, OpenIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        let id = UUID(uuidString: target.id)
-        await MainActor.run {
-            if let id { appModel.openSession(id: id) } else { appModel.returnHome() }
+        func run() async throws -> some IntentResult & OpensIntent {
+            let id = UUID(uuidString: target.id)
+            await MainActor.run {
+                if let id { appModel.openSession(id: id) } else { appModel.returnHome() }
+            }
+            return .result(opensIntent: OpenAppIntent())
         }
-        return .result(opensIntent: OpenAppIntent())
+        return try await Diag.intent(TranscriptionCrumb.openTranscriptIntent, run)
     }
 }
 
@@ -474,8 +512,11 @@ struct OpenLibraryIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult & OpensIntent {
-        await MainActor.run { appModel.returnHome() }
-        return .result(opensIntent: OpenAppIntent())
+        func run() async throws -> some IntentResult & OpensIntent {
+            await MainActor.run { appModel.returnHome() }
+            return .result(opensIntent: OpenAppIntent())
+        }
+        return try await Diag.intent(TranscriptionCrumb.openLibraryIntent, run)
     }
 }
 

@@ -37,11 +37,16 @@ struct AccountSection: View {
     @State private var outstandingAtSignOut = 0
 
     var body: some View {
-        AccountSettingsSection(controller: account) {
-            SyncStatusRow(sync: sync)
-        } beforeSignOut: {
-            await preflightSignOut()
-        }
+        AccountSettingsSection(
+            controller: account,
+            appData: AppDataDeletion(
+                schema: TranscriptionSyncSchema.postgresSchema,
+                appName: "Transcription Studio",
+                barrier: deletionBarrier
+            ) { [sync] in await sync.eraseLocalData() },
+            syncStatus: { SyncStatusRow(sync: sync) },
+            beforeSignOut: { await preflightSignOut() }
+        )
         .confirmationDialog(
             String(localized: "Some changes haven't uploaded yet"),
             isPresented: Binding(
@@ -70,13 +75,21 @@ struct AccountSection: View {
         // is signed in as the other account.
         AccountMergeSection(
             controller: account,
-            barrier: DeletionBarrier { [sync] in
-                await sync.syncNow(.full)
-                guard let census = await sync.unsyncedWork else { throw AccountSectionError.uncountable }
-                return .counted(retrying: census.retrying, stuck: census.stuck)
-            },
+            barrier: deletionBarrier,
             reHome: { [sync] target in sync.reHome(into: target) }
         )
+    }
+
+    /// The unpushed-work barrier both destructive doors run: push everything that still can go,
+    /// then answer what the server has never seen. One value rather than two, because the deletion
+    /// doors and the merge ask the same question of the same outbox — they differ only in what
+    /// they offer next, and that is the module's decision rather than this app's.
+    private var deletionBarrier: DeletionBarrier {
+        DeletionBarrier { [sync] in
+            await sync.syncNow(.full)
+            guard let census = await sync.unsyncedWork else { throw AccountSectionError.uncountable }
+            return .counted(retrying: census.retrying, stuck: census.stuck)
+        }
     }
 
     /// Sign-out is the one act with no way back: after `.signedOut` there is no token left to

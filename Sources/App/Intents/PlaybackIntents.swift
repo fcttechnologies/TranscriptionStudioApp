@@ -1,4 +1,5 @@
 import AppIntents
+import FCTMetrics
 import SwiftData
 
 /// Errors surfaced by the playback intents.
@@ -35,33 +36,36 @@ struct PlayTranscriptIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
-        let id: UUID?
-        if let target {
-            id = UUID(uuidString: target.id)
-        } else {
-            id = TranscriptSessionStore.latestEntityAndText().flatMap { UUID(uuidString: $0.entity.id) }
-        }
-        guard let id else { throw TranscriptionIntentError.noTranscripts }
-
-        let context = appModel.modelContext
-        let predicate = #Predicate<TranscriptSession> { $0.id == id }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        guard let session = try context.fetch(descriptor).first else {
-            throw TranscriptionIntentError.noTranscripts
-        }
-        guard await appModel.playback.prepare(session: session) else {
-            throw PlaybackIntentError.noAudioAvailable
-        }
-        if !appModel.playback.isPlaying {
-            if appModel.playback.currentTime > 0, appModel.playback.nowPlaying?.sessionID == session.id {
-                appModel.playback.togglePlayPause()   // resume where it paused
+        func run() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+            let id: UUID?
+            if let target {
+                id = UUID(uuidString: target.id)
             } else {
-                appModel.playback.play(from: 0)
+                id = TranscriptSessionStore.latestEntityAndText().flatMap { UUID(uuidString: $0.entity.id) }
             }
+            guard let id else { throw TranscriptionIntentError.noTranscripts }
+
+            let context = appModel.modelContext
+            let predicate = #Predicate<TranscriptSession> { $0.id == id }
+            var descriptor = FetchDescriptor(predicate: predicate)
+            descriptor.fetchLimit = 1
+            guard let session = try context.fetch(descriptor).first else {
+                throw TranscriptionIntentError.noTranscripts
+            }
+            guard await appModel.playback.prepare(session: session) else {
+                throw PlaybackIntentError.noAudioAvailable
+            }
+            if !appModel.playback.isPlaying {
+                if appModel.playback.currentTime > 0, appModel.playback.nowPlaying?.sessionID == session.id {
+                    appModel.playback.togglePlayPause()   // resume where it paused
+                } else {
+                    appModel.playback.play(from: 0)
+                }
+            }
+            appModel.openSession(id: session.id)
+            return .result(opensIntent: OpenAppIntent(), dialog: "Playing \"\(session.title)\".")
         }
-        appModel.openSession(id: session.id)
-        return .result(opensIntent: OpenAppIntent(), dialog: "Playing \"\(session.title)\".")
+        return try await Diag.intent(TranscriptionCrumb.playTranscriptIntent, run)
     }
 }
 
@@ -85,29 +89,32 @@ struct SpeakTranscriptIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
-        let id: UUID?
-        if let target {
-            id = UUID(uuidString: target.id)
-        } else {
-            id = TranscriptSessionStore.latestEntityAndText().flatMap { UUID(uuidString: $0.entity.id) }
-        }
-        guard let id else { throw TranscriptionIntentError.noTranscripts }
+        func run() async throws -> some IntentResult & OpensIntent & ProvidesDialog {
+            let id: UUID?
+            if let target {
+                id = UUID(uuidString: target.id)
+            } else {
+                id = TranscriptSessionStore.latestEntityAndText().flatMap { UUID(uuidString: $0.entity.id) }
+            }
+            guard let id else { throw TranscriptionIntentError.noTranscripts }
 
-        let context = appModel.modelContext
-        let predicate = #Predicate<TranscriptSession> { $0.id == id }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        guard let session = try context.fetch(descriptor).first,
-              // The entity read-path already withholds private sessions; belt-and-suspenders
-              // here because a locked transcript spoken aloud is the canonical privacy hole.
-              PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) else {
-            throw TranscriptionIntentError.noTranscripts
-        }
-        guard !(session.segments ?? []).isEmpty else { throw PlaybackIntentError.nothingToSpeak }
+            let context = appModel.modelContext
+            let predicate = #Predicate<TranscriptSession> { $0.id == id }
+            var descriptor = FetchDescriptor(predicate: predicate)
+            descriptor.fetchLimit = 1
+            guard let session = try context.fetch(descriptor).first,
+                  // The entity read-path already withholds private sessions; belt-and-suspenders
+                  // here because a locked transcript spoken aloud is the canonical privacy hole.
+                  PrivacyGate.isEligibleForAssistant(isPrivate: session.isPrivate) else {
+                throw TranscriptionIntentError.noTranscripts
+            }
+            guard !(session.segments ?? []).isEmpty else { throw PlaybackIntentError.nothingToSpeak }
 
-        appModel.startReadAloud(session: session)
-        appModel.openSession(id: session.id)
-        return .result(opensIntent: OpenAppIntent(), dialog: "Speaking \"\(session.title)\".")
+            appModel.startReadAloud(session: session)
+            appModel.openSession(id: session.id)
+            return .result(opensIntent: OpenAppIntent(), dialog: "Speaking \"\(session.title)\".")
+        }
+        return try await Diag.intent(TranscriptionCrumb.speakTranscriptIntent, run)
     }
 }
 
@@ -123,9 +130,12 @@ struct StopSpeakingIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard appModel.readAloud.isActive else { throw PlaybackIntentError.notSpeaking }
-        appModel.readAloud.stop()
-        return .result(dialog: "Stopped speaking.")
+        func run() async throws -> some IntentResult & ProvidesDialog {
+            guard appModel.readAloud.isActive else { throw PlaybackIntentError.notSpeaking }
+            appModel.readAloud.stop()
+            return .result(dialog: "Stopped speaking.")
+        }
+        return try await Diag.intent(TranscriptionCrumb.stopSpeakingIntent, run)
     }
 }
 
@@ -140,8 +150,11 @@ struct PausePlaybackIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        guard appModel.playback.isPlaying else { throw PlaybackIntentError.notPlaying }
-        appModel.playback.togglePlayPause()
-        return .result(dialog: "Playback paused.")
+        func run() async throws -> some IntentResult & ProvidesDialog {
+            guard appModel.playback.isPlaying else { throw PlaybackIntentError.notPlaying }
+            appModel.playback.togglePlayPause()
+            return .result(dialog: "Playback paused.")
+        }
+        return try await Diag.intent(TranscriptionCrumb.pausePlaybackIntent, run)
     }
 }
