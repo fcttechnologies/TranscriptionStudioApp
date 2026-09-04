@@ -333,6 +333,8 @@ targets:
           # place FCTOnboarding is imported — a headless tool has no front door to open.
           - "Views/Root/**"
     dependencies:
+      - package: FCTSpeech
+        product: FCTSpeech
       - package: FCTFoundation
         product: FCTEntities
       - package: FCTFoundation

@@ -18,6 +18,13 @@ actor FCTSpeechAsrEngine: AsrEngine {
         self.modelsDirectory = modelsDirectory
     }
 
+    /// `~/Library/Application Support/TranscriptionStudio/Models/fctspeech/parakeet-v3`, beside
+    /// the other engines' models.
+    static func defaultModelsDirectory() -> URL {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        return appSupport.appendingPathComponent("TranscriptionStudio/Models/fctspeech/parakeet-v3", isDirectory: true)
+    }
+
     func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
         if transcriber != nil {
             onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1))
