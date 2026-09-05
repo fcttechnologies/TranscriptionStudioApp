@@ -19,8 +19,9 @@
 #   TEST_RUNNER_SORTFORMER_MODEL_OK=1 xcodebuild … test -only-testing:TranscriptionStudioTests/SortformerRealModelTests
 #   TEST_RUNNER_CONCURRENT_BENCH=1    xcodebuild … test -only-testing:TranscriptionStudioTests/ConcurrentLoadBench
 #   TEST_RUNNER_LUXTTS_MODEL_OK=1     xcodebuild … test -only-testing:TranscriptionStudioTests/LuxTtsLiveTests
-# The real-engine integration tests read TestResources/*.wav (gitignored) — run
-# scripts/make-verification-audio.sh once before the full suite.
+# The real-engine integration tests read TestResources/*.wav, which are gitignored (a few MB of
+# generated audio); the gate generates them when they are absent, so a fresh clone or a lane's
+# worktree runs the same suite as this checkout.
 #
 # Usage:  scripts/gate.sh
 # Env:    SIM_NAME  simulator device name (default "iPhone 17 Pro") outside a lane; inside one the
@@ -131,6 +132,15 @@ mark "Debug + CLI builds (concurrent)"
 # WAVE 2 — both suites beside the Release build. The suites are app-hosted and their wall is
 # mostly async settles rather than CPU, so overlapping them with the one remaining compile is
 # close to free; serially the Release build was 42% of this gate on its own.
+# The generated audio the real-engine tests read. Absent in a fresh clone and in every worktree,
+# so it is made here rather than remembered: a missing fixture would otherwise read as a failing
+# engine.
+if [ ! -f "TestResources/two_speakers_short.wav" ]; then
+  echo "==> Generating the verification audio (TestResources/)"
+  scripts/make-verification-audio.sh > "${LOGS}/fixtures.log" 2>&1 \
+    || fail "could not generate TestResources (log: ${LOGS}/fixtures.log)"
+fi
+
 echo "==> Unit suite + CLI suite + Release builds"
 TEST_LOG="${LOGS}/tests.log"
 CLI_TEST_LOG="${LOGS}/clitests.log"
