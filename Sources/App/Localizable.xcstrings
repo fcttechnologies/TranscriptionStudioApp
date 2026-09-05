@@ -3389,6 +3389,65 @@
         }
       }
     },
+    "Continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continua"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "続ける"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "계속"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "继续"
+          }
+        }
+      }
+    },
     "Copied to the clipboard" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5000,6 +5059,65 @@
         }
       }
     },
+    "Downloading… %lld%%" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geladen… %lld%%"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargando… %lld%%"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Téléchargement… %lld%%"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download… %lld%%"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ダウンロード中… %lld%%"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다운로드 중… %lld%%"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baixando… %lld%%"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка… %lld%%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在下载… %lld%%"
+          }
+        }
+      }
+    },
     "Drop to transcribe" : {
       "localizations" : {
         "de" : {
@@ -6344,65 +6462,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "获取录音状态"
-          }
-        }
-      }
-    },
-    "Get the speech models" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sprachmodelle laden"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Descarga los modelos de voz"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Télécharger les modèles vocaux"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Scarica i modelli vocali"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "音声モデルを入手"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "음성 모델 받기"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Baixe os modelos de voz"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Загрузить речевые модели"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "获取语音模型"
           }
         }
       }
@@ -16235,6 +16294,65 @@
         }
       }
     },
+    "Speech models" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprachmodelle"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelos de voz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modèles vocaux"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelli vocali"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "音声モデル"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "음성 모델"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modelos de voz"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Речевые модели"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "语音模型"
+          }
+        }
+      }
+    },
     "Speech processing" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -19562,61 +19680,61 @@
         }
       }
     },
-    "Transcription runs entirely on this device, which means the speech models have to live here too. They're about 700 MB — worth getting on Wi-Fi now rather than partway through your first recording." : {
+    "Transcription runs entirely on this device, so the speech models live here too. They're about 1.2 GB and come down in the background, even while the app is closed." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Transkription läuft vollständig auf diesem Gerät, also müssen auch die Sprachmodelle hier liegen. Sie sind etwa 700 MB groß – besser jetzt über WLAN laden als mitten in der ersten Aufnahme."
+            "value" : "Die Transkription läuft vollständig auf diesem Gerät, also liegen auch die Sprachmodelle hier. Sie sind etwa 1,2 GB groß und werden im Hintergrund geladen, auch wenn die App geschlossen ist."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La transcripción se hace por completo en este dispositivo, así que los modelos de voz también tienen que vivir aquí. Ocupan unos 700 MB: conviene descargarlos ahora con Wi-Fi y no a mitad de tu primera grabación."
+            "value" : "La transcripción se hace por completo en este dispositivo, así que los modelos de voz también viven aquí. Ocupan unos 1,2 GB y se descargan en segundo plano, incluso con la app cerrada."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La transcription s'effectue entièrement sur cet appareil, les modèles vocaux doivent donc y résider aussi. Ils pèsent environ 700 Mo : mieux vaut les télécharger maintenant en Wi-Fi qu'au milieu de votre premier enregistrement."
+            "value" : "La transcription s'effectue entièrement sur cet appareil, les modèles vocaux y résident donc aussi. Ils pèsent environ 1,2 Go et se téléchargent en arrière-plan, même lorsque l'app est fermée."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La trascrizione avviene interamente su questo dispositivo, quindi anche i modelli vocali devono risiedere qui. Occupano circa 700 MB: meglio scaricarli ora in Wi-Fi che a metà della tua prima registrazione."
+            "value" : "La trascrizione avviene interamente su questo dispositivo, quindi anche i modelli vocali risiedono qui. Occupano circa 1,2 GB e vengono scaricati in background, anche con l'app chiusa."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文字起こしはすべてこのデバイス上で行われるため、音声モデルもここに置く必要があります。サイズは約 700 MB です。最初の録音の途中ではなく、今 Wi-Fi で入手しておくことをおすすめします。"
+            "value" : "文字起こしはすべてこのデバイス上で行われるため、音声モデルもここに置かれます。サイズは約 1.2 GB で、アプリを閉じていてもバックグラウンドでダウンロードされます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "전사는 전부 이 기기에서 이루어지므로 음성 모델도 여기에 있어야 합니다. 용량은 약 700 MB입니다. 첫 녹음 도중이 아니라 지금 Wi-Fi로 받아 두는 것이 좋습니다."
+            "value" : "전사는 전부 이 기기에서 이루어지므로 음성 모델도 여기에 있습니다. 용량은 약 1.2 GB이며 앱이 닫혀 있어도 백그라운드에서 다운로드됩니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A transcrição acontece inteiramente neste aparelho, então os modelos de voz também precisam ficar aqui. Eles têm cerca de 700 MB — vale baixar agora no Wi-Fi em vez de no meio da sua primeira gravação."
+            "value" : "A transcrição acontece inteiramente neste aparelho, então os modelos de voz também ficam aqui. Eles têm cerca de 1,2 GB e são baixados em segundo plano, mesmo com o app fechado."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Расшифровка выполняется целиком на этом устройстве, поэтому речевые модели тоже должны храниться здесь. Они занимают около 700 МБ — лучше загрузить их сейчас по Wi-Fi, чем посреди первой записи."
+            "value" : "Расшифровка выполняется целиком на этом устройстве, поэтому речевые модели тоже хранятся здесь. Они занимают около 1,2 ГБ и загружаются в фоне, даже когда приложение закрыто."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录完全在本机进行，因此语音模型也需要保存在本机。模型约 700 MB，建议现在连接 Wi-Fi 下载，而不是在第一次录音进行到一半时下载。"
+            "value" : "转录完全在本机进行，因此语音模型也保存在本机。模型约 1.2 GB，会在后台下载，即使 App 已关闭。"
           }
         }
       }
