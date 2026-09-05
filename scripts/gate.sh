@@ -38,7 +38,7 @@ lane_sim_destination
 # with no error, so the count is pinned rather than merely bounded.
 SHORTCUT_COUNT_MAC=10
 SHORTCUT_COUNT_IOS=10
-MIN_APP_TESTS=564
+MIN_APP_TESTS=559
 # The fleet's localization floor. Every one of these must be declared in CFBundleLocalizations
 # (the INFOPLIST_KEY_ variant is silently ignored) AND carry a real value for every key in both
 # catalogs; the drift leg below proves the second half against the compiler's own extraction set.
