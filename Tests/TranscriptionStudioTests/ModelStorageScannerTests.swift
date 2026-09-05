@@ -410,10 +410,10 @@ struct SpeechModelDownloaderTests {
         let d = SpeechModelDownloader(manifest: manifest, root: root, sessionIdentifier: "test.\(UUID().uuidString)")
         #expect(d.installed == [.parakeet])
         try #require(d.state == .idle)
-        // The scheduler's arithmetic, driven directly: 100 of 175 on disk, then 30 more in flight.
+        // 100 of 175 on disk, then 30 more in flight: the fraction counts both, and a file that
+        // lands before start() (a relaunch delivering the session's events first) still counts.
         d.progressed(path: "sensevoice/b.bin", received: 30)
-        // progressed() alone cannot know the total before start(); start() sets it, so drive the
-        // same math through a landed file instead, which recomputes from disk.
+        #expect(d.state == .downloading(fraction: 130.0 / 175.0))
         let b = root.appendingPathComponent("tmp-b"); try write(50, to: b)
         d.finished(path: "sensevoice/b.bin", temporary: b)
         #expect(d.installed == [.parakeet, .senseVoice])
@@ -441,10 +441,10 @@ struct SpeechModelDownloaderTests {
         config.protocolClasses = [RefusingURLProtocol.self]
         let session = URLSession(configuration: config)
         try write(25, to: ModelLayout.installedURL(root: root, path: "sortformer/c.bin"))
-        var fractions: [Double] = []
+        let fractions = Mutex<[Double]>([])
         try await SpeechModelStore.ensureInstalled(.sortformer, manifest: manifest, root: root, appGroupContainer: nil,
-                                                   session: session, waitInFlight: { _ in }) { f in fractions.append(f) }
-        #expect(fractions == [1.0])
+                                                   session: session, waitInFlight: { _ in }) { f in fractions.withLock { $0.append(f) } }
+        #expect(fractions.withLock { $0 } == [1.0])
         // Not installed and the wait throws: the store tries the network, which refuses here.
         await #expect(throws: (any Error).self) {
             try await SpeechModelStore.ensureInstalled(.parakeet, manifest: manifest, root: root, appGroupContainer: nil,

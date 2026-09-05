@@ -33,7 +33,7 @@ final class SpeechModelDownloader {
     private let root: URL
     private let session: URLSession
     private let bridge: Bridge
-    private var totalBytes: Int = 0
+    private let totalBytes: Int
     private var receivedByPath: [String: Int] = [:]
     private var waiters: [SpeechModel: [CheckedContinuation<Void, Error>]] = [:]
 
@@ -43,6 +43,7 @@ final class SpeechModelDownloader {
          sessionIdentifier: String = SpeechModelDownloader.sessionIdentifier) {
         self.manifest = manifest
         self.root = root
+        self.totalBytes = manifest.totalSize
         let configuration = URLSessionConfiguration.background(withIdentifier: sessionIdentifier)
         configuration.allowsCellularAccess = false
         configuration.isDiscretionary = false
@@ -84,7 +85,6 @@ final class SpeechModelDownloader {
         let pending = ModelLayout.pendingAssets(manifest.assets, root: root, appGroupContainer: nil,
                                                 sizeAt: SpeechModelStore.fileSize)
         let inFlight = Set(await session.allTasks.compactMap(\.taskDescription))
-        totalBytes = manifest.totalSize
         let onDisk = manifest.assets.filter { !pending.contains($0) }.reduce(0) { $0 + $1.size }
         receivedByPath = [:]
         if pending.isEmpty {
