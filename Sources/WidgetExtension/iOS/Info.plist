@@ -4,6 +4,19 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+		<string>zh-Hans</string>
+		<string>fr</string>
+		<string>de</string>
+		<string>pt-BR</string>
+		<string>ja</string>
+		<string>ko</string>
+		<string>it</string>
+		<string>ru</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>Transcription Studio</string>
 	<key>CFBundleExecutable</key>

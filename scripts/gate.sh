@@ -326,6 +326,15 @@ echo "==> Localization drift (this repo's own sources)"
 check_loc_drift "${DD}/macos" --require-languages "${SHIPPED_LANGUAGES}" \
   --coverage-only Sources/App/InfoPlist.xcstrings \
   Sources/App/Localizable.xcstrings Sources/App/AppShortcuts.xcstrings
+# The widget is its own bundle, so its strings are read from ITS catalog at runtime; checked
+# against exactly what compiles into that target (its own build directory under the iOS leg),
+# which is the widget's sources plus the Glance files it shares with the app.
+echo "==> Localization drift (the widget's own bundle)"
+check_loc_drift "${DD}/ios/Build/Intermediates.noindex/TranscriptionStudio.build/Debug-iphonesimulator/WidgetExtensioniOS.build" \
+  --require-languages "${SHIPPED_LANGUAGES}" \
+  --coverage-only Sources/App/InfoPlist.xcstrings --coverage-only Sources/App/Localizable.xcstrings \
+  --coverage-only Sources/App/AppShortcuts.xcstrings \
+  Sources/WidgetExtension/Localizable.xcstrings
 mark "artifact checks (Debug)"
 
 # The Release Mac archive is the shippable artifact and the ONLY place Hardened Runtime rides:

@@ -375,6 +375,7 @@
 		BA3FDEF3FB2C1F2E41524A2E /* TranscriptModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CC5B2755A4121F9F43FBA9 /* TranscriptModels.swift */; };
 		BA51F6A2F24FE0E78F456CDF /* RenameTranscriptIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3EE46A3EC9BF84F65AB5ADF /* RenameTranscriptIntent.swift */; };
 		BB4D5CFDED8EC6FB64786A19 /* JobAndInspectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9820BCE72E00303C075556F9 /* JobAndInspectorTests.swift */; };
+		BD57B4F22942C2649C5470F8 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 31F82E1ED796C2199771E72A /* Localizable.xcstrings */; };
 		BDCBBB58A151DD9A018E5767 /* TranscriptionStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F630E5C199EC9EED9E969C4 /* TranscriptionStudioApp.swift */; };
 		C032232EBD4C66BF2A375BEF /* CloningVoiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE8BE8584F9EF71206062BE /* CloningVoiceTests.swift */; };
 		C03479E6B1B1B1B76AF92ADB /* InspectorLatency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7CF21023799F8555C2E42E /* InspectorLatency.swift */; };
@@ -638,6 +639,7 @@
 		2DD822427258CB4E029F3264 /* RecordingLocationProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingLocationProvider.swift; sourceTree = "<group>"; };
 		2E339350E7A90D92DF13B4CD /* ConcurrentLoadBench.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConcurrentLoadBench.swift; sourceTree = "<group>"; };
 		2E343CB2A88FB2B533DEBC14 /* FileIngestServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileIngestServiceTests.swift; sourceTree = "<group>"; };
+		31F82E1ED796C2199771E72A /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		330582EE42B8BFB12BF8C64E /* InspectorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorStore.swift; sourceTree = "<group>"; };
 		34C452C08235266EB3CDE744 /* TranscriptionShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionShortcuts.swift; sourceTree = "<group>"; };
 		3545703A10E723B47D682051 /* SpeakerLabels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeakerLabels.swift; sourceTree = "<group>"; };
@@ -1001,6 +1003,7 @@
 			isa = PBXGroup;
 			children = (
 				CD851227771793638F0C199A /* DictateControl.swift */,
+				31F82E1ED796C2199771E72A /* Localizable.xcstrings */,
 				1359BA1E77A18CA6AC217483 /* PlaybackLiveActivity.swift */,
 				D2378E14A43A270F2920E3E3 /* PrivacyInfo.xcprivacy */,
 				0E8221B1031C323DA057747B /* RecordingLiveActivity.swift */,
@@ -1932,6 +1935,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BD57B4F22942C2649C5470F8 /* Localizable.xcstrings in Resources */,
 				34DFDB68D0C83912D6BABAB6 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
