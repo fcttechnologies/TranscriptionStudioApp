@@ -1,3 +1,4 @@
+import FCTCore
 import Foundation
 import Synchronization
 
@@ -299,7 +300,7 @@ struct TranscribeCLI {
             let speech = try await engine.synthesize(text: text, voice: voice, language: language)
             let url = URL(fileURLWithPath: (outputPath as NSString).expandingTildeInPath)
             try speech.wavData().write(to: url)
-            status(String(format: "Wrote %.2fs of audio.", speech.duration))
+            status("Wrote \(FCTCore.Format.fixed(speech.duration, decimals: 2))s of audio.")
             print(url.path)
             exit(0)
         } catch {

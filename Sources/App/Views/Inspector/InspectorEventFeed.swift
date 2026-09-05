@@ -1,3 +1,4 @@
+import FCTCore
 import SwiftUI
 
 /// The live pipeline-event feed: newest-first, level-colored, stage-filterable, each row
@@ -87,6 +88,6 @@ private struct EventRow: View {
     }
 
     private static func ms(_ seconds: TimeInterval) -> String {
-        seconds >= 1 ? String(format: "%.2fs", seconds) : String(format: "%.0fms", seconds * 1000)
+        seconds >= 1 ? "\(Format.fixed(seconds, decimals: 2))s" : "\(Format.fixed(seconds * 1000, decimals: 0))ms"
     }
 }

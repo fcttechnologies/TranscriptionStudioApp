@@ -1,3 +1,4 @@
+import FCTCore
 import Foundation
 import OSLog
 
@@ -68,7 +69,7 @@ final class PipelineRecorder: Sendable {
 
     func record(_ event: PipelineEvent) {
         let logger = Self.logger(for: event.stage)
-        let durationText = event.duration.map { String(format: " (%.1fms)", $0 * 1000) } ?? ""
+        let durationText = event.duration.map { " (\(Format.fixed($0 * 1000, decimals: 1))ms)" } ?? ""
         switch event.level {
         case .debug:
             logger.debug("[\(event.stage.rawValue, privacy: .public)] \(event.message, privacy: .public)\(durationText, privacy: .public)")

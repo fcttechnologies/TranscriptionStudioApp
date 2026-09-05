@@ -28,7 +28,9 @@ struct SuggestedActionsRow: View {
                             SuggestionChipView(suggestion: suggestion,
                                                onTap: { onTap(suggestion) },
                                                onDismiss: { dismiss(suggestion) })
-                                .transition(.scale(scale: 0.92).combined(with: .opacity))
+                                // Safety: `AnyTransition.opacity` is SwiftUI's own immutable static,
+                                // `nonisolated(unsafe)` in the SDK; reading it is a read of a constant.
+                                .transition(unsafe .scale(scale: 0.92).combined(with: .opacity))
                         }
                     }
                 }

@@ -1,5 +1,6 @@
-import SwiftUI
 import Charts
+import FCTCore
+import SwiftUI
 
 /// System load while pipelines run — the answer to "does concurrent ASR + diarization
 /// degrade on this device?" Thermal state (color-coded), whole-process CPU%, and memory
@@ -36,7 +37,7 @@ struct InspectorLoad: View {
                     Circle().fill(DesignMetrics.color(for: latest.thermalState)).frame(width: 8, height: 8)
                 }
                 Spacer(minLength: 0)
-                Text(String(format: "CPU %.0f%%", latest.cpuPercent))
+                Text("CPU \(Format.fixed(latest.cpuPercent, decimals: 0))%")
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
             }
         }

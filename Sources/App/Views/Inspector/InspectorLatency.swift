@@ -1,5 +1,6 @@
-import SwiftUI
 import Charts
+import FCTCore
+import SwiftUI
 
 /// Per-stage latency: the latest duration for each stage plus a sparkline of its recent
 /// history, so a stage that's drifting slower under concurrent load is visible at a glance.
@@ -63,6 +64,6 @@ private struct LatencyRow: View {
     }
 
     private func format(_ seconds: Double) -> String {
-        seconds >= 1 ? String(format: "%.2f s", seconds) : String(format: "%.0f ms", seconds * 1000)
+        seconds >= 1 ? "\(Format.fixed(seconds, decimals: 2)) s" : "\(Format.fixed(seconds * 1000, decimals: 0)) ms"
     }
 }

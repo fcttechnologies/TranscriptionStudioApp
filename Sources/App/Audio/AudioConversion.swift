@@ -48,13 +48,15 @@ final class AudioResampler {
 
         var supplied = false
         var error: NSError?
-        let status = converter.convert(to: output, error: &error) { _, outStatus in
+        // Safety: the converter's NSError** is written during this call and read right after;
+        // `outStatus` is the converter's own out-pointer, valid for the callback.
+        let status = unsafe converter.convert(to: output, error: &error) { _, outStatus in
             if supplied {
-                outStatus.pointee = .noDataNow
+                unsafe outStatus.pointee = .noDataNow
                 return nil
             }
             supplied = true
-            outStatus.pointee = .haveData
+            unsafe outStatus.pointee = .haveData
             return input
         }
         guard status != .error, error == nil else { return [] }
@@ -62,7 +64,9 @@ final class AudioResampler {
     }
 
     private static func floats(from buffer: AVAudioPCMBuffer) -> [Float] {
-        guard let ch = buffer.floatChannelData else { return [] }
-        return Array(UnsafeBufferPointer(start: ch[0], count: Int(buffer.frameLength)))
+        // Safety: channel 0 of the buffer's own float table holds `frameLength` contiguous
+        // floats, valid while `buffer` lives.
+        guard let ch = unsafe buffer.floatChannelData else { return [] }
+        return unsafe Array(UnsafeBufferPointer(start: ch[0], count: Int(buffer.frameLength)))
     }
 }

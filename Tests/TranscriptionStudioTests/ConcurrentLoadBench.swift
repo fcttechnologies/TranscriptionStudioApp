@@ -1,3 +1,4 @@
+import FCTCore
 import Foundation
 import Testing
 @testable import TranscriptionStudio
@@ -18,7 +19,7 @@ struct ConcurrentLoadBench {
         }
         let samples = try DiarFixtures.loadSamples("two_speakers_long")
         let audioSeconds = Double(samples.count) / AudioChunk.sampleRate
-        print("[BENCH] clip: \(String(format: "%.1f", audioSeconds))s, \(samples.count) samples")
+        print("[BENCH] clip: \(FCTCore.Format.fixed(audioSeconds, decimals: 1))s, \(samples.count) samples")
 
         let asr = FCTSpeechAsrEngine()
         try await asr.prepare(onProgress: { _ in })
@@ -37,15 +38,15 @@ struct ConcurrentLoadBench {
         let (asrAlone, asrAloneTime) = try await timeIt {
             try await asr.transcribe(samples: samples, track: .mixed, wordTimestamps: false)
         }
-        print("[BENCH] ASR alone: \(String(format: "%.2f", asrAloneTime))s"
-              + " (RTF \(String(format: "%.3f", asrAloneTime / audioSeconds)))"
+        print("[BENCH] ASR alone: \(FCTCore.Format.fixed(asrAloneTime, decimals: 2))s"
+              + " (RTF \(FCTCore.Format.fixed(asrAloneTime / audioSeconds, decimals: 3)))"
               + " segments=\(asrAlone.count) thermal=\(thermal())")
 
         let (diarAlone, diarAloneTime) = try await timeIt {
             try await diarizer.diarize(samples: samples)
         }
-        print("[BENCH] diarize alone: \(String(format: "%.2f", diarAloneTime))s"
-              + " (RTF \(String(format: "%.3f", diarAloneTime / audioSeconds)))"
+        print("[BENCH] diarize alone: \(FCTCore.Format.fixed(diarAloneTime, decimals: 2))s"
+              + " (RTF \(FCTCore.Format.fixed(diarAloneTime / audioSeconds, decimals: 3)))"
               + " turns=\(diarAlone.turns.count) thermal=\(thermal())")
 
         // Concurrent run.
@@ -58,12 +59,12 @@ struct ConcurrentLoadBench {
         }
         let ((asrBoth, asrBothTime), (diarBoth, diarBothTime)) = try await (asrTask, diarTask)
         let wall = seconds(start.duration(to: clock.now))
-        print("[BENCH] concurrent: wall \(String(format: "%.2f", wall))s thermal=\(thermal())")
-        print("[BENCH]   ASR   \(String(format: "%.2f", asrBothTime))s"
-              + " (x\(String(format: "%.2f", asrBothTime / max(asrAloneTime, 0.001))) vs alone)"
+        print("[BENCH] concurrent: wall \(FCTCore.Format.fixed(wall, decimals: 2))s thermal=\(thermal())")
+        print("[BENCH]   ASR   \(FCTCore.Format.fixed(asrBothTime, decimals: 2))s"
+              + " (x\(FCTCore.Format.fixed(asrBothTime / max(asrAloneTime, 0.001), decimals: 2)) vs alone)"
               + " segments=\(asrBoth.count)")
-        print("[BENCH]   diar  \(String(format: "%.2f", diarBothTime))s"
-              + " (x\(String(format: "%.2f", diarBothTime / max(diarAloneTime, 0.001))) vs alone)"
+        print("[BENCH]   diar  \(FCTCore.Format.fixed(diarBothTime, decimals: 2))s"
+              + " (x\(FCTCore.Format.fixed(diarBothTime / max(diarAloneTime, 0.001), decimals: 2)) vs alone)"
               + " turns=\(diarBoth.turns.count)")
 
         // Loose gates: both must complete and each stays faster than realtime even shared.

@@ -45,6 +45,7 @@
 		13F7C17D19C9846B753DC8FA /* FCTServerSync in Frameworks */ = {isa = PBXBuildFile; productRef = 5FB6CD66986A3E45A32E16BD /* FCTServerSync */; };
 		148F3DA53D5E21EF52BCE804 /* EventKitActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 531AD169F12353E577DD9C33 /* EventKitActions.swift */; };
 		14D08E6FC462FDB88E9F798D /* LiveCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2253E15EADC838695D417327 /* LiveCaption.swift */; };
+		159166AA22707ACF5C54CAE6 /* Data+LittleEndian.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED123B991867D9661ADBC2BB /* Data+LittleEndian.swift */; };
 		15FE32C437AB0D6CD2DAB883 /* InspectorLoad.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BD98E47B0CFBCF1970AF293 /* InspectorLoad.swift */; };
 		166F95291397087E492F77DA /* TranscriptModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58CC5B2755A4121F9F43FBA9 /* TranscriptModels.swift */; };
 		16D484E8EB81DB2F3CBFC02B /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677A6085C01C2BD9F033D946 /* AppModel.swift */; };
@@ -407,6 +408,7 @@
 		D125ED109EB03758DBB446D4 /* MicCaptureSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 083AB40B760BC96BC74F5BD7 /* MicCaptureSource.swift */; };
 		D13044DD14D3AB4B39AA5181 /* CompanionDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D4A9229C491A610E6D0C66A /* CompanionDevice.swift */; };
 		D1B5B7010A8C8D111D757B22 /* StreamingWav.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3A01579A2CC5AF9BC3659A /* StreamingWav.swift */; };
+		D1CE60C6E68FC6C090B677A6 /* Data+LittleEndian.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED123B991867D9661ADBC2BB /* Data+LittleEndian.swift */; };
 		D43D0DED1C6FB8B4C09057DF /* ActivityLevels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58E6BBE2F91C69A8E07C5C93 /* ActivityLevels.swift */; };
 		D45823CEFE9EC77FC4688B60 /* AudioChunk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F5CB8FCF3386BF2B07959F /* AudioChunk.swift */; };
 		D48B589C460C4BBE1E7C13EA /* SharedItemClassifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E395A3E4AF28FA87F29A60B7 /* SharedItemClassifier.swift */; };
@@ -852,6 +854,7 @@
 		EB46B38F4AFF8F7C9B93295B /* TranscriptionSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionSchema.swift; sourceTree = "<group>"; };
 		ECA1A80592D9EC7DD6BAF145 /* PhotosVideoImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotosVideoImport.swift; sourceTree = "<group>"; };
 		ECB421376A2C20BBF6ED5EC7 /* ShellAndToastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellAndToastTests.swift; sourceTree = "<group>"; };
+		ED123B991867D9661ADBC2BB /* Data+LittleEndian.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Data+LittleEndian.swift"; sourceTree = "<group>"; };
 		EDB0CD456A720D0CF134B789 /* SessionStoreObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStoreObserver.swift; sourceTree = "<group>"; };
 		EE1D4200B94DD65A62D8E60D /* EngineToasts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineToasts.swift; sourceTree = "<group>"; };
 		EEC6C88231008D2C875BC315 /* LuxTtsCloningEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LuxTtsCloningEngine.swift; sourceTree = "<group>"; };
@@ -1564,6 +1567,7 @@
 			isa = PBXGroup;
 			children = (
 				9F3A528828488B96EF3ABAC8 /* A11yID.swift */,
+				ED123B991867D9661ADBC2BB /* Data+LittleEndian.swift */,
 				575955FDEFC795789DEA2FA1 /* DesignMetrics.swift */,
 				3B35ACDE6F50AA891A0FF0FB /* Log.swift */,
 				453D6820EEFB89E0E9B906BC /* MotionAccessibility.swift */,
@@ -2030,6 +2034,7 @@
 				CA452B6B2F8E4A21996A3298 /* CompanionViews.swift in Sources */,
 				6B75928C90F244920D7365C3 /* Confidence.swift in Sources */,
 				EB06ADEEFC04B76C433676B3 /* ConfidenceWordsText.swift in Sources */,
+				159166AA22707ACF5C54CAE6 /* Data+LittleEndian.swift in Sources */,
 				DBAC06DF3055A510E66EC703 /* DebugTestAccountSignIn.swift in Sources */,
 				0C7AA401AD97AA4BADC5B6E8 /* DebugToolsSection.swift in Sources */,
 				D7612018EF52F84AEC2E3307 /* DeleteTranscriptIntent.swift in Sources */,
@@ -2236,6 +2241,7 @@
 				22FB633C12EDFC1B63C95CCA /* CompanionViews.swift in Sources */,
 				40246323DEEB4666D27E3544 /* Confidence.swift in Sources */,
 				1EC1DBECB43BD6D6C0AEBF14 /* ConfidenceWordsText.swift in Sources */,
+				D1CE60C6E68FC6C090B677A6 /* Data+LittleEndian.swift in Sources */,
 				CDEC6B5F63199C0C54145AD9 /* DebugToolsSection.swift in Sources */,
 				351DCAE2C5458A9A660A7DFF /* DeleteTranscriptIntent.swift in Sources */,
 				E18075A1829F8667B949DD92 /* DemoLibrarySeeder.swift in Sources */,
@@ -2531,6 +2537,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2558,6 +2565,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2661,6 +2669,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2693,6 +2702,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2731,6 +2741,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2757,6 +2768,7 @@
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 			};
@@ -2788,6 +2800,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2814,6 +2827,7 @@
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 			};
@@ -2896,6 +2910,7 @@
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2922,6 +2937,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2948,6 +2964,7 @@
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 			};
@@ -2972,6 +2989,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2998,6 +3016,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -3024,6 +3043,7 @@
 				SDKROOT = macosx;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_STRICT_MEMORY_SAFETY = YES;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
 				SWIFT_VERSION = 6.0;
 			};

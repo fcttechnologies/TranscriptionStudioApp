@@ -43,9 +43,11 @@ enum AudioFileIO {
                 throw CocoaError(.fileWriteUnknown)
             }
             buffer.frameLength = AVAudioFrameCount(samples.count)
-            if let channel = buffer.floatChannelData?[0], !samples.isEmpty {
+            // Safety: channel 0 of the buffer's own float table has `frameCapacity` ≥ the sample
+            // count, and the source pointer is valid for the closure.
+            if let channel = unsafe buffer.floatChannelData?[0], !samples.isEmpty {
                 samples.withUnsafeBufferPointer { src in
-                    channel.update(from: src.baseAddress!, count: samples.count)
+                    unsafe channel.update(from: src.baseAddress!, count: samples.count)
                 }
             }
             try file.write(from: buffer)
@@ -69,8 +71,9 @@ enum AudioFileIO {
             return []
         }
         try file.read(into: buffer)
-        guard let channel = buffer.floatChannelData?[0] else { return [] }
-        return Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
+        // Safety: channel 0 of the buffer's own float table holds `frameLength` contiguous floats.
+        guard let channel = unsafe buffer.floatChannelData?[0] else { return [] }
+        return unsafe Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
     }
 
     /// Synthesize a distinct tone per speaker turn so seeking to a segment is *audible* — a

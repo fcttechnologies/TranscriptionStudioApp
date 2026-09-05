@@ -5,6 +5,7 @@
 // (it writes the session WAV from the mixed archive buffer), so this source doesn't write a file.
 
 import AVFoundation
+import FCTCore
 import Foundation
 
 enum MicCaptureError: Error, LocalizedError {
@@ -65,7 +66,7 @@ final class MicCaptureSource: CaptureSource, @unchecked Sendable {
             continuation.yield(AudioChunk(track: track, samples: samples, startTime: startTime))
             recorder?.record(PipelineEvent(
                 sessionID: sessionID, stage: .capture, level: .debug, message: "mic buffer",
-                metadata: ["samples": "\(samples.count)", "t": String(format: "%.2f", startTime)]))
+                metadata: ["samples": "\(samples.count)", "t": Format.fixed(startTime, decimals: 2)]))
         }
 
         engine.prepare()
@@ -117,12 +118,15 @@ final class MicCaptureSource: CaptureSource, @unchecked Sendable {
         guard let out = AVAudioPCMBuffer(pcmFormat: readOnly.format,
                                          frameCapacity: frames) else { return nil }
         out.frameLength = frames
-        readOnly.withUnsafeAudioBufferList { srcList in
-            let src = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: srcList))
-            let dst = UnsafeMutableAudioBufferListPointer(out.mutableAudioBufferList)
+        // Safety: both lists are the buffers' own C audio-buffer tables, valid for the closure
+        // (`readOnly` is alive for the call and `out` is retained here); the copy is bounded by
+        // the smaller of the two byte counts and the source is only read.
+        unsafe readOnly.withUnsafeAudioBufferList { srcList in
+            let src = unsafe UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: srcList))
+            let dst = unsafe UnsafeMutableAudioBufferListPointer(out.mutableAudioBufferList)
             for i in 0..<Swift.min(src.count, dst.count) {
-                guard let s = src[i].mData, let d = dst[i].mData else { continue }
-                memcpy(d, s, Int(Swift.min(src[i].mDataByteSize, dst[i].mDataByteSize)))
+                guard let s = unsafe src[i].mData, let d = unsafe dst[i].mData else { continue }
+                unsafe memcpy(d, s, Int(Swift.min(src[i].mDataByteSize, dst[i].mDataByteSize)))
             }
         }
         return out

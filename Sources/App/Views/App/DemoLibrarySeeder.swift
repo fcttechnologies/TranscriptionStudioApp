@@ -122,7 +122,7 @@ enum DemoLibrarySeeder {
             let cadence = max(0, sin(t * 2.6)) * (0.6 + 0.4 * sin(t * 13))
             let sample = sin(t * 2 * .pi * 180) * 0.18 * cadence
             let value = Int16(max(-1, min(1, sample)) * 32_760)
-            withUnsafeBytes(of: value.littleEndian) { pcm.append(contentsOf: $0) }
+            pcm.appendLittleEndian(value)
         }
         return wavFile(pcm: pcm, sampleRate: sampleRate)
     }
@@ -130,8 +130,8 @@ enum DemoLibrarySeeder {
     private static func wavFile(pcm: Data, sampleRate: Int) -> Data {
         var data = Data()
         func append(_ string: String) { data.append(contentsOf: string.utf8) }
-        func append32(_ value: UInt32) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
-        func append16(_ value: UInt16) { withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) } }
+        func append32(_ value: UInt32) { data.appendLittleEndian(value) }
+        func append16(_ value: UInt16) { data.appendLittleEndian(value) }
         append("RIFF"); append32(UInt32(36 + pcm.count)); append("WAVE")
         append("fmt "); append32(16); append16(1); append16(1)
         append32(UInt32(sampleRate)); append32(UInt32(sampleRate * 2)); append16(2); append16(16)

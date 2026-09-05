@@ -11,6 +11,7 @@
 #if os(macOS)
 import AVFoundation
 import CoreMedia
+import FCTCore
 import Foundation
 import ScreenCaptureKit
 
@@ -184,7 +185,7 @@ final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput, SCStr
         continuation.yield(AudioChunk(track: track, samples: samples, startTime: startTime))
         recorder?.record(PipelineEvent(
             sessionID: sessionID, stage: .capture, level: .debug, message: "\(track.rawValue) buffer",
-            metadata: ["samples": "\(samples.count)", "t": String(format: "%.2f", startTime)]))
+            metadata: ["samples": "\(samples.count)", "t": Format.fixed(startTime, decimals: 2)]))
     }
 
     // MARK: SCStreamDelegate
@@ -201,15 +202,19 @@ final class MeetingCaptureSource: NSObject, CaptureSource, SCStreamOutput, SCStr
 
     /// CMSampleBuffer (audio) -> AVAudioPCMBuffer in the buffer's own format.
     private static func pcmBuffer(from sampleBuffer: CMSampleBuffer) -> AVAudioPCMBuffer? {
+        // Safety: the stream description pointer is owned by `formatDesc`, which outlives the
+        // `AVAudioFormat` init that reads it here.
         guard let formatDesc = CMSampleBufferGetFormatDescription(sampleBuffer),
-              let asbdPtr = CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc),
-              let format = AVAudioFormat(streamDescription: asbdPtr) else {
+              let asbdPtr = unsafe CMAudioFormatDescriptionGetStreamBasicDescription(formatDesc),
+              let format = unsafe AVAudioFormat(streamDescription: asbdPtr) else {
             return nil
         }
         let frames = AVAudioFrameCount(CMSampleBufferGetNumSamples(sampleBuffer))
         guard let pcm = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frames) else { return nil }
         pcm.frameLength = frames
-        let status = CMSampleBufferCopyPCMDataIntoAudioBufferList(
+        // Safety: `pcm` was allocated for exactly `frames` frames of this format, and its buffer
+        // list is its own; the copy writes at most that many.
+        let status = unsafe CMSampleBufferCopyPCMDataIntoAudioBufferList(
             sampleBuffer, at: 0, frameCount: Int32(frames), into: pcm.mutableAudioBufferList)
         return status == noErr ? pcm : nil
     }

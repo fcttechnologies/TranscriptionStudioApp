@@ -30,7 +30,9 @@ struct PressableButtonStyle: ButtonStyle {
 extension AnyTransition {
     /// A move+fade transition that collapses to a plain cross-fade under Reduce Motion.
     static func motionAware(_ edge: Edge, reduceMotion: Bool) -> AnyTransition {
-        reduceMotion
+        // Safety: `AnyTransition.opacity` is SwiftUI's own immutable static, `nonisolated(unsafe)`
+        // in the SDK; reading it from any actor is a read of a constant.
+        unsafe reduceMotion
             ? .opacity
             : .move(edge: edge).combined(with: .opacity)
     }

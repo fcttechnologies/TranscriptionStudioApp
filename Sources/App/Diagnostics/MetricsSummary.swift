@@ -1,3 +1,4 @@
+import FCTCore
 import Foundation
 
 // The pure decision + formatting layer for MetricKit production diagnostics.
@@ -170,8 +171,8 @@ struct MetricReportSummary: Sendable, Equatable {
 enum MetricsFormat {
     /// A duration in seconds → a compact "N.NNs" (or "N ms" under a second).
     static func seconds(_ value: Double) -> String {
-        if value < 1 { return String(format: "%.0fms", value * 1000) }
-        return String(format: "%.2fs", value)
+        if value < 1 { return "\(Format.fixed(value * 1000, decimals: 0))ms" }
+        return "\(Format.fixed(value, decimals: 2))s"
     }
 
     /// A byte count → a human size via `ByteCountFormatStyle` (memory footprints).

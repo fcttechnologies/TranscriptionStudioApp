@@ -11,11 +11,21 @@ import Testing
 @Suite("StreamingWav — unknown-length WAV for streamed synthesis")
 struct StreamingWavTests {
     private func uint32(_ data: Data, at offset: Int) -> UInt32 {
-        data.subdata(in: offset..<(offset + 4)).withUnsafeBytes { $0.loadUnaligned(as: UInt32.self) }
+        littleEndian(data, at: offset)
     }
 
     private func uint16(_ data: Data, at offset: Int) -> UInt16 {
-        data.subdata(in: offset..<(offset + 2)).withUnsafeBytes { $0.loadUnaligned(as: UInt16.self) }
+        littleEndian(data, at: offset)
+    }
+
+    /// The little-endian integer at `offset`, assembled by shifts: the inverse of what the
+    /// writer does, and no pointer over the bytes.
+    private func littleEndian<T: FixedWidthInteger>(_ data: Data, at offset: Int) -> T {
+        var value: T = 0
+        for i in stride(from: T.bitWidth / 8 - 1, through: 0, by: -1) {
+            value = (value << 8) | T(truncatingIfNeeded: data[data.startIndex + offset + i])
+        }
+        return value
     }
 
     @Test func headerCarriesTheCanonicalFieldsAndTheUnknownLengthSentinel() {
@@ -40,9 +50,7 @@ struct StreamingWavTests {
         let data = StreamingWav.pcm16Data([0, 1, -1, 0.5, 2.0, -3.0])
 
         #expect(data.count == 12)
-        let values = (0..<6).map { index in
-            data.subdata(in: index * 2..<(index * 2 + 2)).withUnsafeBytes { $0.loadUnaligned(as: Int16.self) }
-        }
+        let values: [Int16] = (0..<6).map { index in littleEndian(data, at: index * 2) }
         #expect(values[0] == 0)
         #expect(values[1] == 32767)
         #expect(values[2] == -32767)

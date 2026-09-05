@@ -22,7 +22,8 @@ struct BiometricAuthenticator: BiometricAuthenticating {
         let context = LAContext()
         let policy: LAPolicy = .deviceOwnerAuthentication
         var evaluationError: NSError?
-        guard context.canEvaluatePolicy(policy, error: &evaluationError) else {
+        // Safety: LocalAuthentication's NSError** is written during this call and read right after.
+        guard unsafe context.canEvaluatePolicy(policy, error: &evaluationError) else {
             // No biometry AND no passcode set — the device has no lock at all, so there's
             // nothing to gate against. Fail closed: an un-unlockable session stays shut.
             Logger.persistence.error("Biometric unlock unavailable: \(evaluationError?.localizedDescription ?? "unknown", privacy: .public)")

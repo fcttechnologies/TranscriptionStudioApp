@@ -92,9 +92,8 @@ enum ModelStorageScanner {
 
     /// The on-disk footprint of a file OR a directory (recursive).
     static func pathSize(_ url: URL) -> Int64 {
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return 0 }
-        return isDirectory.boolValue ? directorySize(url) : fileSize(url)
+        guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey]) else { return 0 }
+        return values.isDirectory == true ? directorySize(url) : fileSize(url)
     }
 
     private static func directorySize(_ url: URL) -> Int64 {

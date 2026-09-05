@@ -19,17 +19,19 @@ struct AudioResamplerTests {
         buffer.frameLength = AVAudioFrameCount(frameCount)
         let channels = Int(format.channelCount)
 
-        if format.commonFormat == .pcmFormatFloat32, let data = buffer.floatChannelData {
+        // Safety: the channel tables are the buffer's own, `channelCount` channels of
+        // `frameCapacity` samples each, and every index below stays inside both.
+        if format.commonFormat == .pcmFormatFloat32, let data = unsafe buffer.floatChannelData {
             for channel in 0..<channels {
                 for frame in 0..<frameCount {
-                    data[channel][frame] = Float(sin(2 * .pi * 220 * Double(frame) / format.sampleRate)) * 0.5
+                    unsafe data[channel][frame] = Float(sin(2 * .pi * 220 * Double(frame) / format.sampleRate)) * 0.5
                 }
             }
-        } else if format.commonFormat == .pcmFormatInt16, let data = buffer.int16ChannelData {
+        } else if format.commonFormat == .pcmFormatInt16, let data = unsafe buffer.int16ChannelData {
             for channel in 0..<channels {
                 for frame in 0..<frameCount {
                     let sample = sin(2 * .pi * 220 * Double(frame) / format.sampleRate) * 0.5
-                    data[channel][frame] = Int16(sample * Double(Int16.max))
+                    unsafe data[channel][frame] = Int16(sample * Double(Int16.max))
                 }
             }
         }
@@ -42,7 +44,8 @@ struct AudioResamplerTests {
         let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
                                    channels: 1, interleaved: false)!
         let buffer = makeBuffer(format: format, frameCount: 800)
-        let expected = Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: 800))
+        // Safety: channel 0 holds the 800 frames just written.
+        let expected = unsafe Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: 800))
 
         let resampler = AudioResampler()
         let out = resampler.resample(buffer)

@@ -12,6 +12,7 @@
 // See Documentation/SORTFORMER-MODEL.md.
 
 import AVFoundation
+import FCTCore
 import Foundation
 import Testing
 @testable import TranscriptionStudio
@@ -120,7 +121,7 @@ struct SortformerRealModelTests {
             let sfResult = try await sortformer.diarize(samples: samples)
             let (sfAcc, sfFrames) = AttributionScoring.accuracy(turns: sfResult.turns, groundTruth: gt)
             #expect(sfFrames > 0)
-            #expect(sfAcc >= 0.85, "\(clip): Sortformer attribution \(String(format: "%.1f%%", sfAcc * 100))")
+            #expect(sfAcc >= 0.85, "\(clip): Sortformer attribution \(FCTCore.Format.fixed(sfAcc * 100, decimals: 1))%")
         }
     }
 }

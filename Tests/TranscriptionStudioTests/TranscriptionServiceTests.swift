@@ -85,8 +85,8 @@ struct TranscriptionServiceTests {
         let sampleRate: UInt32 = 16_000
         let sampleCount = 3_200
         var data = Data()
-        func append32(_ v: UInt32) { data.append(contentsOf: withUnsafeBytes(of: v.littleEndian) { Array($0) }) }
-        func append16(_ v: UInt16) { data.append(contentsOf: withUnsafeBytes(of: v.littleEndian) { Array($0) }) }
+        func append32(_ v: UInt32) { data.appendLittleEndian(v) }
+        func append16(_ v: UInt16) { data.appendLittleEndian(v) }
         let byteRate = sampleRate * 2
         let dataSize = UInt32(sampleCount * 2)
         data.append(contentsOf: "RIFF".utf8); append32(36 + dataSize); data.append(contentsOf: "WAVE".utf8)

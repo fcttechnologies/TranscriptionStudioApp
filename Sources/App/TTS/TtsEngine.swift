@@ -41,9 +41,11 @@ struct SynthesizedSpeech: Sendable, Equatable {
                 throw TtsEngineError.audioEncodingFailed("couldn't allocate an audio buffer")
             }
             buffer.frameLength = AVAudioFrameCount(samples.count)
-            if let channel = buffer.floatChannelData?[0] {
+            // Safety: channel 0 of the buffer's own float table has `frameCapacity` ≥ the sample
+            // count, and the source pointer is valid for the closure.
+            if let channel = unsafe buffer.floatChannelData?[0] {
                 samples.withUnsafeBufferPointer { source in
-                    channel.update(from: source.baseAddress!, count: samples.count)
+                    unsafe channel.update(from: source.baseAddress!, count: samples.count)
                 }
             }
             try file.write(from: buffer)

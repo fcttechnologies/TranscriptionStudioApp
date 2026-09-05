@@ -1,3 +1,4 @@
+import FCTCore
 import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
@@ -153,7 +154,7 @@ enum TranscriptExport {
         let m = (totalMillis % 3_600_000) / 60_000
         let s = (totalMillis % 60_000) / 1000
         let ms = totalMillis % 1000
-        return String(format: "%02d:%02d:%02d%@%03d", h, m, s, separator, ms)
+        return "\(FCTCore.Format.padded(h, 2)):\(FCTCore.Format.padded(m, 2)):\(FCTCore.Format.padded(s, 2))\(separator)\(FCTCore.Format.padded(ms, 3))"
     }
 
     private static func clock(_ seconds: TimeInterval) -> String {

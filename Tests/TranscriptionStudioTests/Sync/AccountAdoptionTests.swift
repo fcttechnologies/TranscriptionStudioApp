@@ -159,7 +159,8 @@ struct AccountAdoptionTests {
 /// cannot read, so a test staging `Data("bytes".utf8)` would prove only that the refusal works.
 @MainActor
 private func avatarJPEG(side: Int = 64) -> Data {
-    let context = CGContext(
+    // Safety: `data: nil` asks CoreGraphics to own the bitmap, so no caller buffer can dangle.
+    let context = unsafe CGContext(
         data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
         space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
     )!

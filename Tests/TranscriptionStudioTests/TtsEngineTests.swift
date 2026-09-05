@@ -176,8 +176,9 @@ struct SynthesizedSpeechTests {
         let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat,
                                                    frameCapacity: AVAudioFrameCount(file.length)))
         try file.read(into: buffer)
-        let decoded = Array(UnsafeBufferPointer(start: buffer.floatChannelData![0],
-                                                count: Int(buffer.frameLength)))
+        // Safety: channel 0 holds the `frameLength` floats the read just filled.
+        let decoded = unsafe Array(UnsafeBufferPointer(start: buffer.floatChannelData![0],
+                                                       count: Int(buffer.frameLength)))
         // 16-bit quantization, so assert the signal's shape survived rather than exact samples.
         #expect((decoded.map(abs).max() ?? 0) > 0.4)
     }

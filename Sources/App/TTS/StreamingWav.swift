@@ -45,14 +45,14 @@ enum StreamingWav {
     }
 
     private static func appendUInt32(_ data: inout Data, _ value: UInt32) {
-        withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+        data.appendLittleEndian(value)
     }
 
     private static func appendUInt16(_ data: inout Data, _ value: UInt16) {
-        withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+        data.appendLittleEndian(value)
     }
 
     private static func appendInt16(_ data: inout Data, _ value: Int16) {
-        withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+        data.appendLittleEndian(value)
     }
 }

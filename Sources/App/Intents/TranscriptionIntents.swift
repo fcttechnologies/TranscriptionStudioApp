@@ -528,6 +528,8 @@ struct OpenLibraryIntent: AppIntent {
 enum TranscriptionAppIntents {
     @MainActor
     static func registerDependencies(appModel: AppModel) {
-        AppDependencyManager.shared.add(dependency: appModel)
+        // Safety: `AppDependencyManager.shared` is the framework's own singleton, `nonisolated(unsafe)`
+        // in the SDK; it is reached here once, on the main actor, at launch.
+        unsafe AppDependencyManager.shared.add(dependency: appModel)
     }
 }

@@ -18,7 +18,10 @@ struct TranscriptionStudioWidgets: WidgetBundle {
 func clock(_ seconds: TimeInterval) -> String {
     let total = Int(seconds.rounded())
     let h = total / 3600, m = (total % 3600) / 60, s = total % 60
-    return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
+    // Two-digit fields by hand: the widget carries no package, and a wire-fixed clock is not a
+    // locale's to format.
+    func two(_ v: Int) -> String { v < 10 ? "0\(v)" : "\(v)" }
+    return h > 0 ? "\(h):\(two(m)):\(two(s))" : "\(two(m)):\(two(s))"
 }
 
 /// A running elapsed clock pinned to a max width per magnitude tier, so the growing digits
