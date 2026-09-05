@@ -36,9 +36,9 @@ struct SystemLoadSamplerTests {
         sampler.start()
         // Same starvation-tolerant ceiling as above — the assertion below is what this test proves.
         try await waitUntil(timeout: 15) { !store.loadSamples.isEmpty }
-        sampler.stop()
-        // Let any sample already mid-flight when stop() fired land before the baseline read.
-        try await Task.sleep(for: .milliseconds(100))
+        // Awaiting the cancelled loop is the observation: once it has returned, no tick of it
+        // can still be mid-flight, so the count is final without a grace period to lose under load.
+        await sampler.stop()?.value
         let countAtStop = store.loadSamples.count
         try await Task.sleep(for: .milliseconds(300))
 

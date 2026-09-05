@@ -49,16 +49,26 @@ final class SystemLoadSampler: Sendable {
                     cpuPercent: cpu,
                     memoryFootprint: Self.memoryFootprint()
                 )
+                // Cancellation can land while the tick is computing its sample; a stopped
+                // sampler appends nothing, so `stop()` means stopped rather than "stopped one
+                // sample from now".
+                if Task.isCancelled { return }
                 await MainActor.run { store.append(sample) }
             }
         }
         task.withLock { $0 = sampler }
     }
 
-    func stop() {
+    /// Cancel the sampling loop. Returns the cancelled task so a caller that needs the loop to
+    /// be *finished* — a test asserting nothing more lands — can await it; nothing in the app
+    /// needs to, since a cancelled sampler already appends nothing.
+    @discardableResult
+    func stop() -> Task<Void, Never>? {
         task.withLock { current in
-            current?.cancel()
+            let previous = current
+            previous?.cancel()
             current = nil
+            return previous
         }
     }
 
