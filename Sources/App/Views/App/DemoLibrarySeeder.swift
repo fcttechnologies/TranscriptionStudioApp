@@ -2,14 +2,22 @@
 import Foundation
 import SwiftData
 
-/// DEBUG-only: seed a small, realistic library when launched with `-TSSeedDemoLibrary`
-/// (simulator screenshots, agent-driven E2E, design review). Two sessions cover the detail
-/// view's two layouts — a multi-speaker meeting (grouped blocks) and a single-voice memo
-/// (flat paragraphs) — each with synthesized, genuinely playable audio so the transport,
-/// karaoke highlight and Live Activity paths all run for real. Idempotent: only an empty
-/// library is seeded.
+/// DEBUG-only: seed a realistic library when launched with `-TSSeedDemoLibrary` (simulator
+/// screenshots, agent-driven E2E, design review) or from the debug tools, which is also what the
+/// Screenshot Studio's scenes render.
+///
+/// The two hero sessions cover the detail view's two layouts — a multi-speaker meeting (grouped
+/// blocks) and a single-voice memo (flat paragraphs) — each with synthesized, genuinely playable
+/// audio so the transport, karaoke highlight and Live Activity paths all run for real. The rest
+/// are the library around them: spread across a week so the feed sections by day, in every kind
+/// the app records, because a feed holding one row photographs as an empty product.
+///
+/// `seedIfRequested` is idempotent (only an empty library is seeded); the affordance is not.
 enum DemoLibrarySeeder {
     static let launchArgument = "-TSSeedDemoLibrary"
+
+    /// The multi-speaker session the transcript and calendar scenes point at, by title.
+    static let heroMeetingTitle = "Kickoff — Rivera Dental rebuild"
 
     @MainActor
     static func seedIfRequested(context: ModelContext) {
@@ -25,13 +33,125 @@ enum DemoLibrarySeeder {
     static func seed(context: ModelContext) {
         context.insert(meetingSession())
         context.insert(memoSession())
+        for session in librarySessions() { context.insert(session) }
         try? context.save()
+    }
+
+    // MARK: The library around the two heroes
+
+    /// Six more finished sessions, dated back across the week so the feed groups them under
+    /// several day headers. No audio: the transport is the hero sessions' job, and a megabyte of
+    /// synthesized WAV per row buys a screenshot nothing.
+    private static func librarySessions() -> [TranscriptSession] {
+        [
+            filled(
+                title: "Pricing call — Northside Auto",
+                kind: .meetingRecording,
+                daysAgo: 1, hour: 15,
+                lines: [
+                    (.me, 0.3, "Thanks for making time. I want to walk the two options and let you pick."),
+                    (.speaker(0), 5.9, "Go ahead. The board wants a number before Friday."),
+                    (.me, 10.4, "Option one is the retainer — four hours a month, everything included."),
+                    (.speaker(0), 16.8, "And the second one is per project?"),
+                    (.me, 20.1, "Per project, with a discount if you commit to three this year."),
+                    (.speaker(0), 26.3, "Send both in writing and I'll take it to the board Thursday."),
+                ],
+                duration: 32
+            ),
+            filled(
+                title: "Site walk — Maple Street storefront",
+                kind: .roomRecording,
+                daysAgo: 1, hour: 10,
+                lines: [
+                    (.speaker(0), 0.4, "Standing in the doorway. The signage is the first problem — nobody can read it from the crosswalk."),
+                    (.speaker(0), 8.2, "Interior lighting is warm, which is good, but the back half is dark by three in the afternoon."),
+                    (.speaker(0), 16.7, "Counter placement blocks the natural path to the register. Worth moving before we photograph."),
+                    (.speaker(0), 24.9, "Measure the window bay next visit — the vinyl quote depends on it."),
+                ],
+                duration: 31,
+                locationName: "Maple Street"
+            ),
+            filled(
+                title: "Podcast draft — episode 12 intro",
+                kind: .fileTranscription,
+                daysAgo: 2, hour: 9,
+                lines: [
+                    (.speaker(0), 0.2, "This week we're talking about the part of a rebuild nobody quotes for — the waiting."),
+                    (.speaker(0), 7.5, "Every project I've shipped had a stretch where the work was done and the client wasn't ready."),
+                    (.speaker(0), 15.1, "So the question is whether you build that stretch into the schedule or pretend it away."),
+                    (.speaker(0), 22.4, "My answer, after four years of pretending it away, is that you build it in."),
+                ],
+                duration: 29
+            ),
+            filled(
+                title: "Standup — Thursday",
+                kind: .meetingRecording,
+                daysAgo: 3, hour: 8,
+                lines: [
+                    (.me, 0.3, "Quick round. What's blocked?"),
+                    (.speaker(0), 3.1, "Nothing blocked. The booking form is in review, I'll merge it this morning."),
+                    (.speaker(1), 8.6, "I'm waiting on the photo selects before I can finish the home page."),
+                    (.me, 13.2, "Selects come back today. Anything else goes to the parking lot."),
+                    (.speaker(1), 18.0, "Then I'm clear."),
+                ],
+                duration: 23
+            ),
+            filled(
+                title: "Voice memo — follow-ups before the weekend",
+                kind: .roomRecording,
+                daysAgo: 4, hour: 17,
+                lines: [
+                    (.speaker(0), 0.3, "Four things before I lose them."),
+                    (.speaker(0), 3.4, "Invoice the dental group for the deposit — they asked for it itemized."),
+                    (.speaker(0), 9.8, "Renew the domain that expires next month, it's on the old card."),
+                    (.speaker(0), 16.2, "And call the printer back about the menu boards."),
+                ],
+                duration: 22
+            ),
+            filled(
+                title: "Client interview — Harper & Sons",
+                kind: .fileTranscription,
+                daysAgo: 5, hour: 13,
+                lines: [
+                    (.me, 0.4, "Tell me how a customer finds you today."),
+                    (.speaker(0), 4.2, "Word of mouth, mostly. My father ran it that way for thirty years."),
+                    (.me, 10.1, "And when someone does look you up?"),
+                    (.speaker(0), 13.5, "They find the map listing with the wrong hours on it. That's the whole internet as far as we're concerned."),
+                    (.me, 21.7, "That's the first thing we fix, then. It costs nothing and it's costing you every week."),
+                    (.speaker(0), 28.9, "That's what my daughter has been telling me."),
+                ],
+                duration: 35
+            ),
+        ]
+    }
+
+    /// One finished session: the transcript, the metadata line the feed card reads, and the day
+    /// the feed sections it under.
+    private static func filled(title: String,
+                               kind: SessionKind,
+                               daysAgo: Int,
+                               hour: Int,
+                               lines: [(speaker: SpeakerID, start: TimeInterval, text: String)],
+                               duration: TimeInterval,
+                               locationName: String? = nil) -> TranscriptSession {
+        let session = TranscriptSession(title: title, kind: kind, createdAt: past(daysAgo: daysAgo, hour: hour))
+        fill(session, lines: lines, duration: duration, audio: false)
+        session.locationName = locationName
+        session.highlightsStatus = .ready
+        return session
+    }
+
+    /// A stamp `daysAgo` days back at `hour`, so the feed's day sections are stable whenever the
+    /// seed is run.
+    private static func past(daysAgo: Int, hour: Int) -> Date {
+        let day = Calendar.current.date(byAdding: .day, value: -daysAgo, to: .now) ?? .now
+        return Calendar.current.date(bySettingHour: hour, minute: 20, second: 0, of: day) ?? day
     }
 
     // MARK: The two sessions
 
     private static func meetingSession() -> TranscriptSession {
-        let session = TranscriptSession(title: "Kickoff — Rivera Dental rebuild", kind: .meetingRecording)
+        let session = TranscriptSession(title: heroMeetingTitle, kind: .meetingRecording)
         let lines: [(SpeakerID, TimeInterval, String)] = [
             (.me, 0.4, "Alright, we're on. The goal today is scope — what actually ships in the first release."),
             (.me, 6.1, "I want the booking flow live before we touch the gallery."),
@@ -90,11 +210,12 @@ enum DemoLibrarySeeder {
 
     private static func fill(_ session: TranscriptSession,
                              lines: [(speaker: SpeakerID, start: TimeInterval, text: String)],
-                             duration: TimeInterval) {
+                             duration: TimeInterval,
+                             audio: Bool = true) {
         session.status = .complete
         session.duration = duration
         session.fullText = lines.map(\.text).joined(separator: " ")
-        session.audioData = wavData(duration: duration)
+        if audio { session.audioData = wavData(duration: duration) }
         var segments: [StoredSegment] = []
         for (index, line) in lines.enumerated() {
             let end = index + 1 < lines.count ? lines[index + 1].start - 0.2 : duration

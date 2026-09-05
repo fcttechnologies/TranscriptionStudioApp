@@ -12,15 +12,19 @@ import SwiftUI
 /// sends a tombstone per session to every device on the account. So the seed writes into a second,
 /// local-only store file and the reset can only erase that file.
 ///
-/// The demo store is rendered by whatever carries it — a Screenshot Studio scene, which this app
-/// does not have yet. The app's own screens always render the account's library.
-/// `-TSSeedDemoLibrary` is the separate launch-time path that fills an empty library on screen.
+/// The demo store is rendered by whatever carries it — a Screenshot Studio scene
+/// (`ScreenshotStudioCatalog`), which carries the detached container and the `AppModel` write seam
+/// together. The app's own screens always render the account's library. `-TSSeedDemoLibrary` is
+/// the separate launch-time path that fills an empty library on screen.
 ///
 /// Deliberately not localized: a Debug-only surface in the shipped catalog is ten translations of
 /// a control no user ever sees.
 struct DebugToolsSection: View {
     @Environment(AccountController.self) private var account
     @Environment(\.debugDemoStore) private var debugStore
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
 
     @State private var confirmingReset = false
     @State private var lastAction: String?
@@ -48,6 +52,23 @@ struct DebugToolsSection: View {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier(A11yID.debugToolsStatus)
             }
+
+            // The App-Store-screenshot harness. It carries its own identifier contract, so the
+            // one capture driver that walks the whole FCT fleet finds the way in here too.
+            #if os(iOS)
+            ScreenshotStudioLink(scenes: ScreenshotStudioCatalog.scenes) { context in
+                DemoLibrarySeeder.seed(context: context)
+            }
+            #else
+            // Opens the studio's OWN window rather than pushing inside this sheet: a Mac App Store
+            // shot is a window, and a scene confined to the sheet captures at sheet width.
+            Button {
+                openWindow(id: ScreenshotStudioWindow.id)
+            } label: {
+                Label { Text(verbatim: "Screenshot Studio") } icon: { Image(systemName: "camera.viewfinder") }
+            }
+            .accessibilityIdentifier(ScreenshotStudioIdentifiers.link)
+            #endif
         } header: {
             Text(verbatim: "Debug tools")
         } footer: {

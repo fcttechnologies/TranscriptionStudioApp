@@ -26,8 +26,9 @@ struct TranscriptionStudioApp: App {
     #if DEBUG
     /// The debug surface's own store. Every session the debug tools seed or delete is a synced
     /// row, so they act on a second, local-only store file instead. The app's own root keeps its
-    /// own container: nothing the debug tools write can reach the account's library.
-    @State private var debugStore = DebugDemoStore(store: AppModelContainer.configuration)
+    /// own container: nothing the debug tools write can reach the account's library, and each
+    /// studio scene carries the demo store itself (`ScreenshotStudioCatalog`).
+    private let debugStore = TranscriptionDebugStore.demo
     #endif
     /// MetricKit production diagnostics — daily metric reports + crash/hang/hitch/launch/memory
     /// events, tagged with the pipeline stage they occurred in. Held for the app's lifetime.
@@ -97,6 +98,23 @@ struct TranscriptionStudioApp: App {
         #if os(macOS)
         .defaultSize(width: 1140, height: 740)
         .commands { AppCommands(app: app) }
+        #endif
+
+        // The Mac screenshot studio gets its OWN window. A Mac App Store shot IS a window, and
+        // hanging the studio off the Settings sheet confines every scene to the sheet's bounds, so
+        // the feed captures at sheet width and the capture is useless. iOS does not have this
+        // problem because `fullScreenCover` escapes its sheet; nothing escapes a sheet on macOS.
+        // Sized to the Mac App Store's own 1440x900 minimum so a capture needs no rescaling.
+        // `Text(verbatim:)` rather than a bare literal, which would bind the `LocalizedStringKey`
+        // overload: this window exists only in DEBUG, so its title is developer-facing and reaches
+        // no user in any language — extracted as a key it would sit in the shipping catalog
+        // demanding ten translations for a string no shipping build even compiles.
+        #if DEBUG && os(macOS)
+        Window(Text(verbatim: "Screenshot Studio"), id: ScreenshotStudioWindow.id) {
+            ScreenshotStudioWindowContent()
+                .frame(minWidth: 1440, minHeight: 900)
+        }
+        .defaultSize(width: 1440, height: 900)
         #endif
     }
 
