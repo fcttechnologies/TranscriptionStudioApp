@@ -42,13 +42,3 @@ enum SpeechModel: String, CaseIterable, Identifiable, Sendable {
         root.appendingPathComponent(rawValue, isDirectory: true)
     }
 }
-
-/// How an engine gets its model onto disk before loading it: the store's download by default,
-/// a no-op or a failure in tests. Progress is the fraction of the model's bytes present.
-typealias SpeechModelInstaller = @Sendable (SpeechModel, @escaping @Sendable (Double) -> Void) async throws -> Void
-
-extension SpeechModel {
-    static let install: SpeechModelInstaller = { model, onProgress in
-        try await SpeechModelStore.ensureInstalled(model, onProgress: onProgress)
-    }
-}
