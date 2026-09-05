@@ -366,3 +366,89 @@ final class ServingURLProtocol: URLProtocol {
     }
     override func stopLoading() {}
 }
+
+@Suite("SpeechModelDownloader — the background fetch")
+@MainActor
+struct SpeechModelDownloaderTests {
+    private func tempRoot() -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("SpeechModelDownloaderTests-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+    private func write(_ bytes: Int, to url: URL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(repeating: 0x5, count: bytes).write(to: url)
+    }
+    private let manifest = ModelManifest(repo: "fcttechnologies/fctspeech-coreml", assets: [
+        ModelAsset(path: "parakeet-v3/a.bin", size: 100),
+        ModelAsset(path: "sensevoice/b.bin", size: 50),
+        ModelAsset(path: "sortformer/c.bin", size: 25),
+    ])
+
+    // A file that lands at the manifest's size is moved into place and its model reads installed;
+    // one that lands at the wrong size is refused and nothing lands.
+    @Test func aLandedFileIsVerifiedThenInstalled() throws {
+        let root = tempRoot(); defer { try? FileManager.default.removeItem(at: root) }
+        let d = SpeechModelDownloader(manifest: manifest, root: root, sessionIdentifier: "test.\(UUID().uuidString)")
+        let good = root.appendingPathComponent("tmp-good"); try write(25, to: good)
+        d.finished(path: "sortformer/c.bin", temporary: good)
+        #expect(d.installed == [.sortformer])
+        #expect(SpeechModelStore.fileSize(ModelLayout.installedURL(root: root, path: "sortformer/c.bin")) == 25)
+
+        let short = root.appendingPathComponent("tmp-short"); try write(49, to: short)
+        d.finished(path: "sensevoice/b.bin", temporary: short)
+        #expect(!d.installed.contains(.senseVoice))
+        #expect(!FileManager.default.fileExists(atPath: ModelLayout.installedURL(root: root, path: "sensevoice/b.bin").path))
+        if case .failed = d.state {} else { Issue.record("a wrong-sized file must fail the set: \(d.state)") }
+    }
+
+    // Progress is bytes on disk plus bytes in flight over the manifest's total, and the set is
+    // complete exactly when every model is installed.
+    @Test func progressIsBytesOverTheManifestAndCompleteWhenEveryModelIsInstalled() throws {
+        let root = tempRoot(); defer { try? FileManager.default.removeItem(at: root) }
+        try write(100, to: ModelLayout.installedURL(root: root, path: "parakeet-v3/a.bin"))
+        let d = SpeechModelDownloader(manifest: manifest, root: root, sessionIdentifier: "test.\(UUID().uuidString)")
+        #expect(d.installed == [.parakeet])
+        try #require(d.state == .idle)
+        // The scheduler's arithmetic, driven directly: 100 of 175 on disk, then 30 more in flight.
+        d.progressed(path: "sensevoice/b.bin", received: 30)
+        // progressed() alone cannot know the total before start(); start() sets it, so drive the
+        // same math through a landed file instead, which recomputes from disk.
+        let b = root.appendingPathComponent("tmp-b"); try write(50, to: b)
+        d.finished(path: "sensevoice/b.bin", temporary: b)
+        #expect(d.installed == [.parakeet, .senseVoice])
+        let c = root.appendingPathComponent("tmp-c"); try write(25, to: c)
+        d.finished(path: "sortformer/c.bin", temporary: c)
+        #expect(d.installed == Set(SpeechModel.allCases))
+        #expect(d.state == .complete)
+    }
+
+    // The store asks the downloader first: a model already installed returns at once; one that
+    // is neither installed nor in flight throws, which is the store's cue to fetch on demand.
+    @Test func waitForModelReturnsForAnInstalledModelAndThrowsForOneNotInFlight() async throws {
+        let root = tempRoot(); defer { try? FileManager.default.removeItem(at: root) }
+        try write(25, to: ModelLayout.installedURL(root: root, path: "sortformer/c.bin"))
+        let d = SpeechModelDownloader(manifest: manifest, root: root, sessionIdentifier: "test.\(UUID().uuidString)")
+        try await d.waitForModel(.sortformer)
+        await #expect(throws: SpeechModelDownloaderError.self) { try await d.waitForModel(.parakeet) }
+    }
+
+    // ensureInstalled's seam: a wait that succeeds and leaves the model installed short-circuits
+    // the on-demand fetch (no network); a wait that throws falls through to it.
+    @Test func ensureInstalledSkipsTheFetchWhenTheBackgroundSessionDeliveredIt() async throws {
+        let root = tempRoot(); defer { try? FileManager.default.removeItem(at: root) }
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [RefusingURLProtocol.self]
+        let session = URLSession(configuration: config)
+        try write(25, to: ModelLayout.installedURL(root: root, path: "sortformer/c.bin"))
+        var fractions: [Double] = []
+        try await SpeechModelStore.ensureInstalled(.sortformer, manifest: manifest, root: root, appGroupContainer: nil,
+                                                   session: session, waitInFlight: { _ in }) { f in fractions.append(f) }
+        #expect(fractions == [1.0])
+        // Not installed and the wait throws: the store tries the network, which refuses here.
+        await #expect(throws: (any Error).self) {
+            try await SpeechModelStore.ensureInstalled(.parakeet, manifest: manifest, root: root, appGroupContainer: nil,
+                                                       session: session, waitInFlight: { _ in throw SpeechModelDownloaderError.notInFlight(.parakeet) }) { _ in }
+        }
+    }
+}

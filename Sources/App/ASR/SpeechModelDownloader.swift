@@ -107,14 +107,14 @@ final class SpeechModelDownloader {
         installed = Set(SpeechModel.allCases.filter { SpeechModelStore.isInstalled($0, manifest: manifest, root: root) })
     }
 
-    // MARK: - Delegate events, on the main actor
+    // MARK: - Delegate events, on the main actor (driven directly by the tests)
 
-    fileprivate func progressed(path: String, received: Int) {
+    func progressed(path: String, received: Int) {
         receivedByPath[path] = received
         publishProgress()
     }
 
-    fileprivate func finished(path: String, temporary: URL) {
+    func finished(path: String, temporary: URL) {
         guard let asset = manifest.assets.first(where: { $0.path == path }) else { return }
         let fm = FileManager.default
         do {
@@ -139,7 +139,7 @@ final class SpeechModelDownloader {
         publishProgress()
     }
 
-    fileprivate func failed(path: String, error: Error) {
+    func failed(path: String, error: Error) {
         state = .failed(error.localizedDescription)
         if let model = ModelAsset(path: path, size: 0).model {
             waiters.removeValue(forKey: model)?.forEach { $0.resume(throwing: error) }
