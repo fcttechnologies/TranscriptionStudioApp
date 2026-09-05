@@ -94,13 +94,13 @@ struct TranscriptionShortcuts: AppShortcutsProvider {
             systemImageName: "text.redaction")
 
         AppShortcut(
-            intent: OpenInspectorIntent(),
+            intent: DictateIntent(),
             phrases: [
-                "Open the inspector in \(.applicationName)",
-                "Show my \(.applicationName) inspector"
+                "Dictate in \(.applicationName)",
+                "Take a dictation with \(.applicationName)"
             ],
-            shortTitle: "Open Inspector",
-            systemImageName: "gauge.with.dots.needle.bottom.50percent")
+            shortTitle: "Dictate",
+            systemImageName: "mic")
 
         AppShortcut(
             intent: TranscribeLinkIntent(),
