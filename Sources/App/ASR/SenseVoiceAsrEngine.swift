@@ -6,25 +6,24 @@ import Foundation
 /// own (`textNorm`). Models live at `FCTSpeech/sensevoice/` under the app's support directory.
 actor SenseVoiceAsrEngine: AsrEngine {
     private let modelsDirectory: URL
+    private let install: SpeechModelInstaller
     private let language: SenseVoiceLanguage
     private var transcriber: Transcriber?
     private var preparationTask: Task<Void, Error>?
 
-    init(language: SenseVoiceLanguage, modelsDirectory: URL = SenseVoiceAsrEngine.defaultModelsDirectory()) {
+    init(language: SenseVoiceLanguage, root: URL = SpeechModel.root(),
+         install: @escaping SpeechModelInstaller = SpeechModel.install) {
         self.language = language
-        self.modelsDirectory = modelsDirectory
-    }
-
-    static func defaultModelsDirectory() -> URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("TranscriptionStudio/Models/fctspeech/sensevoice", isDirectory: true)
+        self.modelsDirectory = SpeechModel.senseVoice.directory(under: root)
+        self.install = install
     }
 
     func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
         if transcriber != nil { onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1)); return }
         if let preparationTask { try await preparationTask.value; return }
         let task = Task {
-            onProgress(EnginePreparationProgress(phase: "Loading SenseVoice", fraction: 0))
+            try await install(.senseVoice) { onProgress(EnginePreparationProgress(phase: "Downloading SenseVoice", fraction: $0)) }
+            onProgress(EnginePreparationProgress(phase: "Loading SenseVoice", fraction: nil))
             transcriber = Transcriber(decoder: try SenseVoiceWindowDecoder(directory: modelsDirectory, language: language, textNorm: true))
             onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1))
         }

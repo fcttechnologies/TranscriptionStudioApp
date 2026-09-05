@@ -4,9 +4,9 @@ import Synchronization
 import TTSKit
 
 /// TTSKit-backed `TtsEngine` — on-device Qwen3-TTS through CoreML, from the same
-/// `argmax-oss-swift` package WhisperKit and SpeakerKit already come from.
+/// `argmax-oss-swift` package.
 ///
-/// An actor for the same reason `WhisperKitAsrEngine` is one: the underlying kit is mutable,
+/// An actor for the same reason the recognizers are: the underlying kit is mutable,
 /// long-lived state (download → load), and this serializes access so `prepare()` and
 /// `synthesize()` can't race each other.
 ///
@@ -28,14 +28,14 @@ actor TTSKitTtsEngine: TtsEngine {
     private var preparationTask: Task<Void, Error>?
 
     /// - Parameter downloadBase: where model weights are cached; `nil` uses the app's own
-    ///   model directory, beside the WhisperKit weights.
+    ///   model directory, beside the speech models.
     init(downloadBase: URL? = nil) {
         self.variant = .defaultForCurrentPlatform
         self.downloadBase = downloadBase ?? Self.defaultDownloadBase()
     }
 
     /// `~/Library/Application Support/TranscriptionStudio/Models/ttskit` — the Hub cache lays
-    /// its own repo structure under this, mirroring the WhisperKit download base beside it.
+    /// its own repo structure under this, beside the speech models' root.
     static func defaultDownloadBase() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return appSupport.appendingPathComponent("TranscriptionStudio/Models/ttskit", isDirectory: true)
@@ -195,7 +195,7 @@ actor TTSKitTtsEngine: TtsEngine {
 
     // MARK: - Model preparation
 
-    /// Download-then-load, split the same way `WhisperKitAsrEngine` splits it, so a failure to
+    /// Download-then-load, split the same way the recognizers split it, so a failure to
     /// fetch either half is reported as a download failure rather than a generic load error.
     ///
     /// Both halves are fetched here — the CoreML weights and the tokenizer, which lives in a

@@ -31,7 +31,7 @@ import Synchronization
 ///   don't "improve" them without a re-listen.
 actor LuxTtsCloningEngine: TtsEngine {
     /// Transcribes 16 kHz mono samples with word timestamps — the prompt-matching ASR seam.
-    /// Injected so the serve process reuses its warm WhisperKit engine and tests can fake it.
+    /// Injected so the serve process reuses its warm recognizer and tests can fake it.
     typealias PromptAsr = @Sendable ([Float]) async throws -> [AsrSegment]
 
     /// English only: the port's G2P is espeak-parity `en-us` — other languages would
@@ -62,7 +62,7 @@ actor LuxTtsCloningEngine: TtsEngine {
     }
 
     /// `~/Library/Application Support/TranscriptionStudio/Models/luxtts` — beside the
-    /// WhisperKit and TTSKit bases, and outside every TCC-protected folder.
+    /// speech-model and TTSKit bases, and outside every TCC-protected folder.
     static func defaultDownloadBase() -> URL {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return appSupport.appendingPathComponent("TranscriptionStudio/Models/luxtts", isDirectory: true)

@@ -5,8 +5,8 @@ import FCTComponentsUI
 import FCTDictation
 
 /// The top-level app model — the one object every surface reads. It owns the injected
-/// engines (behind their protocols, so the real WhisperKit / Sortformer engines drop in
-/// with no UI change), the diagnostics spine (inspector store, load sampler, recorder),
+/// engines (behind their protocols, so the real recognizer and diarizer drop in with no UI
+/// change), the diagnostics spine (inspector store, load sampler, recorder),
 /// the job store, live recording state, and the shared shell state (surface selection,
 /// inspector visibility). Constructed once per app, handed down through the environment.
 @MainActor
@@ -38,15 +38,11 @@ final class AppModel {
     let diarizer: any DiarizationEngine
     /// The cross-check backend for the inspector's diarizer A/B (a second, independent run).
 
-    /// Builds a fresh ASR engine for a WhisperKit variant name (real WhisperKit in `live`,
-    /// nil for mock/preview app models — which fall back to the injected `asr`).
-    @ObservationIgnored let asrEngineProvider: (@MainActor (String) -> any AsrEngine)?
     /// Mac URL-ingest downloader, injected by the Mac shell (nil on iOS — no URL mode).
     @ObservationIgnored let urlDownloader: (any URLAudioDownloading)?
 
     // Transcription-job engine caches, keyed by model/backend, so switching models in
     // Settings doesn't re-download/re-load a model per job.
-    @ObservationIgnored private var asrEngineCache: [String: any AsrEngine] = [:]
 
     // Mac companion services (started on the Mac only — see `startMacCompanionServices`).
     @ObservationIgnored private var remoteJobWatcher: RemoteJobWatcher?
@@ -195,7 +191,6 @@ final class AppModel {
                 asr: any AsrEngine,
                 diarizer: any DiarizationEngine,
                 captureFactory: @escaping RecordingController.CaptureFactory,
-                asrEngineProvider: (@MainActor (String) -> any AsrEngine)? = nil,
                 urlDownloader: (any URLAudioDownloading)? = nil,
                 ttsEngineFactory: @escaping @Sendable () -> any TtsEngine = { TTSKitTtsEngine() }) {
         self.inspector = inspector
@@ -206,7 +201,6 @@ final class AppModel {
         self.modelContext = modelContext
         self.asr = asr
         self.diarizer = diarizer
-        self.asrEngineProvider = asrEngineProvider
         self.urlDownloader = urlDownloader
         self.playback = PlaybackController()
         self.readAloud = ReadAloudController(makeEngine: ttsEngineFactory)
@@ -274,10 +268,9 @@ final class AppModel {
                   ttsEngineFactory: { MockTtsEngine() })
     }
 
-    /// Build the real app: WhisperKit ASR, the default diarization backend (the other
-    /// backend wired as the inspector's A/B cross-check), the shared persistent container,
-    /// and the platform's hardware capture factory (injected by each shell — mic on both
-    /// platforms, ScreenCaptureKit meeting capture on the Mac).
+    /// Build the real app: the routed recognizer, the diarizer, the shared persistent
+    /// container, and the platform's hardware capture factory (injected by each shell — mic on
+    /// both platforms, ScreenCaptureKit meeting capture on the Mac).
     static func live(captureFactory: @escaping RecordingController.CaptureFactory,
                             urlDownloader: (any URLAudioDownloading)? = nil) -> AppModel {
         let inspector = InspectorStore()
@@ -309,13 +302,13 @@ final class AppModel {
     /// progress and honoring cancellation — can observe it; fire-and-forget callers ignore it.
     @discardableResult
     func startTranscription(title: String, source: TranscriptionSource) -> TranscriptionJob {
-        let service = TranscriptionService(asrEngine: transcriptionAsrEngine(for: settings.whisperModel),
+        let service = TranscriptionService(asrEngine: asr,
                                            diarizer: diarizer,
                                            modelContext: modelContext,
                                            recorder: recorder,
                                            inspector: inspector,
                                            wordTimestamps: settings.wordTimestamps,
-                                           modelName: settings.whisperModel.whisperKitVariant)
+                                           modelName: "fctspeech")
         switch source {
         case .file(let url):
             let job = TranscriptionJob(title: title, steps: TranscriptionService.fileJobSteps)
@@ -390,47 +383,39 @@ final class AppModel {
     /// failed) result back to the shared store, where it syncs to the phone.
     private func processClaimedRemoteJob(_ session: TranscriptSession) async {
         guard let downloader = urlDownloader else { return }
-        let service = TranscriptionService(asrEngine: transcriptionAsrEngine(for: settings.whisperModel),
+        let service = TranscriptionService(asrEngine: asr,
                                            diarizer: diarizer,
                                            modelContext: modelContext,
                                            recorder: recorder,
                                            inspector: inspector,
                                            wordTimestamps: settings.wordTimestamps,
-                                           modelName: settings.whisperModel.whisperKitVariant)
+                                           modelName: "fctspeech")
         let job = TranscriptionJob(title: session.title, steps: TranscriptionService.urlJobSteps)
         jobs.add(job)
         await service.runURLJob(on: session, isNewSession: false, downloader: downloader, job: job)
     }
 
-    /// The cached ASR engine for a chosen model (built once per variant). Mock/preview app
-    /// models have no provider and reuse the injected `asr`.
-    func transcriptionAsrEngine(for model: AppSettings.WhisperModel) -> any AsrEngine {
-        let variant = model.whisperKitVariant
-        if let cached = asrEngineCache[variant] { return cached }
-        let engine = asrEngineProvider?(variant) ?? asr
-        asrEngineCache[variant] = engine
-        return engine
-    }
-
-    /// Warm the default transcription model at launch so the first job doesn't eat the
-    /// one-time WhisperKit model compile. On Apple Silicon the first-ever load of
-    /// `large-v3-turbo` compiles the CoreML/ANE program (~85s cold); the compiled artifact
-    /// then caches to disk, so every later load is ~seconds. Warming it up front — visibly,
-    /// during launch — pays that one-time cost once instead of silently stalling the user's
-    /// first transcription. The compile cache is per-model on disk, so warming the
-    /// transcription engine also warms the artifact the live-recording engine reuses.
-    /// Idempotent; a no-op for mock/preview models (their `prepare()` is instant).
+    /// Warm the speech models at launch so the first job doesn't eat their download and the
+    /// one-time Neural Engine specialization. The first load of a model on a device compiles it
+    /// for the ANE (seconds to tens of seconds); the compiled artifact then caches, so every later
+    /// load is quick. Warming up front, visibly, pays that once instead of silently stalling the
+    /// first transcription. The recognizer the interface locale routes to and the diarizer are
+    /// both warmed: a transcription needs both. Idempotent; a no-op for mock/preview models
+    /// (their `prepare()` is instant).
     func prewarmDefaultEngine() {
         guard case .idle = enginePrewarmState else { return }
         enginePrewarmState = .preparing(phase: "Preparing speech model…", fraction: nil)
-        let engine = transcriptionAsrEngine(for: settings.whisperModel)
+        let asr = asr
+        let diarizer = diarizer
         Task {
             do {
-                try await engine.prepare { progress in
+                let report: @Sendable (EnginePreparationProgress) -> Void = { progress in
                     Task { @MainActor in
                         self.enginePrewarmState = .preparing(phase: progress.phase, fraction: progress.fraction)
                     }
                 }
+                try await asr.prepare(onProgress: report)
+                try await diarizer.prepare(onProgress: report)
                 self.enginePrewarmState = .ready
             } catch {
                 // A warmup failure isn't fatal — the first real job retries prepare() and
@@ -440,13 +425,6 @@ final class AppModel {
         }
     }
 
-    /// Re-warm the engine for the currently-selected model. Call when the user switches models
-    /// in Settings so the new model downloads/compiles immediately (with visible progress),
-    /// instead of silently on the next job or only after a relaunch (the force-quit workaround).
-    func prewarmSelectedModel() {
-        enginePrewarmState = .idle
-        prewarmDefaultEngine()
-    }
 
 }
 

@@ -102,7 +102,7 @@ struct TranscriptionReservedColumnsTests {
             ],
             StoredSegment.syncTableName: [
                 "start_time", "end_time", "text", "track", "speaker_slot", "speaker_confidence",
-                "avg_logprob", "no_speech_prob", "compression_ratio", "words", "session_id",
+                "avg_logprob", "words", "session_id",
             ],
             TranscriptDecision.syncTableName: ["text", "session_id"],
             TranscriptActionItem.syncTableName: [

@@ -19,9 +19,9 @@
 		<integer>0</integer>
 	</dict>
 	<key>BAManifestURL</key>
-	<string>https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json</string>
+	<string>https://huggingface.co/fcttechnologies/fctspeech-coreml/resolve/main/speech-model-manifest.json</string>
 	<key>BAMaxInstallSize</key>
-	<integer>1638464446</integer>
+	<integer>1202109558</integer>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.fcttechnologies.TranscriptionStudio.transcription.*</string>

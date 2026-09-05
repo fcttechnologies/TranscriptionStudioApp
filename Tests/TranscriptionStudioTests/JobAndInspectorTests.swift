@@ -104,7 +104,7 @@ struct PersistenceTests {
         let session = TranscriptSession(title: "Test", kind: .roomRecording)
         let attributed = AttributedSegment(
             asr: AsrSegment(track: .system, start: 1, end: 2, text: "hi",
-                            avgLogprob: -0.2, noSpeechProb: 0.01, compressionRatio: 1.2),
+                            avgLogprob: -0.2),
             speaker: .speaker(2), speakerConfidence: 0.85, isProvisional: false)
         let stored = StoredSegment(from: attributed)
         session.segments?.append(stored)

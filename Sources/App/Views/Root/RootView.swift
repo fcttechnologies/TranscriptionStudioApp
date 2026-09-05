@@ -158,8 +158,11 @@ struct SignedInRootView: View {
         frontDoor.attachAccount(account)
         frontDoor.restoreAccountData = { await sync.restoreAccountData() }
         frontDoor.hasCompletedFirstPull = { sync.hasCompletedFirstPull(for: $0) }
+        // The models a first transcription needs: the recognizer this locale routes to, and the
+        // diarizer. A locale neither recognizer covers has nothing to offer a download for.
         frontDoor.isSpeechModelInstalled = {
-            ModelStorageScanner.isWhisperModelInstalled(app.settings.whisperModel)
+            guard let route = AsrRoute.route(forTag: AsrRoute.interfaceLanguageTag()) else { return true }
+            return SpeechModelStore.isInstalled(route.model) && SpeechModelStore.isInstalled(.sortformer)
         }
 
         await frontDoor.start()
@@ -176,11 +179,11 @@ struct SignedInRootView: View {
         // presence heartbeat the phone reads.
         app.startMacCompanionServices()
         #endif
-        // Warm the speech model so the first job isn't blocked by the one-time model compile. It
-        // waits for the session on purpose: the model is a gigabyte-scale download, and pulling it
-        // down for someone who has not signed in spends their bandwidth on an app they may not
-        // keep. On iOS, if the model isn't present (the Background Assets extension never ran —
-        // e.g. a sideloaded build), WhisperKit's own background-session download is the fallback.
+        // Warm the speech models so the first job isn't blocked by their download and the one-time
+        // Neural Engine specialization. It waits for the session on purpose: the models are a
+        // ~700 MB download, and pulling them down for someone who has not signed in spends their
+        // bandwidth on an app they may not keep. If a model isn't present (the Background Assets
+        // extension never ran, or this is the Mac), the engine's own download fetches it.
         app.prewarmDefaultEngine()
         #if os(iOS) && DEBUG
         // `-TSMockRecording` auto-starts a room recording off the mock engines so the live sheet

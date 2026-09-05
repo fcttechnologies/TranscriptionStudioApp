@@ -3,18 +3,16 @@ import Synchronization
 
 /// Headless transcription CLI — the command-line front end to the app's existing
 /// pipeline. A URL rides `URLIngestService` (yt-dlp + ffmpeg → mp3); a file path rides
-/// `FileIngestService`; both land in `WhisperKitAsrEngine` (download-if-missing model
-/// provisioning, then on-device ASR). Transcript goes to stdout (plain text, or `--json`
+/// `FileIngestService`; both land in the app's routed recognizer (the language picks the model,
+/// downloaded if missing, then on-device ASR). Transcript goes to stdout (plain text, or `--json`
 /// for segments + timestamps); all progress and errors go to stderr. Exit 0 on success,
 /// 1 on failure, 2 on a usage error.
 @main
 struct TranscribeCLI {
     static let usage = """
-    usage: transcribe-cli <url-or-file> [--json] [--model <whisperkit-variant>]
-                          [--language <code>]
+    usage: transcribe-cli <url-or-file> [--json] [--language <code>]
            transcribe-cli --serve [--port <n>] [--idle-timeout <s>] [--preload]
-                          [--model <whisperkit-variant>] [--language <code>]
-                          [--voice-profile <path>]
+                          [--language <code>] [--voice-profile <path>]
            transcribe-cli speak <text> --out <path> [--voice <name>] [--language <name>]
                           [--voice-profile <path>]
 
@@ -22,8 +20,9 @@ struct TranscribeCLI {
       <url-or-file>    An http(s) URL (any yt-dlp-supported source) or a local
                        media file path (\(SupportedMediaExtensions.allowed.sorted().joined(separator: ", "))).
       --json           Structured output: {source, kind, durationSeconds, text, segments[]}.
-      --language <c>   Force the spoken language (ISO code, e.g. "en"/"es") instead of
-                       Whisper's auto-detect.
+      --language <c>   The spoken language (BCP-47, e.g. "en", "es", "ja"), which picks the
+                       model: Parakeet for the European languages, SenseVoice for zh/yue/ja/ko.
+                       Default: this process's locale.
 
     SERVE: run a warm on-device transcription service — POST /jobs with either a JSON body
            ({"source": {"url": …}, "options": {"language": "auto"|"<bcp47>"}}) or a multipart
@@ -53,9 +52,6 @@ struct TranscribeCLI {
                        The synthesis model downloads on first use (progress on stderr).
 
     Shared:
-      --model <name>   WhisperKit model variant (default: \(WhisperKitAsrEngine.platformDefaultModelName)).
-      --engine <name>  whisperkit (default) or fctspeech (FCT's Parakeet runtime, Neural Engine).
-                       Downloaded on first use if missing (progress on stderr).
       --voice-profile <path>  A voice-profile.json naming reference clips for zero-shot
                        voice CLONING (CoreML LuxTTS). Each reference id becomes a voice
                        beside the presets — ask for one by name; no voice still means the
@@ -72,8 +68,6 @@ struct TranscribeCLI {
         }
 
         var jsonOutput = false
-        var modelName = WhisperKitAsrEngine.platformDefaultModelName
-        var engineName = "whisperkit"
         var forcedLanguage: String?
         var input: String?
         var serve = false
@@ -87,12 +81,6 @@ struct TranscribeCLI {
             switch argument {
             case "--json":
                 jsonOutput = true
-            case "--model":
-                guard let name = arguments.next() else { exitUsage("--model needs a value") }
-                modelName = name
-            case "--engine":
-                guard let name = arguments.next(), ["whisperkit", "fctspeech"].contains(name) else { exitUsage("--engine is whisperkit or fctspeech") }
-                engineName = name
             case "--language":
                 guard let code = arguments.next() else { exitUsage("--language needs a value") }
                 forcedLanguage = code
@@ -121,7 +109,7 @@ struct TranscribeCLI {
 
         if serve {
             await runServe(port: port, idleTimeout: idleTimeout, preload: preload,
-                           modelName: modelName, engineName: engineName, forcedLanguage: forcedLanguage,
+                           forcedLanguage: forcedLanguage,
                            voiceProfilePath: voiceProfilePath)
             return  // runServe never returns on success (blocks on accept); returns only to exit
         }
@@ -129,8 +117,7 @@ struct TranscribeCLI {
         guard let input else { exitUsage("no input given") }
 
         do {
-            let result = try await transcribe(input: input, modelName: modelName, engineName: engineName,
-                                              forcedLanguage: forcedLanguage)
+            let result = try await transcribe(input: input, forcedLanguage: forcedLanguage)
             if jsonOutput {
                 let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -156,10 +143,10 @@ struct TranscribeCLI {
     /// its first `/speak` and then stays warm on the same idle rules. A separation model that
     /// won't load is not fatal, on the same best-effort contract every job holds it to.
     static func runServe(port: UInt16, idleTimeout: TimeInterval, preload: Bool,
-                         modelName: String, engineName: String, forcedLanguage: String?,
+                         forcedLanguage: String?,
                          voiceProfilePath: String?) async {
         let warm = WarmEngine(idleTimeout: idleTimeout, forcedLanguage: forcedLanguage) {
-            makeAsrEngine(engineName, modelName: modelName, forcedLanguage: forcedLanguage)
+            makeAsrEngine(forcedLanguage: forcedLanguage)
         }
         let diarization = WarmDiarizer(idleTimeout: idleTimeout)
         let speech = WarmTTSEngine(idleTimeout: idleTimeout,
@@ -167,7 +154,7 @@ struct TranscribeCLI {
                                                                 warmAsr: warm))
 
         if preload {
-            status("Preloading \(modelName)…")
+            status("Preloading the speech model…")
             do {
                 try await warm.ensureLoaded { progress in status("\(progress.phase)…") }
                 status("Model ready.")
@@ -235,7 +222,7 @@ struct TranscribeCLI {
             promptAsr = { samples in try await warmAsr.transcribeWithWordTimestamps(samples: samples) }
         } else {
             promptAsr = { samples in
-                let asr = WhisperKitAsrEngine()
+                let asr = RoutedAsrEngine()
                 try await asr.prepare { _ in }
                 return try await asr.transcribe(samples: samples, track: .mixed, wordTimestamps: true)
             }
@@ -322,15 +309,14 @@ struct TranscribeCLI {
 
     // MARK: - Pipeline
 
-    /// The ASR engine the CLI runs, by name; the one-shot path and the warm server share it.
-    static func makeAsrEngine(_ engineName: String, modelName: String, forcedLanguage: String?) -> any AsrEngine {
-        engineName == "fctspeech"
-            ? FCTSpeechAsrEngine(modelsDirectory: FCTSpeechAsrEngine.defaultModelsDirectory())
-            : WhisperKitAsrEngine(modelName: modelName, forcedLanguage: forcedLanguage)
+    /// The recognizer the CLI runs; the one-shot path and the warm server share it. `--language`
+    /// is the default route; a job's own language still decides per call.
+    static func makeAsrEngine(forcedLanguage: String?) -> any AsrEngine {
+        guard let forcedLanguage else { return RoutedAsrEngine() }
+        return RoutedAsrEngine(defaultLanguageTag: { forcedLanguage })
     }
 
-    static func transcribe(input: String, modelName: String, engineName: String = "whisperkit",
-                           forcedLanguage: String? = nil) async throws -> TranscriptOutput {
+    static func transcribe(input: String, forcedLanguage: String? = nil) async throws -> TranscriptOutput {
         let isURL = URLComponents(string: input).flatMap(\.scheme).map { ["http", "https"].contains($0.lowercased()) } ?? false
 
         var cleanup: () async -> Void = {}
@@ -366,7 +352,7 @@ struct TranscribeCLI {
             let duration = Double(samples.count) / AudioChunk.sampleRate
 
             // ASR: provision the model if needed (progress → stderr), then transcribe.
-            let engine = makeAsrEngine(engineName, modelName: modelName, forcedLanguage: forcedLanguage)
+            let engine = makeAsrEngine(forcedLanguage: forcedLanguage)
             let lastPhase = Mutex("")
             try await engine.prepare { progress in
                 let percent = progress.fraction.map { Int($0 * 100) }

@@ -18,18 +18,16 @@ struct ConfidenceSpan: Equatable, Sendable {
 /// verified, so every rendered segment can quietly signal how sure the model was — subtle
 /// enough to stay out of the way, precise enough to guide the ear-vs-label check. The
 /// generic score→dotted-underline affordance itself is `FCTComponentsUI.ConfidenceText`
-/// (see `TranscriptTurnView`); this reduction is Whisper-specific and stays app-side.
+/// (see `TranscriptTurnView`); this reduction is the engines' and stays app-side.
 enum Confidence {
-    /// Collapse Whisper's native signals into a single [0,1] legibility score:
-    /// `exp(avgLogprob)` (token likelihood) discounted by the no-speech probability.
+    /// The segment's [0,1] legibility score: `exp(avgLogprob)`, the mean token probability.
     static func asrScore(_ segment: AsrSegment) -> Float {
-        let likelihood = min(max(exp(segment.avgLogprob), 0), 1)
-        return likelihood * (1 - min(max(segment.noSpeechProb, 0), 1))
+        min(max(exp(segment.avgLogprob), 0), 1)
     }
 
-    /// Normalize a single word's model probability to a [0,1] confidence. WhisperKit already
-    /// emits `AsrWord.probability` as a token probability, so this is a defensive clamp — the
-    /// seam a future engine with a differently-scaled signal would normalize through.
+    /// Normalize a single word's model probability to a [0,1] confidence. The engines emit
+    /// `AsrWord.probability` as a token probability, so this is a defensive clamp — the seam an
+    /// engine with a differently-scaled signal would normalize through.
     static func wordScore(_ probability: Float) -> Float {
         min(max(probability, 0), 1)
     }

@@ -9,7 +9,7 @@ struct TranscriptTurn: Identifiable, Equatable {
         let text: String
         let start: TimeInterval
         let isProvisional: Bool
-        /// Whisper legibility score [0,1] for the segment-level confidence affordance.
+        /// Legibility score [0,1] for the segment-level confidence affordance.
         let asrScore: Float
         /// Per-word model probabilities when word timestamps were captured; nil otherwise.
         /// Feeds the confidence display's per-word flagging (degrades to `asrScore` when nil).
@@ -66,8 +66,7 @@ struct TranscriptTurn: Identifiable, Equatable {
         for segment in sorted {
             let asrScore = Confidence.asrScore(
                 AsrSegment(track: .mixed, start: segment.start, end: segment.end, text: segment.text,
-                           avgLogprob: segment.avgLogprob, noSpeechProb: segment.noSpeechProb,
-                           compressionRatio: segment.compressionRatio))
+                           avgLogprob: segment.avgLogprob))
             let line = Line(id: segment.id.uuidString, text: segment.text, start: segment.start,
                             isProvisional: false, asrScore: asrScore, words: segment.words)
             if var last = turns.last, last.speaker == segment.speaker {

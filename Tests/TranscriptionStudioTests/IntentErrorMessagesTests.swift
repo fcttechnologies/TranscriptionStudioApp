@@ -48,12 +48,12 @@ struct IntentErrorMessagesTests {
 struct StoredModelDetailTests {
     // The one StoredModel branch ModelStorageScannerTests doesn't already cover: the
     // kind-specific subtitle shown under each row in the Storage section.
-    @Test func detailDistinguishesSpeechFromDiarization() {
-        let whisper = StoredModel(kind: .whisper(.base), paths: [], bytes: 0)
-        let diarizer = StoredModel(kind: .diarizer, paths: [], bytes: 0)
+    @Test func detailDistinguishesRecognitionFromDiarizationFromSynthesis() {
+        let recognizer = StoredModel(kind: .speech(.parakeet), paths: [], bytes: 0)
+        let diarizer = StoredModel(kind: .speech(.sortformer), paths: [], bytes: 0)
         let synthesis = StoredModel(kind: .speechSynthesis, paths: [], bytes: 0)
-        #expect(whisper.detail == "Speech recognition")
-        #expect(diarizer.detail == "Speaker diarization")
+        #expect(recognizer.detail.hasPrefix("Speech recognition"))
+        #expect(diarizer.detail.hasPrefix("Speaker diarization"))
         #expect(synthesis.detail == "Speech synthesis")
     }
 }

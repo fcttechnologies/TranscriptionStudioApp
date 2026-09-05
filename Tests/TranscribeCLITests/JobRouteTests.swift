@@ -393,13 +393,16 @@ struct JobSourceTests {
         #expect(language == nil)
     }
 
-    @Test func theLanguageOptionResolvesToAWhisperCode() throws {
-        let source = try JobSource(request: try request(json: [
-            "source": ["url": "https://example.com/a"],
-            "options": ["language": "pt-BR"],
-        ]))
-        guard case let .url(_, language) = source else { Issue.record("not a url source"); return }
-        #expect(language == "pt")
+    @Test func theLanguageOptionIsKeptAsTheTagThatPicksTheModel() throws {
+        for (tag, route) in [("pt-BR", AsrRoute.parakeet), ("ja", .senseVoice(.ja)), ("zh-Hant", .senseVoice(.zh))] {
+            let source = try JobSource(request: try request(json: [
+                "source": ["url": "https://example.com/a"],
+                "options": ["language": tag],
+            ]))
+            guard case let .url(_, language) = source else { Issue.record("not a url source"); return }
+            #expect(language == tag)
+            #expect(AsrRoute.route(forTag: tag) == route)
+        }
     }
 
     @Test func autoIsTheSameAsAskingForNothing() throws {
@@ -411,9 +414,9 @@ struct JobSourceTests {
         #expect(language == nil)
     }
 
-    /// A language Whisper doesn't have is refused rather than quietly auto-detected: a caller
+    /// A language neither recognizer covers is refused rather than quietly routed: a caller
     /// that named one would otherwise never learn its hint did nothing.
-    @Test func aLanguageWhisperDoesNotHaveIsRefused() throws {
+    @Test func aLanguageNoRecognizerCoversIsRefused() throws {
         #expect(throws: ServeError.self) {
             try JobSource(request: try self.request(json: [
                 "source": ["url": "https://example.com/a"],

@@ -20,6 +20,19 @@ enum AsrRoute: Equatable {
         "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk",
     ]
 
+    /// The interface language, the default route's tag.
+    static func interfaceLanguageTag() -> String {
+        Locale.current.language.languageCode?.identifier ?? "en"
+    }
+
+    /// The model this route loads.
+    var model: SpeechModel {
+        switch self {
+        case .parakeet: .parakeet
+        case .senseVoice: .senseVoice
+        }
+    }
+
     static func route(forTag tag: String) -> AsrRoute? {
         let parts = tag.lowercased().split(separator: "-").map(String.init)
         guard let primary = parts.first, !primary.isEmpty else { return nil }
@@ -49,7 +62,7 @@ actor RoutedAsrEngine: AsrEngine {
     private var engines: [String: any AsrEngine] = [:]
     private var lastProgress: (@Sendable (EnginePreparationProgress) -> Void)?
 
-    init(defaultLanguageTag: @escaping @Sendable () -> String = { Locale.current.language.languageCode?.identifier ?? "en" }) {
+    init(defaultLanguageTag: @escaping @Sendable () -> String = AsrRoute.interfaceLanguageTag) {
         self.defaultTag = defaultLanguageTag
     }
 
@@ -60,7 +73,7 @@ actor RoutedAsrEngine: AsrEngine {
         let make: () -> any AsrEngine
         switch route {
         case .parakeet:
-            key = "parakeet"; make = { FCTSpeechAsrEngine(modelsDirectory: FCTSpeechAsrEngine.defaultModelsDirectory()) }
+            key = "parakeet"; make = { FCTSpeechAsrEngine() }
         case .senseVoice(let lang):
             key = "sensevoice-\(lang.rawValue)"; make = { SenseVoiceAsrEngine(language: lang) }
         }

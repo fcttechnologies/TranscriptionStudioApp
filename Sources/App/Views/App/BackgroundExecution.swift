@@ -9,7 +9,7 @@ import BackgroundTasks
 /// Runs a file/URL transcription job so it survives the app being backgrounded mid-run.
 ///
 /// The gap this closes: only live-mic recording had background cover (the `audio`
-/// `UIBackgroundMode`); a file/link transcription job — WhisperKit ASR + diarization, all GPU/ANE
+/// `UIBackgroundMode`); a file/link transcription job — recognition + diarization, all on the Neural Engine
 /// work — had none, so backgrounding the app mid-job left it open to suspension. On iOS this now
 /// wraps the run in a `BGContinuedProcessingTask` (iOS 26+): the system keeps the job running when
 /// the app leaves the foreground (including background GPU access on supported devices) and shows
@@ -101,7 +101,7 @@ final class ContinuedTranscriptionTask {
             // Queue behind other work rather than fail if the system can't start immediately — a
             // transcription is worth waiting a moment for.
             request.strategy = .queue
-            // Keep GPU access alive in the background on devices that support it (WhisperKit /
+            // Keep GPU access alive in the background on devices that support it (the recognizer /
             // diarization run on the GPU + Neural Engine); requires the Background GPU Access
             // entitlement. ANE work continues regardless; this specifically covers the GPU.
             if BGTaskScheduler.supportedResources.contains(.gpu) {

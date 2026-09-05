@@ -16,8 +16,8 @@ struct AsrWord: Sendable, Codable, Hashable {
     }
 }
 
-/// One ASR segment with the model's own quality signals surfaced — the inspector shows
-/// these raw (avgLogprob / noSpeechProb / compressionRatio are Whisper's native fields).
+/// One ASR segment with the model's own confidence surfaced: `avgLogprob` is the log of the
+/// mean token probability across the segment, which the inspector shows raw.
 struct AsrSegment: Sendable, Codable, Hashable, Identifiable {
     var id: String { "\(track.rawValue)-\(start)-\(end)" }
 
@@ -26,8 +26,6 @@ struct AsrSegment: Sendable, Codable, Hashable, Identifiable {
     let end: TimeInterval
     let text: String
     let avgLogprob: Float
-    let noSpeechProb: Float
-    let compressionRatio: Float
     let words: [AsrWord]?
     /// Streaming: false while the segment may still be revised by a later window.
     let isConfirmed: Bool
@@ -37,8 +35,6 @@ struct AsrSegment: Sendable, Codable, Hashable, Identifiable {
                 end: TimeInterval,
                 text: String,
                 avgLogprob: Float = 0,
-                noSpeechProb: Float = 0,
-                compressionRatio: Float = 0,
                 words: [AsrWord]? = nil,
                 isConfirmed: Bool = true) {
         self.track = track
@@ -46,8 +42,6 @@ struct AsrSegment: Sendable, Codable, Hashable, Identifiable {
         self.end = end
         self.text = text
         self.avgLogprob = avgLogprob
-        self.noSpeechProb = noSpeechProb
-        self.compressionRatio = compressionRatio
         self.words = words
         self.isConfirmed = isConfirmed
     }
@@ -76,7 +70,18 @@ struct EnginePreparationProgress: Sendable, Equatable {
     }
 }
 
-/// The ASR seam. WhisperKit implements it; the mock fakes it; the UI and jobs know
+/// An engine asked to work before `prepare()` finished.
+enum AsrEngineError: LocalizedError, Sendable {
+    case notPrepared
+
+    var errorDescription: String? {
+        switch self {
+        case .notPrepared: "The speech model isn't ready yet — call prepare() first."
+        }
+    }
+}
+
+/// The ASR seam. The routed recognizer implements it; the mock fakes it; the UI and jobs know
 /// only this. Session-relative timestamps in, session-relative timestamps out.
 protocol AsrEngine: AnyObject, Sendable {
     /// Idempotent: download/load/prewarm the model as needed.
@@ -90,7 +95,7 @@ protocol AsrEngine: AnyObject, Sendable {
 
     /// The same, with the spoken language decided per call — one loaded model serving callers
     /// that disagree about the language. `nil` leaves the engine's own default in force
-    /// (Whisper's auto-detect).
+    /// (the interface locale's route).
     func transcribe(samples: [Float],
                     track: AudioTrack,
                     wordTimestamps: Bool,

@@ -1,8 +1,9 @@
+import FCTCore
 import SwiftUI
 
-/// The ASR confidence table: Whisper's own per-segment quality signals shown raw —
-/// avgLogprob, noSpeechProb, compressionRatio — alongside the collapsed legibility score.
-/// These are exactly the "exact values" the transcript's subtle underline hints at.
+/// The ASR confidence table: each segment's log mean token probability shown raw, beside the
+/// legibility score it collapses to. These are exactly the "exact values" the transcript's
+/// subtle underline hints at.
 struct InspectorAsrTable: View {
     let segments: [AttributedSegment]
 
@@ -27,8 +28,6 @@ struct InspectorAsrTable: View {
         HStack(spacing: DesignMetrics.spacingS) {
             Text("time").frame(width: 40, alignment: .leading)
             Text("logp").frame(width: 44, alignment: .trailing)
-            Text("noSp").frame(width: 40, alignment: .trailing)
-            Text("cmpr").frame(width: 40, alignment: .trailing)
             Text("score").frame(maxWidth: .infinity, alignment: .trailing)
         }
         .font(.caption2.weight(.semibold).monospaced())
@@ -47,12 +46,8 @@ private struct AsrRow: View {
             HStack(spacing: DesignMetrics.spacingS) {
                 Text(TimeFormat.clock(segment.asr.start))
                     .frame(width: 40, alignment: .leading)
-                Text(String(format: "%.2f", segment.asr.avgLogprob))
+                Text(Format.fixed(Double(segment.asr.avgLogprob), decimals: 2))
                     .frame(width: 44, alignment: .trailing)
-                Text(String(format: "%.2f", segment.asr.noSpeechProb))
-                    .frame(width: 40, alignment: .trailing)
-                Text(String(format: "%.2f", segment.asr.compressionRatio))
-                    .frame(width: 40, alignment: .trailing)
                 Text("\(Int((score * 100).rounded()))%")
                     .foregroundStyle(score < DesignMetrics.lowConfidenceThreshold ? .orange : .secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)

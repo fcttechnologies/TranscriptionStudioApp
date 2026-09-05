@@ -4578,67 +4578,61 @@
         }
       }
     },
-    "Dictation records, transcribes and cleans up your words entirely on this device, then puts the text on your clipboard. Apple Speech needs no download; Whisper and speaker identification each download a model the first time you use them." : {
+    "Dictation records, transcribes and cleans up your words entirely on this device, then puts the text on your clipboard. Apple Speech needs no download; Studio and speaker identification use the speech models, downloaded the first time you need them." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Diktat nimmt deine Worte auf, transkribiert und bereitet sie vollständig auf diesem Gerät auf und legt den Text dann in deine Zwischenablage. Apple Speech braucht keinen Download; Whisper und die Sprechererkennung laden bei der ersten Verwendung jeweils ein Modell."
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Dictation records, transcribes and cleans up your words entirely on this device, then puts the text on your clipboard. Apple Speech needs no download; Whisper and speaker identification each download a model the first time you use them."
+            "value" : "Das Diktat nimmt deine Worte vollständig auf diesem Gerät auf, transkribiert und bereinigt sie und legt den Text in die Zwischenablage. Apple Speech braucht keinen Download; Studio und die Sprechererkennung nutzen die Sprachmodelle, die beim ersten Bedarf geladen werden."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El dictado graba, transcribe y pule tus palabras íntegramente en este dispositivo y luego copia el texto al portapapeles. Apple Speech no requiere descarga; Whisper y la identificación de hablantes descargan un modelo la primera vez que los usas."
+            "value" : "El dictado graba, transcribe y pule tus palabras por completo en este dispositivo y luego deja el texto en el portapapeles. Apple Speech no necesita descarga; Studio y la identificación de hablantes usan los modelos de voz, que se descargan la primera vez que los necesitas."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La dictée enregistre, transcrit et nettoie vos mots entièrement sur cet appareil, puis place le texte dans votre presse-papiers. Apple Speech ne nécessite aucun téléchargement ; Whisper et l'identification des intervenants téléchargent chacun un modèle à la première utilisation."
+            "value" : "La dictée enregistre, transcrit et met au propre vos paroles entièrement sur cet appareil, puis place le texte dans votre presse-papiers. Apple Speech ne nécessite aucun téléchargement ; Studio et l'identification des locuteurs utilisent les modèles vocaux, téléchargés la première fois que vous en avez besoin."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La dettatura registra, trascrive e sistema le tue parole interamente su questo dispositivo, poi mette il testo negli appunti. Apple Speech non richiede alcun download; Whisper e l'identificazione di chi parla scaricano un modello ciascuno la prima volta che li usi."
+            "value" : "La dettatura registra, trascrive e rifinisce le tue parole interamente su questo dispositivo, poi mette il testo negli appunti. Apple Speech non richiede download; Studio e l'identificazione dei parlanti usano i modelli vocali, scaricati la prima volta che ti servono."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声入力は、このデバイス上だけで録音・文字起こし・整形を行い、テキストをクリップボードに入れます。Apple Speech はダウンロード不要です。Whisper と話者識別は、初回利用時にそれぞれモデルをダウンロードします。"
+            "value" : "ディクテーションは、このデバイス上で録音・文字起こし・整形をすべて行い、テキストをクリップボードに入れます。Apple Speech はダウンロード不要です。Studio と話者識別は音声モデルを使い、初めて必要になったときにダウンロードされます。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "받아쓰기는 이 기기에서만 녹음·전사·정리를 수행한 뒤 텍스트를 클립보드에 넣습니다. Apple Speech는 다운로드가 필요 없고, Whisper와 화자 식별은 처음 사용할 때 각각 모델을 내려받습니다."
+            "value" : "받아쓰기는 이 기기에서 녹음, 전사, 정리를 모두 처리한 뒤 텍스트를 클립보드에 넣습니다. Apple Speech는 다운로드가 필요 없습니다. Studio와 화자 식별은 음성 모델을 사용하며, 처음 필요할 때 다운로드됩니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O ditado grava, transcreve e organiza suas palavras inteiramente neste dispositivo e depois coloca o texto na área de transferência. O Apple Speech não precisa de download; o Whisper e a identificação de quem fala baixam um modelo cada na primeira vez que você os usa."
+            "value" : "O ditado grava, transcreve e organiza suas palavras inteiramente neste aparelho e depois coloca o texto na área de transferência. O Apple Speech não precisa de download; o Studio e a identificação de falantes usam os modelos de voz, baixados na primeira vez que você precisar."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Диктовка записывает, расшифровывает и приводит ваши слова в порядок полностью на этом устройстве, а затем помещает текст в буфер обмена. Apple Speech ничего не загружает; Whisper и определение говорящих при первом использовании скачивают по одной модели."
+            "value" : "Диктовка записывает, расшифровывает и приводит в порядок ваши слова целиком на этом устройстве, а затем помещает текст в буфер обмена. Apple Speech не требует загрузки; Studio и определение говорящих используют речевые модели, которые загружаются при первой необходимости."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "听写会完全在此设备上录音、转录并整理你的话，然后把文本放到剪贴板。Apple Speech 无需下载；Whisper 和说话人识别在首次使用时各会下载一个模型。"
+            "value" : "听写会完全在本机录音、转录并整理你的话，然后把文字放到剪贴板。Apple 语音无需下载；Studio 和说话人识别使用语音模型，首次需要时下载。"
           }
         }
       }
@@ -6295,36 +6289,37 @@
         }
       }
     },
-    "Get the speech model" : {
+    "Get the speech models" : {
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sprachmodell laden"
+            "value" : "Sprachmodelle laden"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obtener el modelo de voz"
+            "value" : "Descarga los modelos de voz"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obtenir le modèle vocal"
+            "value" : "Télécharger les modèles vocaux"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ottieni il modello vocale"
+            "value" : "Scarica i modelli vocali"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声モデルを取得"
+            "value" : "音声モデルを入手"
           }
         },
         "ko" : {
@@ -6336,13 +6331,13 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Obter o modelo de fala"
+            "value" : "Baixe os modelos de voz"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Загрузить речевую модель"
+            "value" : "Загрузить речевые модели"
           }
         },
         "zh-Hans" : {
@@ -10216,60 +10211,120 @@
         }
       }
     },
-    "On-device Whisper large-v3-turbo — the speed/accuracy sweet spot." : {
+    "On-device · up to 4 speakers · Neural Engine" : {
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whisper large-v3-turbo auf dem Gerät — der optimale Kompromiss aus Geschwindigkeit und Genauigkeit."
+            "value" : "Auf dem Gerät · bis zu 4 Sprecher · Neural Engine"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whisper large-v3-turbo en el dispositivo — el punto óptimo entre velocidad y precisión."
+            "value" : "En el dispositivo · hasta 4 hablantes · Neural Engine"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whisper large-v3-turbo sur l'appareil — le compromis idéal entre vitesse et précision."
+            "value" : "Sur l'appareil · jusqu'à 4 locuteurs · Neural Engine"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whisper large-v3-turbo sul dispositivo — il punto d'equilibrio tra velocità e precisione."
+            "value" : "Sul dispositivo · fino a 4 parlanti · Neural Engine"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンデバイスのWhisper large-v3-turbo。速度と精度のバランスに優れたモデルです。"
+            "value" : "デバイス上 · 最大 4 人の話者 · Neural Engine"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기기 내 Whisper large-v3-turbo. 속도와 정확도의 균형이 뛰어난 모델입니다."
+            "value" : "기기 내 · 최대 4명의 화자 · Neural Engine"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whisper large-v3-turbo no dispositivo — o equilíbrio ideal entre velocidade e precisão."
+            "value" : "No aparelho · até 4 falantes · Neural Engine"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Whisper large-v3-turbo на устройстве — оптимальный баланс скорости и точности."
+            "value" : "На устройстве · до 4 говорящих · Neural Engine"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "设备端 Whisper large-v3-turbo——速度与准确度的最佳平衡点。"
+            "value" : "本机 · 最多 4 位说话人 · 神经网络引擎"
+          }
+        }
+      }
+    },
+    "On-device, on the Neural Engine. The language picks the model: Parakeet for European languages, SenseVoice for Chinese, Japanese and Korean." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf dem Gerät, auf der Neural Engine. Die Sprache wählt das Modell: Parakeet für europäische Sprachen, SenseVoice für Chinesisch, Japanisch und Koreanisch."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En el dispositivo, en el Neural Engine. El idioma elige el modelo: Parakeet para los idiomas europeos, SenseVoice para chino, japonés y coreano."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sur l'appareil, sur le Neural Engine. La langue choisit le modèle : Parakeet pour les langues européennes, SenseVoice pour le chinois, le japonais et le coréen."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sul dispositivo, sul Neural Engine. La lingua sceglie il modello: Parakeet per le lingue europee, SenseVoice per cinese, giapponese e coreano."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "デバイス上の Neural Engine で動作します。言語によってモデルが決まります。ヨーロッパ言語は Parakeet、中国語・日本語・韓国語は SenseVoice です。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "기기의 Neural Engine에서 실행됩니다. 언어에 따라 모델이 정해집니다. 유럽 언어는 Parakeet, 중국어·일본어·한국어는 SenseVoice입니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No aparelho, no Neural Engine. O idioma escolhe o modelo: Parakeet para idiomas europeus, SenseVoice para chinês, japonês e coreano."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На устройстве, на Neural Engine. Язык выбирает модель: Parakeet для европейских языков, SenseVoice для китайского, японского и корейского."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在本机的神经网络引擎上运行。语言决定模型：欧洲语言使用 Parakeet，中文、日语和韩语使用 SenseVoice。"
           }
         }
       }
@@ -15651,6 +15706,65 @@
         }
       }
     },
+    "Speakers" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sprecher"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hablantes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Locuteurs"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parlanti"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "話者"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "화자"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falantes"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Говорящие"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "说话人"
+          }
+        }
+      }
+    },
     "Speaking" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -19271,60 +19385,61 @@
         }
       }
     },
-    "Transcription runs entirely on this device, which means the speech model has to live here too. It's about 1.6 GB — worth getting on Wi-Fi now rather than partway through your first recording." : {
+    "Transcription runs entirely on this device, which means the speech models have to live here too. They're about 700 MB — worth getting on Wi-Fi now rather than partway through your first recording." : {
+      "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die Transkription läuft vollständig auf diesem Gerät, also muss auch das Sprachmodell hier liegen. Es ist etwa 1,6 GB groß – besser jetzt über WLAN laden als mitten in deiner ersten Aufnahme."
+            "value" : "Die Transkription läuft vollständig auf diesem Gerät, also müssen auch die Sprachmodelle hier liegen. Sie sind etwa 700 MB groß – besser jetzt über WLAN laden als mitten in der ersten Aufnahme."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La transcripción se realiza por completo en este dispositivo, así que el modelo de voz también tiene que estar aquí. Ocupa unos 1,6 GB: conviene descargarlo por Wi-Fi ahora y no a mitad de tu primera grabación."
+            "value" : "La transcripción se hace por completo en este dispositivo, así que los modelos de voz también tienen que vivir aquí. Ocupan unos 700 MB: conviene descargarlos ahora con Wi-Fi y no a mitad de tu primera grabación."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La transcription s'effectue entièrement sur cet appareil, le modèle vocal doit donc s'y trouver aussi. Il pèse environ 1,6 Go — autant le télécharger en Wi-Fi maintenant plutôt qu'au milieu de votre premier enregistrement."
+            "value" : "La transcription s'effectue entièrement sur cet appareil, les modèles vocaux doivent donc y résider aussi. Ils pèsent environ 700 Mo : mieux vaut les télécharger maintenant en Wi-Fi qu'au milieu de votre premier enregistrement."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La trascrizione avviene interamente su questo dispositivo, quindi anche il modello vocale deve risiedere qui. Occupa circa 1,6 GB: meglio scaricarlo ora via Wi-Fi che a metà della tua prima registrazione."
+            "value" : "La trascrizione avviene interamente su questo dispositivo, quindi anche i modelli vocali devono risiedere qui. Occupano circa 700 MB: meglio scaricarli ora in Wi-Fi che a metà della tua prima registrazione."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "文字起こしはすべてこのデバイス上で行われるため、音声モデルもここに必要です。サイズは約1.6 GB。最初の録音の途中ではなく、今Wi-Fiで取得しておくのがおすすめです。"
+            "value" : "文字起こしはすべてこのデバイス上で行われるため、音声モデルもここに置く必要があります。サイズは約 700 MB です。最初の録音の途中ではなく、今 Wi-Fi で入手しておくことをおすすめします。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "받아쓰기는 전적으로 이 기기에서 실행되므로 음성 모델도 여기에 있어야 합니다. 약 1.6GB이며, 첫 녹음 도중보다 지금 Wi-Fi로 받아두는 것이 좋습니다."
+            "value" : "전사는 전부 이 기기에서 이루어지므로 음성 모델도 여기에 있어야 합니다. 용량은 약 700 MB입니다. 첫 녹음 도중이 아니라 지금 Wi-Fi로 받아 두는 것이 좋습니다."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A transcrição é feita inteiramente neste dispositivo, então o modelo de fala também precisa ficar aqui. Ele tem cerca de 1,6 GB — melhor baixar no Wi-Fi agora do que no meio da sua primeira gravação."
+            "value" : "A transcrição acontece inteiramente neste aparelho, então os modelos de voz também precisam ficar aqui. Eles têm cerca de 700 MB — vale baixar agora no Wi-Fi em vez de no meio da sua primeira gravação."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Расшифровка выполняется полностью на этом устройстве, поэтому речевая модель должна быть здесь же. Её размер около 1,6 ГБ — лучше загрузить по Wi-Fi сейчас, чем посреди первой записи."
+            "value" : "Расшифровка выполняется целиком на этом устройстве, поэтому речевые модели тоже должны храниться здесь. Они занимают около 700 МБ — лучше загрузить их сейчас по Wi-Fi, чем посреди первой записи."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "转录完全在本设备上进行，因此语音模型也需要保存在这里。它约为 1.6 GB — 建议现在通过 Wi-Fi 下载，而不是在你第一次录音进行到一半时。"
+            "value" : "转录完全在本机进行，因此语音模型也需要保存在本机。模型约 700 MB，建议现在连接 Wi-Fi 下载，而不是在第一次录音进行到一半时下载。"
           }
         }
       }

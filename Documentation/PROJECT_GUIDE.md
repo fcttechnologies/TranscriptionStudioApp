@@ -1,6 +1,6 @@
 # Transcription Studio — Project Guide
 
-A native, universal (Mac-first) SwiftUI app: on-device transcription (WhisperKit) of URLs,
+A native, universal (Mac-first) SwiftUI app: on-device transcription (FCTSpeech: Parakeet and SenseVoice, routed by language) of URLs,
 files, and live recordings, with on-device speaker diarization (Streaming Sortformer via
 Core AI), plus on-device synthesis in the other direction. Two jobs: FCT's daily
 transcription driver, and a craft showcase.
@@ -21,8 +21,8 @@ other devices. Any copy that says otherwise is a defect — see `Documentation/P
 | Meeting recording (system audio + mic) | ✅ ScreenCaptureKit | — |
 | Inspector | ✅ | ✅ |
 
-Floor is 27 on both because the diarizer is a Core AI (`.aimodel`) model — the framework
-is new in the 27 OSes. Swift 6, strict concurrency.
+Floor is 27 on both: the fleet's floor, and the SDK the speech models are compiled against.
+Swift 6, strict concurrency, strict memory safety.
 
 Because the floor *is* 27, there is no OS-version `#available` gating anywhere. The only
 gates are runtime-capability checks — `SystemLanguageModel.default.availability`,
@@ -58,7 +58,7 @@ Tests are **app-hosted** (`@testable import TranscriptionStudio`) in
 
 - `Sources/App/Audio/AudioChunk.swift` — `AudioChunk` (16k mono f32 + session-relative
   time + track tag), `CaptureSource`.
-- `Sources/App/ASR/AsrEngine.swift` — `AsrEngine`, `AsrSegment` (Whisper confidence
+- `Sources/App/ASR/AsrEngine.swift` — `AsrEngine`, `AsrSegment` (segment confidence
   fields surfaced), `AsrUpdate` (confirmed/unconfirmed).
 - `Sources/App/TTS/TtsEngine.swift` — `TtsEngine`, `SynthesizedSpeech` (mono float PCM
   + its own rate, WAV on the way out), `SynthesizedSpeechChunk` + `synthesizeStreaming`
@@ -88,7 +88,7 @@ Tests are **app-hosted** (`@testable import TranscriptionStudio`) in
 - Motion per the motion-craft bar: springs (critically damped default), interruptible,
   Reduce Motion honored everywhere (`Support/MotionAccessibility.swift`).
 - Swift Testing (`@Test`/`#expect`), in-memory SwiftData per test.
-- Models: WhisperKit self-downloads; Sortformer artifacts via `scripts/fetch-models.sh`
+- Models: the three FCTSpeech models self-download on first use through `SpeechModelStore` (the Background Assets extension pre-fetches them on App Store installs)
   or the in-app downloader (never bundled in git).
 
 ### Two measurements that settle arguments before they start
@@ -156,9 +156,9 @@ the permission and logging rules, and the privacy-manifest declarations behind t
 ## Verification
 
 `Documentation/VERIFICATION.md` — the automated gates that keep "who said what" honest, and the
-accessibility surface that makes the built app drivable. The diarizer's neural core is a model
-export whose fidelity is never assumed; `Documentation/SORTFORMER-MODEL.md` carries its
-provenance and the recipe to regenerate it. Checks a person has to run by hand are not facts
+accessibility surface that makes the built app drivable. The speech models are conversions whose
+fidelity is never assumed; FCTSpeech's README carries their provenance, the converters and the
+gates that prove each one. Checks a person has to run by hand are not facts
 about this code and live in the workspace, at
 `~/Jarvis/projects/transcription-studio/device-checks.md`.
 

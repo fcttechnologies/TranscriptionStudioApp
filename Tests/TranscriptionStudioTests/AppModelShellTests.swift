@@ -105,44 +105,6 @@ struct StudioSheetIdentityTests {
     }
 }
 
-@Suite("AppModel — per-model engine cache")
-@MainActor
-struct AppModelEngineCacheTests {
-
-    // Two jobs against the same (default) model/backend must reuse the built engine rather
-    // than asking the provider again — the cache keys by variant/backend, not by call count.
-    @Test func sameModelReusesTheCachedEngineAcrossJobs() async throws {
-        let asrCalls = Mutex<[String]>([])
-        let inspector = InspectorStore()
-        let recorder = PipelineRecorder(store: inspector)
-        let app = AppModel(modelContext: ModelContextFactory.makeInMemory(),
-                           inspector: inspector,
-                           recorder: recorder,
-                           asr: MockAsrEngine(),
-                           diarizer: MockDiarizationEngine(),
-                           captureFactory: RecordingController.mockCaptureFactory,
-                           asrEngineProvider: { variant in
-                               asrCalls.withLock { $0.append(variant) }
-                               return MockAsrEngine()
-                           })
-
-        // An unsupported extension fails FileIngestService synchronously — the two jobs
-        // finish fast, so this only exercises the engine selection, never real transcription.
-        let badFile = URL(fileURLWithPath: "/tmp/AppModelEngineCacheTests-\(UUID().uuidString).badext")
-
-        app.startTranscription(title: "First", source: .file(badFile))
-        let firstJob = try #require(app.jobs.jobs.last)
-        try await waitUntil(timeout: 3) { firstJob.state == .error || firstJob.state == .done }
-
-        app.startTranscription(title: "Second", source: .file(badFile))
-        let secondJob = try #require(app.jobs.jobs.last)
-        try await waitUntil(timeout: 3) { secondJob.state == .error || secondJob.state == .done }
-
-        let expectedVariant = AppSettings.WhisperModel.platformDefault.whisperKitVariant
-        #expect(asrCalls.withLock { $0 } == [expectedVariant])
-    }
-}
-
 @Suite("AppModel — launch-time prewarm state")
 @MainActor
 struct AppModelPrewarmTests {
@@ -165,16 +127,62 @@ struct AppModelPrewarmTests {
         #expect(app.enginePrewarmState == stateAfterFirstCall)
     }
 
-    // Switching the selected model resets to idle and immediately re-enters preparing —
-    // the force-rewarm path Settings uses after a model change.
-    @Test func selectedModelChangeResetsThenRewarms() async throws {
-        let app = AppModel(modelContext: ModelContextFactory.makeInMemory())
+    // A transcription needs both models, so the warmup prepares the recognizer and then the
+    // diarizer; a diarizer that fails to prepare fails the warmup, never leaves it "ready".
+    @Test func warmsTheRecognizerThenTheDiarizerAndFailsOnEither() async throws {
+        let order = Mutex<[String]>([])
+        let asr = PreparationSpyAsrEngine { order.withLock { $0.append("asr") } }
+        let diarizer = PreparationSpyDiarizationEngine(failing: false) { order.withLock { $0.append("diarizer") } }
+        let app = AppModel(modelContext: ModelContextFactory.makeInMemory(), asr: asr, diarizer: diarizer)
         app.prewarmDefaultEngine()
         try await waitUntil(timeout: 3) { app.enginePrewarmState == .ready }
+        #expect(order.withLock { $0 } == ["asr", "diarizer"])
 
-        app.prewarmSelectedModel()
-        #expect(app.enginePrewarmState.isPreparing)
-        try await waitUntil(timeout: 3) { app.enginePrewarmState == .ready }
-        #expect(app.enginePrewarmState == .ready)
+        let failing = AppModel(modelContext: ModelContextFactory.makeInMemory(),
+                               asr: MockAsrEngine(),
+                               diarizer: PreparationSpyDiarizationEngine(failing: true) {})
+        failing.prewarmDefaultEngine()
+        try await waitUntil(timeout: 3) {
+            if case .failed = failing.enginePrewarmState { return true } else { return false }
+        }
+    }
+}
+
+/// The mock recognizer, reporting when its `prepare` ran.
+private final class PreparationSpyAsrEngine: AsrEngine, Sendable {
+    private let inner = MockAsrEngine()
+    private let onPrepare: @Sendable () -> Void
+    init(onPrepare: @escaping @Sendable () -> Void) { self.onPrepare = onPrepare }
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        onPrepare()
+        try await inner.prepare(onProgress: onProgress)
+    }
+    func transcribe(samples: [Float], track: AudioTrack, wordTimestamps: Bool) async throws -> [AsrSegment] {
+        try await inner.transcribe(samples: samples, track: track, wordTimestamps: wordTimestamps)
+    }
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<AsrUpdate, Error> {
+        inner.stream(chunks: chunks)
+    }
+}
+
+/// The mock diarizer, reporting when its `prepare` ran, or refusing to.
+private final class PreparationSpyDiarizationEngine: DiarizationEngine, Sendable {
+    struct Boom: Error {}
+    let backendName = "Spy"
+    private let inner = MockDiarizationEngine()
+    private let failing: Bool
+    private let onPrepare: @Sendable () -> Void
+    init(failing: Bool, onPrepare: @escaping @Sendable () -> Void) {
+        self.failing = failing
+        self.onPrepare = onPrepare
+    }
+    func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
+        onPrepare()
+        if failing { throw Boom() }
+        try await inner.prepare(onProgress: onProgress)
+    }
+    func diarize(samples: [Float]) async throws -> DiarizationResult { try await inner.diarize(samples: samples) }
+    func stream(chunks: AsyncThrowingStream<AudioChunk, Error>) -> AsyncThrowingStream<DiarizationUpdate, Error> {
+        inner.stream(chunks: chunks)
     }
 }

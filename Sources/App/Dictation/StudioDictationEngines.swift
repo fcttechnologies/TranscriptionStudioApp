@@ -1,26 +1,26 @@
 import FCTDictation
+import FCTSpeech
 import Foundation
-import WhisperKit
 
 /// Transcription Studio's own engines plugged into `FCTDictation`'s two seams.
 ///
 /// Both wrap engines the app already ships and already prepares for its real pipeline, so a
-/// dictation costs no second model: the WhisperKit variant here is the same one a transcription
-/// job uses, and the diarizer is the same backend the inspector cross-checks against.
+/// dictation costs no second model: the recognizer here is the one a transcription job uses, and
+/// the diarizer is the same.
 ///
 /// Neither is the default. Apple's `SpeechTranscriber` downloads nothing of ours and is what a
 /// dictation runs on until the person chooses otherwise in Settings — these are the improvement
 /// they opt into, and their models are the download that opt-in pays for.
 
-/// WhisperKit as the improved ``DictationEngine``.
+/// The studio's recognizer as the improved ``DictationEngine``.
 ///
 /// `AsrEngine` speaks 16 kHz mono samples and `DictationRecording` is a file, so the one thing
-/// this adds is the read between them. It reaches `AudioProcessor` directly rather than through
+/// this adds is the read between them. It reads the file directly rather than through
 /// `FileIngestService`: that gate exists to reject a hostile *upload* by extension, and the
 /// recorder's own `.caf` is neither an upload nor on its whitelist.
-nonisolated final class WhisperKitDictationEngine: DictationEngine {
+nonisolated final class StudioDictationEngine: DictationEngine {
 
-    static let engineIdentifier = "transcriptionstudio.whisperkit"
+    static let engineIdentifier = "transcriptionstudio.studio"
 
     private let engine: any AsrEngine
 
@@ -41,9 +41,9 @@ nonisolated final class WhisperKitDictationEngine: DictationEngine {
         let segments = try await engine.transcribe(samples: samples, track: .mixed, wordTimestamps: false)
         return DictationTranscript(
             segments: segments.map { DictationSegment(text: $0.text, start: $0.start, end: $0.end) },
-            // Whisper detects the spoken language internally and reports it on no segment, so the
-            // engine cannot say which locale it transcribed in. Nil is that, rather than
-            // `Locale.current` standing in for a fact nothing here knows.
+            // The route picks the model from the interface locale, and the engine reports the
+            // language on no segment, so nothing here knows which locale it transcribed in. Nil
+            // is that, rather than `Locale.current` standing in for a fact nothing here knows.
             locale: nil,
             engineIdentifier: identifier
         )
@@ -98,6 +98,6 @@ nonisolated final class SpeakerDictationPass: DictationTranscriptPass {
 /// engine in this app speaks.
 enum DictationAudio {
     static func samples(at url: URL) throws -> [Float] {
-        try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+        try AudioFileReader.monoFloat16k(url)
     }
 }

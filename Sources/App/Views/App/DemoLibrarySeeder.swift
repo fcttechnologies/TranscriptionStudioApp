@@ -104,8 +104,6 @@ enum DemoLibrarySeeder {
             // Confident, clean speech — so the demo doesn't wear the low-confidence
             // underline on every line.
             segment.avgLogprob = -0.05
-            segment.noSpeechProb = 0.01
-            segment.compressionRatio = 1.4
             segments.append(segment)
         }
         session.segments = segments

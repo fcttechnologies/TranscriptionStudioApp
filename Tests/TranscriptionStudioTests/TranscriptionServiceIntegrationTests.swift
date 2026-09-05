@@ -3,7 +3,7 @@ import SwiftData
 import Testing
 @testable import TranscriptionStudio
 
-/// End-to-end proof that the real runner drives a real WhisperKit transcription: a real
+/// End-to-end proof that the real runner drives the real recognizer transcription: a real
 /// file rides `TranscriptionService.runFileJob` through the actual ASR engine (the diarizer
 /// is mocked so this doesn't also require the Sortformer Core AI model), producing a
 /// persisted, non-empty, audio-archived session. Set `TS_SKIP_MODEL_TESTS=1` to skip.
@@ -32,13 +32,13 @@ struct TranscriptionServiceIntegrationTests {
         let store = InspectorStore()
         let recorder = PipelineRecorder(store: store)
         let service = TranscriptionService(
-            asrEngine: WhisperKitAsrEngine(),
+            asrEngine: RoutedAsrEngine(),
             diarizer: MockDiarizationEngine(),
             modelContext: context,
             recorder: recorder,
             inspector: store,
             wordTimestamps: false,
-            modelName: WhisperKitAsrEngine.platformDefaultModelName)
+            modelName: "fctspeech")
         let job = TranscriptionJob(title: "Real file", steps: TranscriptionService.fileJobSteps)
 
         _ = try #require(await service.runFileJob(fileURL: wav, job: job))

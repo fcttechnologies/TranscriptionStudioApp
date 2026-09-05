@@ -9,7 +9,7 @@ import SwiftData
 /// load), and on stop drains the engines' final passes before archiving the audio and
 /// persisting a session.
 ///
-/// It knows only the protocols and the mocks, so the real WhisperKit + Sortformer engines
+/// It knows only the protocols and the mocks, so the real recognizer + diarizer
 /// replace the injected instances with no change here or in any view.
 @MainActor
 @Observable

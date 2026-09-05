@@ -78,7 +78,7 @@ private actor MockURLDownloader: URLAudioDownloading {
 struct TranscriptionServiceTests {
 
     // A real (tiny) wav file so FileIngestService can actually load samples without a
-    // network or model dependency — MockAsrEngine stands in for WhisperKit.
+    // network or model dependency — MockAsrEngine stands in for the recognizer.
     private static func makeTestWav() throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).wav")
         // Minimal valid 16-bit PCM mono WAV header + a moment of silence (0.2s @ 16kHz).

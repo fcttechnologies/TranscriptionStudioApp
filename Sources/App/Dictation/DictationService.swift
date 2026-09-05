@@ -8,10 +8,10 @@ import SwiftData
 ///
 /// `FCTDictation` owns the sequence, so everything here is a decision only this app can make —
 /// which engine, whether to identify speakers, and which words this person's dictation has to get
-/// right. Apple's `SpeechTranscriber` is the default and downloads nothing of ours; WhisperKit and
-/// the diarizer are the engines this app already ships, offered as an opt-in in Settings and
-/// reached through the same per-model caches a transcription job uses, so choosing them costs no
-/// second model load.
+/// right. Apple's `SpeechTranscriber` is the default and downloads nothing of ours; the studio's
+/// recognizer and the diarizer are the engines this app already ships, offered as an opt-in in
+/// Settings and reached through the same instances a transcription job uses, so choosing them
+/// costs no second model load.
 extension AppModel {
 
     /// One dictation, assembled from the current settings — or from whatever a test injected.
@@ -20,7 +20,7 @@ extension AppModel {
         let store = try DictationStore(appGroupID: StudioDictation.appGroupID)
         let engine: any DictationEngine = switch settings.dictationEngine {
         case .appleSpeech: AppleSpeechEngine()
-        case .whisperKit: WhisperKitDictationEngine(engine: transcriptionAsrEngine(for: settings.whisperModel))
+        case .studio: StudioDictationEngine(engine: asr)
         }
         let passes: [any DictationTranscriptPass] = settings.dictationIdentifiesSpeakers
             ? [SpeakerDictationPass(diarizer: diarizer)]

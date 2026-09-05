@@ -8,7 +8,7 @@ import SwiftUI
 ///
 /// Built from `Confidence.spans`, which degrades to a single whole-line span (flagged by the
 /// segment score) when per-word probabilities weren't captured — so this renders cleanly with or
-/// without word timestamps. Whisper-specific, so it stays app-side (the generic score→underline
+/// without word timestamps. the engines' own reduction, so it stays app-side (the generic score→underline
 /// affordance is `FCTComponentsUI.ConfidenceText`).
 ///
 /// Reusable-bit flag: the span→AttributedString-with-dotted-underline construction is engine-

@@ -11,23 +11,21 @@ actor FCTSpeechDiarizationEngine: DiarizationEngine {
     nonisolated let backendName = "FCTSpeech Sortformer"
     nonisolated var supportsStreaming: Bool { true }
     private let modelsDirectory: URL
+    private let install: SpeechModelInstaller
     private var diarizer: SortformerDiarizer?
     private var preparationTask: Task<Void, Error>?
 
-    init(modelsDirectory: URL = FCTSpeechDiarizationEngine.defaultModelsDirectory()) {
-        self.modelsDirectory = modelsDirectory
-    }
-
-    static func defaultModelsDirectory() -> URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("TranscriptionStudio/Models/fctspeech/sortformer", isDirectory: true)
+    init(root: URL = SpeechModel.root(), install: @escaping SpeechModelInstaller = SpeechModel.install) {
+        self.modelsDirectory = SpeechModel.sortformer.directory(under: root)
+        self.install = install
     }
 
     func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
         if diarizer != nil { onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1)); return }
         if let preparationTask { try await preparationTask.value; return }
         let task = Task {
-            onProgress(EnginePreparationProgress(phase: "Loading Sortformer", fraction: 0))
+            try await install(.sortformer) { onProgress(EnginePreparationProgress(phase: "Downloading Sortformer", fraction: $0)) }
+            onProgress(EnginePreparationProgress(phase: "Loading Sortformer", fraction: nil))
             diarizer = try SortformerDiarizer(directory: modelsDirectory)
             onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1))
         }

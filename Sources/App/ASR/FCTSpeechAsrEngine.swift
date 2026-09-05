@@ -11,18 +11,13 @@ import Foundation
 /// other models. `prepare` compiles nothing: the assets ship compiled for the target OS.
 actor FCTSpeechAsrEngine: AsrEngine {
     private let modelsDirectory: URL
+    private let install: SpeechModelInstaller
     private var transcriber: Transcriber?
     private var preparationTask: Task<Void, Error>?
 
-    init(modelsDirectory: URL = FCTSpeechAsrEngine.defaultModelsDirectory()) {
-        self.modelsDirectory = modelsDirectory
-    }
-
-    /// `~/Library/Application Support/TranscriptionStudio/Models/fctspeech/parakeet-v3`, beside
-    /// the other engines' models.
-    static func defaultModelsDirectory() -> URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        return appSupport.appendingPathComponent("TranscriptionStudio/Models/fctspeech/parakeet-v3", isDirectory: true)
+    init(root: URL = SpeechModel.root(), install: @escaping SpeechModelInstaller = SpeechModel.install) {
+        self.modelsDirectory = SpeechModel.parakeet.directory(under: root)
+        self.install = install
     }
 
     func prepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
@@ -41,7 +36,8 @@ actor FCTSpeechAsrEngine: AsrEngine {
     }
 
     private func doPrepare(onProgress: @escaping @Sendable (EnginePreparationProgress) -> Void) async throws {
-        onProgress(EnginePreparationProgress(phase: "Loading Parakeet", fraction: 0))
+        try await install(.parakeet) { onProgress(EnginePreparationProgress(phase: "Downloading Parakeet", fraction: $0)) }
+        onProgress(EnginePreparationProgress(phase: "Loading Parakeet", fraction: nil))
         let models = try ParakeetModels(directory: modelsDirectory)
         transcriber = try Transcriber(models: models, modelsDirectory: modelsDirectory)
         onProgress(EnginePreparationProgress(phase: "Ready", fraction: 1))

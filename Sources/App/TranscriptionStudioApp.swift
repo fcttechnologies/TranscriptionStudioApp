@@ -115,9 +115,9 @@ struct TranscriptionStudioApp: App {
         URLIngestService.sweepStartupTemp()
         #else
         // Relocate any speech model the Background Assets downloader extension pre-fetched
-        // (before first launch) from the App Group into WhisperKit's download base, so the
-        // warmup behind the gate finds it on disk and skips the network.
-        BackgroundAssetsModelInstaller.installStagedModel()
+        // (before first launch) from the App Group into the models root, so the warmup behind
+        // the gate finds it on disk and skips the network.
+        SpeechModelStore.installStagedModels()
         #endif
         AppModelContainer.stampMainContextAuthor()
         // MetricKit consumption is the shared layer's (`TranscriptionDiagnostics.service`), which

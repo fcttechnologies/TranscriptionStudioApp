@@ -18,14 +18,14 @@ and judged, all rights reserved, no licence granted to use, copy, modify or redi
 
 ```bash
 brew install xcodegen yt-dlp ffmpeg   # yt-dlp/ffmpeg power Mac URL ingest
-scripts/fetch-models.sh               # Sortformer artifacts (mel filterbank + metadata)
 xcodegen generate
 open TranscriptionStudio.xcodeproj    # one scheme, TranscriptionStudio — pick Mac or iOS from the destination menu
 ```
 
-The Sortformer neural core must be a **locally re-exported** `.aimodel` (the HF-published one
-doesn't load on current toolchains) — recipe in `Documentation/SORTFORMER-MODEL.md`. Without
-it the app runs with SpeakerKit diarization; WhisperKit self-downloads on first use.
+The speech models are FCTSpeech's (`../FCTSpeech`, a sibling checkout): Parakeet for the
+European languages, SenseVoice for Chinese, Japanese and Korean, Sortformer for speakers, each
+converted from its checkpoint by us and run on the Neural Engine. The app downloads whichever is
+missing on first use from the hosted repo the bundled manifest names.
 
 Full gate: `scripts/gate.sh` (the app-hosted suite on the macOS destination, the CLI suite,
 both platforms + the CLI built warning-free, artifact reads, Release-Mac hardening check).
@@ -53,7 +53,7 @@ xcodebuild -project TranscriptionStudio.xcodeproj -scheme transcribe-cli \
 ~/Library/Application\ Support/TranscriptionStudio/bin/transcribe-cli --help                             # all flags
 ```
 
-The WhisperKit model self-provisions on first use (download progress → stderr).
+The speech models self-provision on first use (download progress → stderr); `--language` picks the recognizer.
 
 It also speaks — on-device synthesis behind one `TtsEngine` seam with two engines routed by
 voice id. `speak <text> --out <path>` writes a 16-bit mono WAV; `--voice`/`--language` pick a

@@ -142,7 +142,7 @@ enum PromptTranscript {
         return MatchedPrompt(text: text, clipSeconds: cut)
     }
 
-    /// Whether an ASR word carries sentence-final punctuation (Whisper attaches it to the
+    /// Whether an ASR word carries sentence-final punctuation (the recognizer attaches it to the
     /// word's own token, e.g. "ceremonies.").
     private static func endsASentence(_ word: String) -> Bool {
         let trimmed = word.trimmingCharacters(in: .whitespaces)

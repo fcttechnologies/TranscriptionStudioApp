@@ -43,12 +43,6 @@ actor WarmEngine {
     private var engine: (any AsrEngine)?
     private var lastUsed = Date()
 
-    init(modelName: String, forcedLanguage: String?, idleTimeout: TimeInterval) {
-        self.init(idleTimeout: idleTimeout, forcedLanguage: forcedLanguage) {
-            WhisperKitAsrEngine(modelName: modelName, forcedLanguage: forcedLanguage)
-        }
-    }
-
     init(idleTimeout: TimeInterval, forcedLanguage: String? = nil,
          makeEngine: @escaping @Sendable () -> any AsrEngine) {
         self.idleTimeout = idleTimeout
@@ -70,7 +64,7 @@ actor WarmEngine {
     /// Transcribe prepared 16 kHz mono samples, returning the model's timestamped segments.
     /// Keeping the segments — instead of flattening to one wall of text — is what lets the serve
     /// API expose per-moment timestamps and what the speaker fusion attributes against.
-    /// `language` is nil for Whisper's own auto-detect.
+    /// `language` is nil for the engine's default route.
     func transcribe(samples: [Float], language: String?) async throws -> [AsrSegment] {
         let e = try await ensureLoaded()
         lastUsed = Date()
@@ -96,8 +90,7 @@ actor WarmEngine {
 // MARK: - Warm diarizer (model lifecycle)
 
 /// Holds the speaker-separation engine across requests, on the same discipline `WarmEngine`
-/// holds the ASR one and against its own idle clock — the backend seam picks Sortformer where
-/// its model is provisioned and SpeakerKit everywhere else (`DiarizationBackend`).
+/// holds the ASR one and against its own idle clock.
 ///
 /// Separation is best-effort by contract: `turns(for:)` never throws. A diarizer that can't
 /// load, or a pass that fails, yields no turns, and the job still returns its transcript with
@@ -115,7 +108,7 @@ actor WarmDiarizer {
     private var lastUsed = Date()
 
     init(idleTimeout: TimeInterval,
-         makeEngine: @escaping @Sendable () -> any DiarizationEngine = { DiarizationBackend.default.makeEngine() }) {
+         makeEngine: @escaping @Sendable () -> any DiarizationEngine = { FCTSpeechDiarizationEngine() }) {
         self.idleTimeout = idleTimeout
         self.makeEngine = makeEngine
     }
@@ -254,7 +247,7 @@ struct TranscriptSegment: Sendable, Equatable {
 
 extension [TranscriptSegment] {
     /// The flat transcript: trimmed segment texts joined by a single space (each segment is
-    /// already trimmed, so no double spaces the raw WhisperKit join would leave).
+    /// already trimmed, so no double spaces a raw join would leave).
     var flatText: String {
         map(\.text).joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -418,17 +411,17 @@ enum JobSource {
         self = .url(url, language: try Self.resolveLanguage(options?["language"] as? String))
     }
 
-    /// The Whisper language code a job decodes with: nil for auto-detect, which is both the
-    /// default and what `"auto"` asks for. Anything else is a BCP-47 tag, and one Whisper has
-    /// no language for is refused rather than quietly auto-detected — a caller that named a
-    /// language would otherwise never learn its hint did nothing.
+    /// The language a job decodes with, which picks its model: nil for the server's default
+    /// route, which is both the default and what `"auto"` asks for. Anything else is a BCP-47
+    /// tag, and one neither recognizer covers is refused rather than quietly routed — a caller
+    /// that named a language would otherwise never learn its hint did nothing.
     private static func resolveLanguage(_ requested: String?) throws -> String? {
         let tag = (requested ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tag.isEmpty, tag.lowercased() != "auto" else { return nil }
-        guard let code = WhisperKitAsrEngine.whisperLanguageCode(forTag: tag) else {
-            throw ServeError(#"unknown language "\#(tag)" — use "auto" or a BCP-47 tag (e.g. "es", "pt-BR")"#)
+        guard AsrRoute.route(forTag: tag) != nil else {
+            throw ServeError(#"unsupported language "\#(tag)" — use "auto" or a BCP-47 tag of a supported language (e.g. "es", "pt-BR", "ja")"#)
         }
-        return code
+        return tag
     }
 }
 

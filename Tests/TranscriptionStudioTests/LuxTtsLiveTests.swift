@@ -1,5 +1,5 @@
 // The real CoreML LuxTTS pipeline, end to end: profile → prompt-transcript derivation via
-// real word-timestamped WhisperKit ASR → sentence-chunked cloned synthesis. Env-gated like the
+// real word-timestamped ASR → sentence-chunked cloned synthesis. Env-gated like the
 // Sortformer real-model suite — it downloads/loads the cloning models (~346 MB) and the ASR
 // model, so it only runs when explicitly asked for:
 //
@@ -26,7 +26,7 @@ struct LuxTtsLiveTests {
                      "no voice profile at \(profileURL.path) — set LUXTTS_PROFILE")
         let profile = try CloningVoiceProfile.load(from: profileURL)
 
-        let asr = WhisperKitAsrEngine()
+        let asr = RoutedAsrEngine()
         let engine = LuxTtsCloningEngine(profile: profile) { samples in
             try await asr.prepare { _ in }
             return try await asr.transcribe(samples: samples, track: .mixed, wordTimestamps: true)

@@ -1,6 +1,6 @@
 import Foundation
 import UniformTypeIdentifiers
-import WhisperKit
+import FCTSpeech
 
 /// Extensions accepted from a dropped/picked media file — ported from the web app's
 /// upload whitelist (`ALLOWED_UPLOAD_EXTENSIONS` in main.py) so a hostile or garbage
@@ -38,17 +38,15 @@ enum FileIngestError: LocalizedError, Sendable {
     }
 }
 
-/// Cross-platform file ingest: a dropped/picked media file → 16 kHz mono Float32 samples.
-/// Reuses WhisperKit's own `AudioProcessor` (AVAudioFile-backed, already resamples to
-/// the model's input format and streams large files in chunks) rather than re-deriving
-/// AVFoundation conversion.
+/// Cross-platform file ingest: a dropped/picked media file → 16 kHz mono Float32 samples,
+/// through FCTSpeech's reader (AVAudioFile-backed, resampling to the engines' input format).
 enum FileIngestService {
     static func loadSamples(from url: URL) throws -> [Float] {
         guard SupportedMediaExtensions.isSupported(url) else {
             throw FileIngestError.unsupportedExtension(url.pathExtension)
         }
         do {
-            return try AudioProcessor.loadAudioAsFloatArray(fromPath: url.path)
+            return try AudioFileReader.monoFloat16k(url)
         } catch {
             throw FileIngestError.loadFailed(error.localizedDescription)
         }

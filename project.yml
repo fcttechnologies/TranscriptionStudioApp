@@ -28,9 +28,9 @@ packages:
   # package like Foundation.
   FCTSpeech:
     path: ../FCTSpeech
-  # On-device speech vendors: WhisperKit (ASR) + SpeakerKit (diarizer cross-check) + TTSKit
-  # (synthesis) from the argmax monorepo, and FluidAudio (CoreML LuxTTS voice cloning), pinned
-  # to the revision the cloning bench fixture-verified — move that pin only with a re-listen.
+  # Speech synthesis: TTSKit from the argmax monorepo, and FluidAudio (CoreML LuxTTS voice
+  # cloning), pinned to the revision the cloning bench fixture-verified — move that pin only with
+  # a re-listen. Recognition and diarization are FCTSpeech's, above.
   argmax-oss-swift:
     url: https://github.com/argmaxinc/argmax-oss-swift.git
     from: 1.0.0
@@ -124,10 +124,6 @@ targets:
         product: FCTScreenshotStudio
       # The Share extension ships on both platforms and is itself multiplatform — no filter.
       - target: ShareExtension
-      - package: argmax-oss-swift
-        product: WhisperKit
-      - package: argmax-oss-swift
-        product: SpeakerKit
       - package: argmax-oss-swift
         product: TTSKit
       - package: FluidAudio
@@ -224,15 +220,15 @@ targets:
           - com.fcttechnologies.TranscriptionStudio.transcription.*
         # --- Background Assets (self-hosted, unmanaged) -------------------------------------
         # The system reads these before first launch: it downloads the manifest at BAManifestURL,
-        # then wakes BackgroundAssetsExtension to schedule the WhisperKit model files it lists.
-        # BAManifestURL must resolve, at ship time, to the committed manifest
-        # (Sources/App/BackgroundAssets/whisperkit-model-manifest.json). See
+        # then wakes BackgroundAssetsExtension to schedule the speech model files it lists. The
+        # manifest and the models live in one hosted repo (ModelManifest.repo); the committed copy
+        # is Sources/App/BackgroundAssets/speech-model-manifest.json. See
         # Documentation/BACKGROUND-ASSETS.md.
-        BAManifestURL: https://assets.fct-technologies.com/transcriptionstudio/whisperkit-model-manifest.json
+        BAManifestURL: https://huggingface.co/fcttechnologies/fctspeech-coreml/resolve/main/speech-model-manifest.json
         BAAppGroupID: group.com.fcttechnologies.TranscriptionStudio
         # Uncompressed on-disk size of all assets (bytes) — shown on the App Store. Matches the
         # manifest total; regenerate both with scripts/gen-ba-manifest.sh if the model changes.
-        BAMaxInstallSize: 1638464446
+        BAMaxInstallSize: 1202109558
         # App-review-enforced ceilings on the initial (post-install) download. All our downloads
         # are non-essential, so the essential allowance is 0 and the non-essential allowance
         # covers the model total plus a small margin. Domains the extension may fetch from —
@@ -370,10 +366,6 @@ targets:
       - package: FCTFoundation
         product: FCTScreenshotStudio
       - package: argmax-oss-swift
-        product: WhisperKit
-      - package: argmax-oss-swift
-        product: SpeakerKit
-      - package: argmax-oss-swift
         product: TTSKit
       - package: FluidAudio
         product: FluidAudio
@@ -477,8 +469,9 @@ targets:
         excludes:
           - "Info.plist"
           - "BackgroundAssetsExtension.entitlements"
-      - path: Sources/App/BackgroundAssets/WhisperKitModelLayout.swift
-      - path: Sources/App/BackgroundAssets/WhisperKitModelManifest.swift
+      - path: Sources/App/BackgroundAssets/ModelLayout.swift
+      - path: Sources/App/BackgroundAssets/ModelManifest.swift
+      - path: Sources/App/ASR/SpeechModel.swift
       - path: Sources/App/SharedItems/AppGroup.swift
     settings:
       groups: [fct]

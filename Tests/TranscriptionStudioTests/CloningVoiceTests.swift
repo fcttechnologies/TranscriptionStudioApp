@@ -71,7 +71,7 @@ struct PromptTranscriptTests {
     }
 
     @Test func keepsOnlyWordsFullyInsideTheWindowInSpokenOrder() {
-        // Deliberately out of order — Whisper segments can hand words segment-grouped.
+        // Deliberately out of order — the recognizer can hand words segment-grouped.
         let words = [
             word(" simulations", 1.2, 2.0),
             word(" I", 0.1, 0.3),

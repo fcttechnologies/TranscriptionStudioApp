@@ -224,8 +224,6 @@ extension StoredSegment: SyncedModel, TranscriptSessionChild {
             "speaker_slot": .int(Int64(speakerSlot)),
             "speaker_confidence": .double(Double(speakerConfidence)),
             "avg_logprob": .double(Double(avgLogprob)),
-            "no_speech_prob": .double(Double(noSpeechProb)),
-            "compression_ratio": .double(Double(compressionRatio)),
             "words": words.map(JSONValue.encoding) ?? .null,
             "session_id": sessionLink,
         ]
@@ -240,8 +238,6 @@ extension StoredSegment: SyncedModel, TranscriptSessionChild {
         if let value = row["speaker_slot"]?.intValue { speakerSlot = Int(value) }
         if let value = row["speaker_confidence"]?.doubleValue { speakerConfidence = Float(value) }
         if let value = row["avg_logprob"]?.doubleValue { avgLogprob = Float(value) }
-        if let value = row["no_speech_prob"]?.doubleValue { noSpeechProb = Float(value) }
-        if let value = row["compression_ratio"]?.doubleValue { compressionRatio = Float(value) }
         if let value = row["words"] { words = value.decoded(as: [AsrWord].self) }
         return applySessionLink(row)
     }

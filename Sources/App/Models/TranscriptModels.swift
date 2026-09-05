@@ -254,8 +254,6 @@ final class StoredSegment {
     var speakerSlot: Int = -2
     var speakerConfidence: Float = 0
     var avgLogprob: Float = 0
-    var noSpeechProb: Float = 0
-    var compressionRatio: Float = 0
     /// JSON-encoded [AsrWord] when word timestamps were captured.
     var wordsJSON: Data?
 
@@ -298,8 +296,6 @@ final class StoredSegment {
         speaker = attributed.speaker
         speakerConfidence = attributed.speakerConfidence
         avgLogprob = attributed.asr.avgLogprob
-        noSpeechProb = attributed.asr.noSpeechProb
-        compressionRatio = attributed.asr.compressionRatio
         words = attributed.asr.words
     }
 }

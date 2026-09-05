@@ -123,13 +123,13 @@ struct SettingsView: View {
     private var transcriptionGroup: some View {
         @Bindable var settings = app.settings
         Section {
-            LabeledContent("Speech model", value: settings.whisperModel.displayName)
+            LabeledContent("Speech model", value: "Parakeet · SenseVoice")
             Toggle("Capture word-level timestamps", isOn: $settings.wordTimestamps)
                 .accessibilityIdentifier(A11yID.settingsWordTimestamps)
         } header: {
             Text("Speech recognition")
         } footer: {
-            Text("On-device Whisper large-v3-turbo — the speed/accuracy sweet spot.")
+            Text("On-device, on the Neural Engine. The language picks the model: Parakeet for European languages, SenseVoice for Chinese, Japanese and Korean.")
         }
         Section("Diarization") {
             LabeledContent("Speakers", value: "Streaming Sortformer")
@@ -152,7 +152,7 @@ struct SettingsView: View {
         } header: {
             Text("Dictation")
         } footer: {
-            Text("Dictation records, transcribes and cleans up your words entirely on this device, then puts the text on your clipboard. Apple Speech needs no download; Whisper and speaker identification each download a model the first time you use them.")
+            Text("Dictation records, transcribes and cleans up your words entirely on this device, then puts the text on your clipboard. Apple Speech needs no download; Studio and speaker identification use the speech models, downloaded the first time you need them.")
         }
     }
 

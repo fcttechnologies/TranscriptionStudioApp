@@ -8,7 +8,7 @@ enum PipelineStage: String, Sendable, Codable, CaseIterable {
     case ingest          // file load + conversion to 16k mono f32
     case capture         // live audio capture (mic / system)
     case mel             // Sortformer mel frontend
-    case asr             // WhisperKit inference (file or streaming window)
+    case asr             // recognizer inference (file or streaming window)
     case diarizePreview  // Sortformer stateless preview pass (partial chunk)
     case diarizeCommit   // Sortformer committed chunk (AOSC state advanced)
     case fusion          // speaker × text attribution

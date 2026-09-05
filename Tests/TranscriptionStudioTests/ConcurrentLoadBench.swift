@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import TranscriptionStudio
 
-/// The concurrent-load measurement: WhisperKit ASR and the Sortformer diarizer sharing this
+/// The concurrent-load measurement: Parakeet and the Sortformer diarizer sharing this
 /// machine's compute at once, versus each alone. Env-gated
 /// (`CONCURRENT_BENCH=1`) because it downloads/loads the real models and takes minutes —
 /// run it to (re)measure; results print as `[BENCH]` lines and are asserted only loosely

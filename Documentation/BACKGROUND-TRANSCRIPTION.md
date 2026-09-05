@@ -1,6 +1,6 @@
 # Background transcription (BGContinuedProcessingTask)
 
-Closes the gap where a **file/link transcription job** — WhisperKit ASR + diarization, all
+Closes the gap where a **file/link transcription job** — recognition + diarization, all
 GPU + Neural-Engine work — had no background cover: only live-mic recording did (the `audio`
 `UIBackgroundMode`). Background the app mid-transcription and, before this, the job was open to
 suspension. Now, on iOS, the run is wrapped in a **`BGContinuedProcessingTask`** (iOS 26+) so the

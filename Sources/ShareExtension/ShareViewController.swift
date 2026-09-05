@@ -13,7 +13,7 @@ typealias ShareHostController = NSViewController
 /// targets. It does the minimum an extension should: grab the shared item, stage it into the
 /// App Group drop-box (bytes for an iOS media file, a string for a macOS web URL), ping the
 /// host app via the custom URL scheme, and complete. It never transcribes — the extension is
-/// memory-capped (~120 MB) and WhisperKit would blow that; the host does the real work.
+/// memory-capped (~120 MB) and a speech model would blow that; the host does the real work.
 @objc(ShareViewController)
 final class ShareViewController: ShareHostController {
     private enum ShareError: Error { case noItem }

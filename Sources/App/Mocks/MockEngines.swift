@@ -30,7 +30,7 @@ final class MockAsrEngine: AsrEngine, Sendable {
             let end = min(cursor + 3.5, duration)
             out.append(AsrSegment(track: track, start: cursor, end: end,
                                   text: sentences[index % sentences.count],
-                                  avgLogprob: -0.25, noSpeechProb: 0.02, compressionRatio: 1.4))
+                                  avgLogprob: -0.25))
             cursor = end
             index += 1
         }
@@ -57,12 +57,11 @@ final class MockAsrEngine: AsrEngine, Sendable {
                                                         start: confirmed.last?.end ?? 0,
                                                         end: accumulatedSeconds,
                                                         text: "Mock confirmed sentence \(confirmed.count + 1).",
-                                                        avgLogprob: -0.3, noSpeechProb: 0.05,
-                                                        compressionRatio: 1.5))
+                                                        avgLogprob: -0.3))
                         }
                         continuation.yield(AsrUpdate(confirmed: confirmed, unconfirmed: [live]))
                     }
-                    // Final pass: confirm whatever remains (mirrors WhisperKit's confirm-all-on-
+                    // Final pass: confirm whatever remains (mirrors the engines' confirm-all-on-
                     // finish), so the drained stop keeps the tail instead of dropping unconfirmed.
                     let confirmedEnd = confirmed.last?.end ?? 0
                     if accumulatedSeconds > confirmedEnd {
@@ -70,8 +69,7 @@ final class MockAsrEngine: AsrEngine, Sendable {
                                                     start: confirmedEnd,
                                                     end: accumulatedSeconds,
                                                     text: "Mock confirmed sentence \(confirmed.count + 1).",
-                                                    avgLogprob: -0.3, noSpeechProb: 0.05,
-                                                    compressionRatio: 1.5))
+                                                    avgLogprob: -0.3))
                     }
                     continuation.yield(AsrUpdate(confirmed: confirmed, unconfirmed: []))
                     continuation.finish()

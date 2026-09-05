@@ -12,7 +12,7 @@ import SwiftData
 /// resolved for the currently-selected model + diarizer backend and the job's decode options.
 @MainActor
 final class TranscriptionService {
-    /// Web-app parity, with a leading model-preparation step (WhisperKit/diarizer download +
+    /// Web-app parity, with a leading model-preparation step (recognizer/diarizer download +
     /// load) and a diarization pass folded into "Transcribing".
     static let fileJobSteps = ["Preparing", "Reading file", "Transcribing", "Saving"]
     /// Mirrors the web app's job steps (`Downloading audio` → `Transcribing` →

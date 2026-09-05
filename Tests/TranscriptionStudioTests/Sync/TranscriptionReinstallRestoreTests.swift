@@ -54,8 +54,6 @@ struct TranscriptionReinstallRestoreTests {
         segment.speakerSlot = 2
         segment.speakerConfidence = 0.87
         segment.avgLogprob = -0.21
-        segment.noSpeechProb = 0.03
-        segment.compressionRatio = 1.9
         segment.words = [AsrWord(word: "Friday", start: 16, end: 17.25, probability: 0.94)]
         segment.session = session
         context.insert(segment)
@@ -144,8 +142,6 @@ struct TranscriptionReinstallRestoreTests {
         #expect(seg.speakerSlot == 2)
         #expect(abs(seg.speakerConfidence - 0.87) < 0.0001)
         #expect(abs(seg.avgLogprob - -0.21) < 0.0001)
-        #expect(abs(seg.noSpeechProb - 0.03) < 0.0001)
-        #expect(abs(seg.compressionRatio - 1.9) < 0.0001)
         #expect(seg.words?.first?.word == "Friday")
         #expect(abs((seg.words?.first?.probability ?? 0) - 0.94) < 0.0001)
         #expect(seg.session?.id == sessionID, "the parent link must be re-attached")

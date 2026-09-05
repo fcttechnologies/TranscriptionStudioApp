@@ -67,11 +67,12 @@ struct FrontDoorRestoreFailedView: View {
 
 /// The speech model, offered rather than sprung.
 ///
-/// The model is ~1.6 GB and the app cannot transcribe a thing without it. Before this stage
-/// existed it arrived on its own — correct, and silent: the download simply began, and the first
-/// person to learn its size was whoever watched a cellular bill or waited out a first
-/// transcription that seemed to hang. Naming the number and offering the choice costs one screen,
-/// once, and it is the difference between a first run that explains itself and one that doesn't.
+/// The models are ~700 MB (the recognizer for this locale and the diarizer) and the app cannot
+/// transcribe a thing without them. Before this stage existed they arrived on their own — correct,
+/// and silent: the download simply began, and the first person to learn its size was whoever
+/// watched a cellular bill or waited out a first transcription that seemed to hang. Naming the
+/// number and offering the choice costs one screen, once, and it is the difference between a
+/// first run that explains itself and one that doesn't.
 ///
 /// **Skipping is a real answer, not a deferral.** "Later" restores exactly the old behaviour —
 /// the model still downloads on its own when it is first needed — so nothing is broken by
@@ -87,11 +88,11 @@ struct FrontDoorSpeechModelView: View {
                 .font(.system(size: 44))
                 .foregroundStyle(.tint)
 
-            Text("Get the speech model", comment: "Front door: the speech model download offer")
+            Text("Get the speech models", comment: "Front door: the speech model download offer")
                 .font(.headline)
 
             Text(
-                "Transcription runs entirely on this device, which means the speech model has to live here too. It's about 1.6 GB — worth getting on Wi-Fi now rather than partway through your first recording.",
+                "Transcription runs entirely on this device, which means the speech models have to live here too. They're about 700 MB — worth getting on Wi-Fi now rather than partway through your first recording.",
                 comment: "Front door: why the speech model is large and why now is a good time"
             )
             .font(.subheadline)

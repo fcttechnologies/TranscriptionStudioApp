@@ -8,7 +8,7 @@ struct TranscriptRenderingTests {
     private func segment(_ speaker: SpeakerID, start: TimeInterval, text: String,
                          provisional: Bool = false) -> AttributedSegment {
         AttributedSegment(asr: AsrSegment(track: .mixed, start: start, end: start + 2, text: text,
-                                          avgLogprob: -0.2, noSpeechProb: 0.02, compressionRatio: 1.3,
+                                          avgLogprob: -0.2,
                                           isConfirmed: !provisional),
                           speaker: speaker, speakerConfidence: 0.9, isProvisional: provisional)
     }
@@ -37,9 +37,9 @@ struct TranscriptRenderingTests {
 
     @Test func asrScoreRewardsHighLikelihoodPenalizesNoSpeech() {
         let good = AsrSegment(track: .mixed, start: 0, end: 1, text: "clear",
-                              avgLogprob: -0.1, noSpeechProb: 0.01, compressionRatio: 1.2)
+                              avgLogprob: -0.1)
         let poor = AsrSegment(track: .mixed, start: 0, end: 1, text: "muddy",
-                              avgLogprob: -2.0, noSpeechProb: 0.6, compressionRatio: 2.5)
+                              avgLogprob: -2.0)
         #expect(Confidence.asrScore(good) > Confidence.asrScore(poor))
         #expect(Confidence.asrScore(good) <= 1)
         #expect(Confidence.asrScore(poor) >= 0)

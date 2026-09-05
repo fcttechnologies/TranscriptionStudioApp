@@ -1,0 +1,27 @@
+{
+  "repo" : "fcttechnologies/fctspeech-coreml",
+  "assets" : [
+    { "path" : "parakeet-v3/ParakeetDecoder.mlmodelc/analytics/coremldata.bin", "size" : 243 },
+    { "path" : "parakeet-v3/ParakeetDecoder.mlmodelc/coremldata.bin", "size" : 464 },
+    { "path" : "parakeet-v3/ParakeetDecoder.mlmodelc/model.mil", "size" : 14933 },
+    { "path" : "parakeet-v3/ParakeetDecoder.mlmodelc/weights/weight.bin", "size" : 24441152 },
+    { "path" : "parakeet-v3/ParakeetEncoder.mlmodelc/analytics/coremldata.bin", "size" : 243 },
+    { "path" : "parakeet-v3/ParakeetEncoder.mlmodelc/coremldata.bin", "size" : 421 },
+    { "path" : "parakeet-v3/ParakeetEncoder.mlmodelc/model.mil", "size" : 684357 },
+    { "path" : "parakeet-v3/ParakeetEncoder.mlmodelc/weights/weight.bin", "size" : 460727232 },
+    { "path" : "parakeet-v3/ParakeetJoint.mlmodelc/analytics/coremldata.bin", "size" : 243 },
+    { "path" : "parakeet-v3/ParakeetJoint.mlmodelc/coremldata.bin", "size" : 450 },
+    { "path" : "parakeet-v3/ParakeetJoint.mlmodelc/model.mil", "size" : 4639 },
+    { "path" : "parakeet-v3/ParakeetJoint.mlmodelc/weights/weight.bin", "size" : 10510028 },
+    { "path" : "parakeet-v3/pieces.json", "size" : 115741 },
+    { "path" : "sensevoice/SenseVoice.mlmodelc/analytics/coremldata.bin", "size" : 243 },
+    { "path" : "sensevoice/SenseVoice.mlmodelc/coremldata.bin", "size" : 462 },
+    { "path" : "sensevoice/SenseVoice.mlmodelc/model.mil", "size" : 975495 },
+    { "path" : "sensevoice/SenseVoice.mlmodelc/weights/weight.bin", "size" : 468342782 },
+    { "path" : "sensevoice/pieces.json", "size" : 251841 },
+    { "path" : "sortformer/Sortformer.mlmodelc/analytics/coremldata.bin", "size" : 243 },
+    { "path" : "sortformer/Sortformer.mlmodelc/coremldata.bin", "size" : 541 },
+    { "path" : "sortformer/Sortformer.mlmodelc/model.mil", "size" : 1131053 },
+    { "path" : "sortformer/Sortformer.mlmodelc/weights/weight.bin", "size" : 234906752 }
+  ]
+}

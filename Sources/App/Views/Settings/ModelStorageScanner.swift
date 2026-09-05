@@ -1,72 +1,50 @@
 import Foundation
 
-/// A speech model actually present on disk, with its resolved on-disk footprint. Backs the
-/// Settings "Storage" section — the settings picker only names a *preference* (`AppSettings`),
-/// this is the source of truth for what's really downloaded and how much space it costs.
+/// A model actually present on disk, with its resolved on-disk footprint. Backs the Settings
+/// "Storage" section: the source of truth for what's really downloaded and how much space it
+/// costs.
 struct StoredModel: Identifiable, Sendable, Equatable {
     enum Kind: Sendable, Equatable {
-        case whisper(AppSettings.WhisperModel)
-        case diarizer
+        case speech(SpeechModel)
         case speechSynthesis
     }
 
     let kind: Kind
     /// The exact on-disk paths owned by this model. Deletion removes precisely these, never a
-    /// shared parent directory that might hold sibling files (e.g. the Sortformer store's root
-    /// also holds `metadata.json`/the manifest, which aren't part of any one model's footprint).
+    /// shared parent directory that might hold sibling files.
     let paths: [URL]
     let bytes: Int64
 
     var id: String {
         switch kind {
-        case .whisper(let model): "whisper.\(model.rawValue)"
-        case .diarizer: "diarizer"
+        case .speech(let model): "speech.\(model.rawValue)"
         case .speechSynthesis: "tts"
         }
     }
 
     var displayName: String {
         switch kind {
-        case .whisper(let model): model.displayName
-        case .diarizer: "Streaming Sortformer"
+        case .speech(let model): model.displayName
         case .speechSynthesis: "Qwen3 TTS"
         }
     }
 
     var detail: String {
         switch kind {
-        case .whisper: "Speech recognition"
-        case .diarizer: "Speaker diarization"
+        case .speech(let model): model.detail
         case .speechSynthesis: "Speech synthesis"
         }
     }
 }
 
-/// Scans the on-disk model caches — WhisperKit's download base and the Sortformer store — and
+/// Scans the on-disk model caches — the speech models' root and the synthesis engine's — and
 /// reports what's actually present, with its real size. Pure filesystem inspection; no network.
 enum ModelStorageScanner {
-    /// Every model variant present on disk right now, largest first.
-    static func scan(whisperKitDownloadBase: URL = WhisperKitAsrEngine.defaultDownloadBase(),
-                            sortformerRoot: URL = FCTSpeechDiarizationEngine.defaultModelsDirectory(),
-                            speechSynthesisRoot: URL = TTSKitTtsEngine.defaultDownloadBase()) -> [StoredModel] {
-        (scanWhisperKitModels(downloadBase: whisperKitDownloadBase)
-            + scanSortformerModel(root: sortformerRoot)
-            + scanSpeechSynthesisModel(root: speechSynthesisRoot))
+    /// Every model present on disk right now, largest first.
+    static func scan(speechRoot: URL = SpeechModel.root(),
+                     speechSynthesisRoot: URL = TTSKitTtsEngine.defaultDownloadBase()) -> [StoredModel] {
+        (scanSpeechModels(root: speechRoot) + scanSpeechSynthesisModel(root: speechSynthesisRoot))
             .sorted { $0.bytes > $1.bytes }
-    }
-
-    /// Whether a given Whisper variant is already downloaded on this device.
-    ///
-    /// Reads the same download base the engine loads from, so a `true` here means
-    /// `WhisperKitAsrEngine.prepare()` has nothing to fetch. Cross-platform on purpose: the
-    /// Background Assets installer answers a stricter version of this question (every manifest
-    /// file at its exact size) but exists only on iOS, and the front door has to ask on both.
-    static func isWhisperModelInstalled(
-        _ model: AppSettings.WhisperModel,
-        downloadBase: URL = WhisperKitAsrEngine.defaultDownloadBase()
-    ) -> Bool {
-        scanWhisperKitModels(downloadBase: downloadBase)
-            .contains { $0.kind == .whisper(model) && $0.bytes > 0 }
     }
 
     /// Deletes every path a model owns. Best-effort per path — one already-missing file (a
@@ -84,45 +62,26 @@ enum ModelStorageScanner {
         if let lastError { throw lastError }
     }
 
-    // MARK: - WhisperKit
+    // MARK: - Speech models
 
-    /// `<downloadBase>/models/argmaxinc/whisperkit-coreml/<variant>` — one directory per
-    /// downloaded variant (the layout `WhisperKit.download` lays down; see
-    /// `WhisperKitAsrEngine.defaultDownloadBase`). `.cache` is WhisperKit/Hugging Face's own
-    /// bookkeeping alongside the variants, not a model — it's excluded by simply not matching
-    /// any known variant name below.
-    static func scanWhisperKitModels(downloadBase: URL) -> [StoredModel] {
-        let repoDir = downloadBase.appendingPathComponent("models/argmaxinc/whisperkit-coreml", isDirectory: true)
-        guard let entries = try? FileManager.default.contentsOfDirectory(
-            at: repoDir, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]
-        ) else { return [] }
-
-        return entries.compactMap { url in
-            guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true,
-                  let model = AppSettings.WhisperModel.allCases.first(where: { $0.whisperKitVariant == url.lastPathComponent })
-            else { return nil }
-            let bytes = directorySize(url)
-            guard bytes > 0 else { return nil }   // an empty/partial dir isn't a usable model
-            return StoredModel(kind: .whisper(model), paths: [url], bytes: bytes)
+    /// `<root>/<model>/` for each of the three speech models: the directory is the model's whole
+    /// footprint, so deletion owns it. An empty or partial directory still counts by its bytes;
+    /// `SpeechModelStore.isInstalled` is the question of whether it is usable.
+    static func scanSpeechModels(root: URL) -> [StoredModel] {
+        SpeechModel.allCases.compactMap { model in
+            let directory = model.directory(under: root)
+            let bytes = pathSize(directory)
+            guard bytes > 0 else { return nil }
+            return StoredModel(kind: .speech(model), paths: [directory], bytes: bytes)
         }
-    }
-
-    // MARK: - Sortformer diarizer
-
-    /// The diarizer's compiled model under `FCTSpeech/sortformer/`.
-    static func scanSortformerModel(root: URL) -> [StoredModel] {
-        let model = root.appendingPathComponent("Sortformer.mlmodelc", isDirectory: true)
-        let bytes = pathSize(model)
-        guard bytes > 0 else { return [] }
-        return [StoredModel(kind: .diarizer, paths: [model], bytes: bytes)]
     }
 
     // MARK: - Speech synthesis (TTSKit)
 
     /// The synthesis engine's download base (`…/Models/ttskit`) — the CoreML weights, the
     /// tokenizer, and the Hub client's bookkeeping. Everything under this root exists solely
-    /// for synthesis (unlike the Sortformer store's root, which also holds shared metadata),
-    /// so the root itself is the model's exact footprint and deletion owns the whole directory.
+    /// for synthesis, so the root itself is the model's exact footprint and deletion owns the
+    /// whole directory.
     static func scanSpeechSynthesisModel(root: URL) -> [StoredModel] {
         let bytes = pathSize(root)
         guard bytes > 0 else { return [] }
