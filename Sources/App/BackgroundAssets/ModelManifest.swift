@@ -22,8 +22,8 @@ struct ModelAsset: Codable, Sendable, Equatable, Hashable {
 /// The self-hosted Background Assets manifest for the app's speech models. The system downloads
 /// this file (via the app's `BAManifestURL` Info.plist key) before it wakes the downloader
 /// extension, then hands the extension the on-disk location; the extension parses it to learn
-/// which files to schedule, their download URLs, and their sizes. The app reads its bundled copy
-/// for the completeness check and the in-app download.
+/// which files to schedule, their download URLs, and their sizes. The app and the CLI read the
+/// compiled-in copy for the completeness check and the download.
 ///
 /// The schema is the app's to define: the hosted repo the files resolve from, and every file of
 /// every model with its exact size.
@@ -54,15 +54,11 @@ struct ModelManifest: Codable, Sendable, Equatable {
         try decode(from: Data(contentsOf: url))
     }
 
-    /// The manifest bundled with the app/extension (a copy of the hosted file). The extension
-    /// itself parses the system-downloaded copy at its `manifestURL`, so a server update takes
-    /// effect there without an app update.
-    static func bundled() throws -> ModelManifest {
-        guard let url = Bundle.main.url(forResource: "speech-model-manifest", withExtension: "json") else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        return try load(contentsOf: url)
-    }
+    /// The manifest compiled into every target (`ShippedModelManifest.swift`, generated beside
+    /// the hosted JSON from the same enumeration). The extension itself parses the
+    /// system-downloaded copy at its `manifestURL`, so a server update takes effect there
+    /// without an app update.
+    static func bundled() -> ModelManifest { shipped }
 
     func encoded() throws -> Data {
         let encoder = JSONEncoder()

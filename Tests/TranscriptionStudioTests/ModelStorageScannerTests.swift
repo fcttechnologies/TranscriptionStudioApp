@@ -203,8 +203,12 @@ struct SpeechModelStoreTests {
         #expect(manifest.totalSize == 160)
     }
 
-    @Test func theBundledManifestListsEveryModelWithPositiveSizes() throws {
-        let bundled = try ModelManifest.bundled()
+    @Test func theShippedManifestListsEveryModelWithPositiveSizesAndMatchesTheHostedJSON() throws {
+        let bundled = ModelManifest.shipped
+        // The hosted JSON and the compiled-in copy come from one script run; pinned equal here so
+        // a regenerate that updated one and not the other cannot ship.
+        let json = try #require(Bundle.main.url(forResource: "speech-model-manifest", withExtension: "json"))
+        #expect(try ModelManifest.load(contentsOf: json) == bundled)
         for model in SpeechModel.allCases {
             let assets = bundled.assets(of: model)
             #expect(!assets.isEmpty, "\(model.rawValue) has no files in the manifest")

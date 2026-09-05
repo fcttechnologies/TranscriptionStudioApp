@@ -66,7 +66,7 @@ enum SpeechModelStore {
     /// True when every file of `model` in the manifest is present under `root` at its exact size.
     static func isInstalled(
         _ model: SpeechModel,
-        manifest: ModelManifest? = try? ModelManifest.bundled(),
+        manifest: ModelManifest? = .shipped,
         root: URL = SpeechModel.root()
     ) -> Bool {
         guard let manifest else { return false }
@@ -79,7 +79,7 @@ enum SpeechModelStore {
     /// is. `onProgress` reports the fraction of the model's bytes on disk.
     static func ensureInstalled(
         _ model: SpeechModel,
-        manifest: ModelManifest? = try? ModelManifest.bundled(),
+        manifest: ModelManifest? = .shipped,
         root: URL = SpeechModel.root(),
         appGroupContainer: URL? = AppGroup.containerURL,
         session: URLSession = .shared,

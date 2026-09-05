@@ -93,7 +93,7 @@ actor FCTSpeechAsrEngine: AsrEngine {
         var current: [Word] = []
         func flush() {
             guard let first = current.first, let last = current.last else { return }
-            let text = current.map(\.text).joined(separator: " ")
+            let text = Transcriber.line(current.map(\.text))
             let p = current.map(\.probability).reduce(0, +) / Float(current.count)
             out.append(AsrSegment(track: track, start: first.start, end: last.end, text: text,
                                   avgLogprob: log(max(p, 1e-6)),
