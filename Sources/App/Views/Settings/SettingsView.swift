@@ -132,12 +132,8 @@ struct SettingsView: View {
             Text("On-device Whisper large-v3-turbo — the speed/accuracy sweet spot.")
         }
         Section("Diarization") {
-            Picker("Backend", selection: $settings.diarizerBackend) {
-                ForEach(diarizerBackendOptions) { backend in
-                    Text(backend.displayName).tag(backend)
-                }
-            }
-            Text(settings.diarizerBackend.detail)
+            LabeledContent("Speakers", value: "Streaming Sortformer")
+            Text("On-device · up to 4 speakers · Neural Engine")
                 .font(.caption).foregroundStyle(.secondary)
         }
         Section("Transcript") {
@@ -198,17 +194,5 @@ struct SettingsView: View {
                 controller: account
             )
         }
-    }
-
-    /// iOS can never provision the Sortformer model — `DiarizationBackend.makeEngine`'s guard
-    /// always falls back to SpeakerKit there (no locally re-exported model) — so the picker
-    /// only offers backends that actually run on this platform, instead of listing a choice
-    /// that silently becomes something else.
-    private var diarizerBackendOptions: [AppSettings.DiarizerBackend] {
-        #if os(iOS)
-        AppSettings.DiarizerBackend.allCases.filter { $0 != .sortformer }
-        #else
-        AppSettings.DiarizerBackend.allCases
-        #endif
     }
 }

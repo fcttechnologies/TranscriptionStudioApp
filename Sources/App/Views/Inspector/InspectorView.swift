@@ -9,7 +9,7 @@ struct InspectorView: View {
     @Environment(AppModel.self) private var app
 
     enum Tab: String, CaseIterable, Identifiable {
-        case live, latency, speakers, asr, load, compare
+        case live, latency, speakers, asr, load
         var id: String { rawValue }
         var title: String {
             switch self {
@@ -18,7 +18,6 @@ struct InspectorView: View {
             case .speakers: "Speakers"
             case .asr: "ASR"
             case .load: "Load"
-            case .compare: "A/B"
             }
         }
         var systemImage: String {
@@ -28,7 +27,6 @@ struct InspectorView: View {
             case .speakers: "person.2.wave.2"
             case .asr: "text.badge.checkmark"
             case .load: "cpu"
-            case .compare: "rectangle.split.2x1"
             }
         }
     }
@@ -60,8 +58,6 @@ struct InspectorView: View {
                                                      sessionID: app.recording.sessionID)
                     case .asr: InspectorAsrTable(segments: app.recording.segments)
                     case .load: InspectorLoad(store: app.inspector)
-                    case .compare: InspectorDiarizerAB(recording: app.recording,
-                                                       crossCheck: app.crossCheckDiarizer)
                     }
                 }
                 .padding(DesignMetrics.spacingL)

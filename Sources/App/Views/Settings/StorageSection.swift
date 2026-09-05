@@ -58,7 +58,7 @@ struct StorageSection: View {
     private func isSelected(_ model: StoredModel) -> Bool {
         switch model.kind {
         case .whisper(let variant): variant == app.settings.whisperModel
-        case .diarizer: app.settings.diarizerBackend == .sortformer
+        case .diarizer: true
         // Synthesis has one model and no picker, so no "Selected" badge to earn.
         case .speechSynthesis: false
         }

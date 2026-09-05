@@ -14,7 +14,7 @@ actor FCTSpeechAsrEngine: AsrEngine {
     private var transcriber: Transcriber?
     private var preparationTask: Task<Void, Error>?
 
-    init(modelsDirectory: URL) {
+    init(modelsDirectory: URL = FCTSpeechAsrEngine.defaultModelsDirectory()) {
         self.modelsDirectory = modelsDirectory
     }
 

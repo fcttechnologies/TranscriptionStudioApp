@@ -113,7 +113,6 @@ struct AppModelEngineCacheTests {
     // than asking the provider again — the cache keys by variant/backend, not by call count.
     @Test func sameModelReusesTheCachedEngineAcrossJobs() async throws {
         let asrCalls = Mutex<[String]>([])
-        let diarCalls = Mutex<[String]>([])
         let inspector = InspectorStore()
         let recorder = PipelineRecorder(store: inspector)
         let app = AppModel(modelContext: ModelContextFactory.makeInMemory(),
@@ -121,15 +120,10 @@ struct AppModelEngineCacheTests {
                            recorder: recorder,
                            asr: MockAsrEngine(),
                            diarizer: MockDiarizationEngine(),
-                           crossCheckDiarizer: PreviewAltDiarizer(),
                            captureFactory: RecordingController.mockCaptureFactory,
                            asrEngineProvider: { variant in
                                asrCalls.withLock { $0.append(variant) }
                                return MockAsrEngine()
-                           },
-                           diarizerProvider: { backend in
-                               diarCalls.withLock { $0.append(backend.rawValue) }
-                               return MockDiarizationEngine()
                            })
 
         // An unsupported extension fails FileIngestService synchronously — the two jobs
@@ -145,9 +139,7 @@ struct AppModelEngineCacheTests {
         try await waitUntil(timeout: 3) { secondJob.state == .error || secondJob.state == .done }
 
         let expectedVariant = AppSettings.WhisperModel.platformDefault.whisperKitVariant
-        let expectedBackend = AppSettings.DiarizerBackend.platformDefault.rawValue
         #expect(asrCalls.withLock { $0 } == [expectedVariant])
-        #expect(diarCalls.withLock { $0 } == [expectedBackend])
     }
 }
 

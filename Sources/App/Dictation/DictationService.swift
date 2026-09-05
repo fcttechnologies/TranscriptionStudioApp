@@ -23,7 +23,7 @@ extension AppModel {
         case .whisperKit: WhisperKitDictationEngine(engine: transcriptionAsrEngine(for: settings.whisperModel))
         }
         let passes: [any DictationTranscriptPass] = settings.dictationIdentifiesSpeakers
-            ? [SpeakerDictationPass(diarizer: transcriptionDiarizer(for: settings.diarizerBackend))]
+            ? [SpeakerDictationPass(diarizer: diarizer)]
             : []
         return DictationRun(
             recorder: DictationRecorder(store: store),

@@ -50,52 +50,8 @@ struct TranscriptRenderingTests {
         #expect(TimeFormat.clock(3661) == "1:01:01")
     }
 
-    @Test func abFrameAgreementIsPerfectForIdenticalTimelines() {
-        let turns = [
-            SpeakerTurn(speakerIndex: 0, start: 0, end: 4, confidence: 0.9),
-            SpeakerTurn(speakerIndex: 1, start: 4, end: 8, confidence: 0.9),
-        ]
-        let score = InspectorDiarizerAB.frameAgreement(turns, turns, duration: 8)
-        #expect(score > 0.99)
-    }
 
-    @Test func abFrameAgreementIsZeroForCompletelySwappedSpeakers() {
-        // Every frame's dominant speaker differs between the two timelines end to end.
-        let a = [
-            SpeakerTurn(speakerIndex: 0, start: 0, end: 4, confidence: 0.9),
-            SpeakerTurn(speakerIndex: 1, start: 4, end: 8, confidence: 0.9),
-        ]
-        let b = [
-            SpeakerTurn(speakerIndex: 1, start: 0, end: 4, confidence: 0.9),
-            SpeakerTurn(speakerIndex: 0, start: 4, end: 8, confidence: 0.9),
-        ]
-        let score = InspectorDiarizerAB.frameAgreement(a, b, duration: 8)
-        #expect(score < 0.01)
-    }
 
-    @Test func abFrameAgreementIsPartialForOverlappingButNotIdenticalTimelines() {
-        // The second half disagrees; the first half agrees — expect ~50%.
-        let a = [
-            SpeakerTurn(speakerIndex: 0, start: 0, end: 4, confidence: 0.9),
-            SpeakerTurn(speakerIndex: 1, start: 4, end: 8, confidence: 0.9),
-        ]
-        let b = [
-            SpeakerTurn(speakerIndex: 0, start: 0, end: 4, confidence: 0.9),
-            SpeakerTurn(speakerIndex: 0, start: 4, end: 8, confidence: 0.9),
-        ]
-        let score = InspectorDiarizerAB.frameAgreement(a, b, duration: 8)
-        #expect(score > 0.45 && score < 0.55)
-    }
 
-    @Test func abFrameAgreementIsZeroForZeroDuration() {
-        let turns = [SpeakerTurn(speakerIndex: 0, start: 0, end: 1, confidence: 0.9)]
-        #expect(InspectorDiarizerAB.frameAgreement(turns, turns, duration: 0) == 0)
-    }
 
-    @Test func abFrameAgreementAgreesOnSilenceWhenBothTimelinesAreEmpty() {
-        // No turns at all in either timeline: both sides are "no speaker" (nil == nil) at
-        // every frame, so this counts as full agreement rather than zero.
-        let score = InspectorDiarizerAB.frameAgreement([], [], duration: 4)
-        #expect(score > 0.99)
-    }
 }

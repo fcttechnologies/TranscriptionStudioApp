@@ -103,64 +103,24 @@ enum AttributionScoring {
 // MARK: - SpeakerKit ground-truth gate (runs for real)
 
 @Suite(.serialized)
-struct SpeakerKitAttributionTests {
-    @Test("SpeakerKit attributes the short clip >= 85%",
-          .enabled(if: DiarFixtures.exists("two_speakers_short")))
-    func shortClip() async throws {
-        try await run(clip: "two_speakers_short")
-    }
-
-    @Test("SpeakerKit attributes the long (AOSC-forcing) clip >= 85%",
-          .enabled(if: DiarFixtures.exists("two_speakers_long")))
-    func longClip() async throws {
-        try await run(clip: "two_speakers_long")
-    }
-
-    private func run(clip: String) async throws {
-        let samples = try DiarFixtures.loadSamples(clip)
-        let gt = try DiarFixtures.loadGroundTruth(clip)
-        #expect(samples.count > 16_000)
-
-        let engine = SpeakerKitEngine()
-        try await engine.prepare { _ in }
-        let result = try await engine.diarize(samples: samples)
-
-        let (acc, speechFrames) = AttributionScoring.accuracy(turns: result.turns, groundTruth: gt)
-        print("[ATTR] \(clip): SpeakerKit \(String(format: "%.1f%%", acc * 100)) over \(speechFrames) speech frames, \(result.turns.count) turns")
-        #expect(speechFrames > 0)
-        #expect(acc >= 0.85, "\(clip): SpeakerKit attribution \(String(format: "%.1f%%", acc * 100)) over \(speechFrames) speech frames")
-    }
-}
-
-// MARK: - Sortformer real-model gate + SpeakerKit cross-check (env-gated)
-
-@Suite(.serialized)
 struct SortformerRealModelTests {
     /// Set only when a re-exported model is known to specialize on this machine — the load failure
     /// on the currently-published model is an uncatchable LLVM abort, so it can't be auto-probed.
     static var enabled: Bool { ProcessInfo.processInfo.environment["SORTFORMER_MODEL_OK"] == "1" }
 
-    @Test("Sortformer attributes both clips >= 85% and agrees with SpeakerKit",
+    @Test("Sortformer attributes both clips >= 85%",
           .enabled(if: SortformerRealModelTests.enabled && DiarFixtures.exists("two_speakers_long")))
-    func sortformerAttributionAndCrossCheck() async throws {
+    func sortformerAttribution() async throws {
         for clip in ["two_speakers_short", "two_speakers_long"] where DiarFixtures.exists(clip) {
             let samples = try DiarFixtures.loadSamples(clip)
             let gt = try DiarFixtures.loadGroundTruth(clip)
 
-            let sortformer = SortformerEngine()
-            try await sortformer.prepare { _ in }   // ⚠️ aborts if the model can't specialize
+            let sortformer = FCTSpeechDiarizationEngine()
+            try await sortformer.prepare { _ in }
             let sfResult = try await sortformer.diarize(samples: samples)
             let (sfAcc, sfFrames) = AttributionScoring.accuracy(turns: sfResult.turns, groundTruth: gt)
             #expect(sfFrames > 0)
             #expect(sfAcc >= 0.85, "\(clip): Sortformer attribution \(String(format: "%.1f%%", sfAcc * 100))")
-
-            // Cross-check: SpeakerKit on the same clip; loose agreement on per-frame dominant speaker.
-            let speakerKit = SpeakerKitEngine()
-            try await speakerKit.prepare { _ in }
-            let skResult = try await speakerKit.diarize(samples: samples)
-            let (skAcc, _) = AttributionScoring.accuracy(turns: skResult.turns, groundTruth: gt)
-            #expect(abs(sfAcc - skAcc) <= 0.25,
-                    "\(clip): Sortformer \(sfAcc) vs SpeakerKit \(skAcc) disagree too much")
         }
     }
 }

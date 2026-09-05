@@ -47,32 +47,6 @@ final class AppSettings {
         static var platformDefault: WhisperModel { .largeTurbo }
     }
 
-    enum DiarizerBackend: String, CaseIterable, Identifiable, Sendable {
-        case sortformer, speakerKit
-        var id: String { rawValue }
-        var displayName: String {
-            switch self {
-            case .sortformer: "Streaming Sortformer"
-            case .speakerKit: "SpeakerKit (cross-check)"
-            }
-        }
-        var detail: String {
-            switch self {
-            case .sortformer: "On-device · up to 4 speakers · Core AI"
-            case .speakerKit: "Argmax baseline · comparison"
-            }
-        }
-        /// Sortformer only runs where a re-exported model is staged (a Mac); iOS can never
-        /// provision it, so iOS defaults to SpeakerKit. macOS defaults to Sortformer.
-        static var platformDefault: DiarizerBackend {
-            #if os(macOS)
-            .sortformer
-            #else
-            .speakerKit
-            #endif
-        }
-    }
-
     /// Which engine a dictation transcribes with.
     ///
     /// Apple's `SpeechTranscriber` is the default and downloads nothing of ours — the system's
@@ -99,7 +73,6 @@ final class AppSettings {
 
     private enum Keys {
         static let whisperModel = "settings.whisperModel"
-        static let diarizerBackend = "settings.diarizerBackend"
         static let wordTimestamps = "settings.wordTimestamps"
         static let autoFollowTranscript = "settings.autoFollowTranscript"
         static let showConfidence = "settings.showConfidence"
@@ -112,9 +85,6 @@ final class AppSettings {
 
     var whisperModel: WhisperModel {
         didSet { defaults.set(whisperModel.rawValue, forKey: Keys.whisperModel) }
-    }
-    var diarizerBackend: DiarizerBackend {
-        didSet { defaults.set(diarizerBackend.rawValue, forKey: Keys.diarizerBackend) }
     }
     /// Capture word-level timestamps (costs decode time) — off by default.
     var wordTimestamps: Bool {
@@ -152,8 +122,6 @@ final class AppSettings {
         // didSet doesn't fire during init, so these loads never write back the default.
         self.whisperModel = defaults.string(forKey: Keys.whisperModel)
             .flatMap(WhisperModel.init(rawValue:)) ?? WhisperModel.platformDefault
-        self.diarizerBackend = defaults.string(forKey: Keys.diarizerBackend)
-            .flatMap(DiarizerBackend.init(rawValue:)) ?? DiarizerBackend.platformDefault
         self.wordTimestamps = defaults.object(forKey: Keys.wordTimestamps) as? Bool ?? false
         self.autoFollowTranscript = defaults.object(forKey: Keys.autoFollowTranscript) as? Bool ?? true
         self.showConfidence = defaults.object(forKey: Keys.showConfidence) as? Bool ?? false

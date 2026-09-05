@@ -20,9 +20,9 @@ struct ConcurrentLoadBench {
         let audioSeconds = Double(samples.count) / AudioChunk.sampleRate
         print("[BENCH] clip: \(String(format: "%.1f", audioSeconds))s, \(samples.count) samples")
 
-        let asr = WhisperKitAsrEngine()
+        let asr = FCTSpeechAsrEngine()
         try await asr.prepare(onProgress: { _ in })
-        let diarizer = DiarizationBackend.sortformer.makeEngine()
+        let diarizer = FCTSpeechDiarizationEngine()
         try await diarizer.prepare(onProgress: { _ in })
 
         func thermal() -> String { "\(ProcessInfo.processInfo.thermalState.rawValue)" }

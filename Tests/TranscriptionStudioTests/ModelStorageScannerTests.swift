@@ -104,19 +104,17 @@ struct ModelStorageScannerTests {
 
     // MARK: - Sortformer diarizer scanning
 
-    @Test func findsTheDiarizerModelWhenArtifactsArePresent() throws {
+    @Test func findsTheDiarizerModelWhenItIsPresent() throws {
         try withTempDir { root in
-            let store = SortformerModelStore(root: root)
-            try write(SortformerModelStore.mainMlirbBytes, to: store.mainMlirbURL)
-            try write(SortformerModelStore.melFilterBytes, to: store.melFiltersURL)
-            try write(4, to: store.metadataURL)
-
+            let model = root.appendingPathComponent("Sortformer.mlmodelc", isDirectory: true)
+            try FileManager.default.createDirectory(at: model, withIntermediateDirectories: true)
+            try write(1_000, to: model.appendingPathComponent("weights.bin"))
+            try write(24, to: model.appendingPathComponent("model.mil"))
             let models = ModelStorageScanner.scanSortformerModel(root: root)
             #expect(models.count == 1)
             #expect(models[0].kind == .diarizer)
-            #expect(models[0].bytes == Int64(SortformerModelStore.mainMlirbBytes + SortformerModelStore.melFilterBytes))
-            // Owns only its own artifacts, never metadata.json/the manifest at the shared root.
-            #expect(Set(models[0].paths) == Set([store.modelURL, store.melFiltersURL]))
+            #expect(models[0].bytes == 1_024)
+            #expect(models[0].paths == [model])
         }
     }
 

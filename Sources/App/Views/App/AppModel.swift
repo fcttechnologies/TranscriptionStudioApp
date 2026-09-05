@@ -37,20 +37,16 @@ final class AppModel {
     let asr: any AsrEngine
     let diarizer: any DiarizationEngine
     /// The cross-check backend for the inspector's diarizer A/B (a second, independent run).
-    let crossCheckDiarizer: any DiarizationEngine
 
     /// Builds a fresh ASR engine for a WhisperKit variant name (real WhisperKit in `live`,
     /// nil for mock/preview app models — which fall back to the injected `asr`).
     @ObservationIgnored let asrEngineProvider: (@MainActor (String) -> any AsrEngine)?
-    /// Builds a fresh diarizer for a chosen backend (real engines in `live`, nil for mock).
-    @ObservationIgnored let diarizerProvider: (@MainActor (AppSettings.DiarizerBackend) -> any DiarizationEngine)?
     /// Mac URL-ingest downloader, injected by the Mac shell (nil on iOS — no URL mode).
     @ObservationIgnored let urlDownloader: (any URLAudioDownloading)?
 
     // Transcription-job engine caches, keyed by model/backend, so switching models in
     // Settings doesn't re-download/re-load a model per job.
     @ObservationIgnored private var asrEngineCache: [String: any AsrEngine] = [:]
-    @ObservationIgnored private var diarizerCache: [String: any DiarizationEngine] = [:]
 
     // Mac companion services (started on the Mac only — see `startMacCompanionServices`).
     @ObservationIgnored private var remoteJobWatcher: RemoteJobWatcher?
@@ -198,10 +194,8 @@ final class AppModel {
                 recorder: PipelineRecorder,
                 asr: any AsrEngine,
                 diarizer: any DiarizationEngine,
-                crossCheckDiarizer: any DiarizationEngine,
                 captureFactory: @escaping RecordingController.CaptureFactory,
                 asrEngineProvider: (@MainActor (String) -> any AsrEngine)? = nil,
-                diarizerProvider: (@MainActor (AppSettings.DiarizerBackend) -> any DiarizationEngine)? = nil,
                 urlDownloader: (any URLAudioDownloading)? = nil,
                 ttsEngineFactory: @escaping @Sendable () -> any TtsEngine = { TTSKitTtsEngine() }) {
         self.inspector = inspector
@@ -212,9 +206,7 @@ final class AppModel {
         self.modelContext = modelContext
         self.asr = asr
         self.diarizer = diarizer
-        self.crossCheckDiarizer = crossCheckDiarizer
         self.asrEngineProvider = asrEngineProvider
-        self.diarizerProvider = diarizerProvider
         self.urlDownloader = urlDownloader
         self.playback = PlaybackController()
         self.readAloud = ReadAloudController(makeEngine: ttsEngineFactory)
@@ -270,7 +262,6 @@ final class AppModel {
     convenience init(modelContext: ModelContext,
                             asr: any AsrEngine = MockAsrEngine(),
                             diarizer: any DiarizationEngine = MockDiarizationEngine(),
-                            crossCheckDiarizer: any DiarizationEngine = PreviewAltDiarizer(),
                             captureFactory: @escaping RecordingController.CaptureFactory =
                                 RecordingController.mockCaptureFactory) {
         let inspector = InspectorStore()
@@ -279,7 +270,6 @@ final class AppModel {
                   recorder: PipelineRecorder(store: inspector),
                   asr: asr,
                   diarizer: diarizer,
-                  crossCheckDiarizer: crossCheckDiarizer,
                   captureFactory: captureFactory,
                   ttsEngineFactory: { MockTtsEngine() })
     }
@@ -320,7 +310,7 @@ final class AppModel {
     @discardableResult
     func startTranscription(title: String, source: TranscriptionSource) -> TranscriptionJob {
         let service = TranscriptionService(asrEngine: transcriptionAsrEngine(for: settings.whisperModel),
-                                           diarizer: transcriptionDiarizer(for: settings.diarizerBackend),
+                                           diarizer: diarizer,
                                            modelContext: modelContext,
                                            recorder: recorder,
                                            inspector: inspector,
@@ -401,7 +391,7 @@ final class AppModel {
     private func processClaimedRemoteJob(_ session: TranscriptSession) async {
         guard let downloader = urlDownloader else { return }
         let service = TranscriptionService(asrEngine: transcriptionAsrEngine(for: settings.whisperModel),
-                                           diarizer: transcriptionDiarizer(for: settings.diarizerBackend),
+                                           diarizer: diarizer,
                                            modelContext: modelContext,
                                            recorder: recorder,
                                            inspector: inspector,
@@ -419,14 +409,6 @@ final class AppModel {
         if let cached = asrEngineCache[variant] { return cached }
         let engine = asrEngineProvider?(variant) ?? asr
         asrEngineCache[variant] = engine
-        return engine
-    }
-
-    /// The cached diarizer for a chosen backend. Mock/preview app models reuse `diarizer`.
-    func transcriptionDiarizer(for backend: AppSettings.DiarizerBackend) -> any DiarizationEngine {
-        if let cached = diarizerCache[backend.rawValue] { return cached }
-        let engine = diarizerProvider?(backend) ?? diarizer
-        diarizerCache[backend.rawValue] = engine
         return engine
     }
 
