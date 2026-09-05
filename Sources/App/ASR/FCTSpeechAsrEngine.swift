@@ -85,7 +85,7 @@ actor FCTSpeechAsrEngine: AsrEngine {
         emit(Self.update(try live.finish(), track: track))
     }
 
-    private static func update(_ u: LiveTranscriber.Update, track: AudioTrack) -> AsrUpdate {
+    static func update(_ u: LiveTranscriber.Update, track: AudioTrack) -> AsrUpdate {
         AsrUpdate(confirmed: segments(from: u.confirmed, track: track, wordTimestamps: true, confirmed: true),
                   unconfirmed: segments(from: u.unconfirmed, track: track, wordTimestamps: true, confirmed: false))
     }

@@ -47,7 +47,7 @@ struct StoredModel: Identifiable, Sendable, Equatable {
 enum ModelStorageScanner {
     /// Every model variant present on disk right now, largest first.
     static func scan(whisperKitDownloadBase: URL = WhisperKitAsrEngine.defaultDownloadBase(),
-                            sortformerRoot: URL = SortformerModelStore().root,
+                            sortformerRoot: URL = FCTSpeechDiarizationEngine.defaultModelsDirectory(),
                             speechSynthesisRoot: URL = TTSKitTtsEngine.defaultDownloadBase()) -> [StoredModel] {
         (scanWhisperKitModels(downloadBase: whisperKitDownloadBase)
             + scanSortformerModel(root: sortformerRoot)
@@ -109,15 +109,12 @@ enum ModelStorageScanner {
 
     // MARK: - Sortformer diarizer
 
-    /// The diarizer's own managed artifacts (`modelURL` + `melFiltersURL`) — never the whole
-    /// store root, which also holds `metadata.json` and the manifest.
+    /// The diarizer's compiled model under `FCTSpeech/sortformer/`.
     static func scanSortformerModel(root: URL) -> [StoredModel] {
-        let store = SortformerModelStore(root: root)
-        guard store.hasLocalArtifacts else { return [] }
-        let paths = [store.modelURL, store.melFiltersURL]
-        let bytes = paths.reduce(Int64(0)) { $0 + pathSize($1) }
+        let model = root.appendingPathComponent("Sortformer.mlmodelc", isDirectory: true)
+        let bytes = pathSize(model)
         guard bytes > 0 else { return [] }
-        return [StoredModel(kind: .diarizer, paths: paths, bytes: bytes)]
+        return [StoredModel(kind: .diarizer, paths: [model], bytes: bytes)]
     }
 
     // MARK: - Speech synthesis (TTSKit)

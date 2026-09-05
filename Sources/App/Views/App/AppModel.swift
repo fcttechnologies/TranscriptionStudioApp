@@ -295,21 +295,12 @@ final class AppModel {
         // app state so a production hang/hitch/crash is attributed to the stage it occurred in
         // (the mock/preview recorder above leaves this nil).
         let recorder = PipelineRecorder(store: inspector, stateReporter: PipelineStateReporter.shared)
-        let backend = DiarizationBackend.default
-        let crossCheck: DiarizationBackend = backend == .sortformer ? .speakerKit : .sortformer
         return AppModel(modelContext: AppModelContainer.localContext(),
                         inspector: inspector,
                         recorder: recorder,
-                        asr: WhisperKitAsrEngine(),
-                        diarizer: backend.makeEngine(recorder: recorder),
-                        crossCheckDiarizer: crossCheck.makeEngine(recorder: recorder),
+                        asr: RoutedAsrEngine(),
+                        diarizer: FCTSpeechDiarizationEngine(),
                         captureFactory: captureFactory,
-                        asrEngineProvider: { WhisperKitAsrEngine(modelName: $0) },
-                        diarizerProvider: { settingsBackend in
-                            let backend: DiarizationBackend =
-                                settingsBackend == .sortformer ? .sortformer : .speakerKit
-                            return backend.makeEngine(recorder: recorder)
-                        },
                         urlDownloader: urlDownloader)
     }
 
