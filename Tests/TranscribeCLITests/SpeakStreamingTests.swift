@@ -114,16 +114,18 @@ private struct RawSpeakClient {
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
         addr.sin_port = port.bigEndian
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+        // Safety: BSD sockets read the address and the option through pointers to locals whose
+        // sizes are passed beside them; `inet_addr` reads a NUL-terminated literal.
+        addr.sin_addr.s_addr = unsafe inet_addr("127.0.0.1")
         let connected = withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            unsafe $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                unsafe connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
         try #require(connected == 0)
         // A regression that stops streaming should fail this suite, never hang it.
         var receiveTimeout = timeval(tv_sec: 30, tv_usec: 0)
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeout, socklen_t(MemoryLayout<timeval>.size))
+        unsafe setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &receiveTimeout, socklen_t(MemoryLayout<timeval>.size))
         var request = Data("""
         POST /speak HTTP/1.1\r
         Host: 127.0.0.1\r
@@ -133,14 +135,16 @@ private struct RawSpeakClient {
         \r\n
         """.replacingOccurrences(of: "\r\n\n", with: "\r\n").utf8)
         request.append(data)
-        _ = request.withUnsafeBytes { send(fd, $0.baseAddress, $0.count, 0) }
+        // Safety: `send` reads `count` bytes of the request's own storage for the closure.
+        _ = unsafe request.withUnsafeBytes { unsafe send(fd, $0.baseAddress, $0.count, 0) }
     }
 
     /// Block until at least `count` bytes have arrived (fails the test on early EOF).
     func read(atLeast count: Int, into buffer: inout Data) throws {
         var tmp = [UInt8](repeating: 0, count: 65_536)
         while buffer.count < count {
-            let n = recv(fd, &tmp, tmp.count, 0)
+            // Safety: `recv` writes at most `tmp.count` bytes into the array's own storage.
+            let n = unsafe recv(fd, &tmp, tmp.count, 0)
             try #require(n > 0, "connection closed after \(buffer.count) of \(count) expected bytes")
             buffer.append(contentsOf: tmp[0..<n])
         }
@@ -150,7 +154,8 @@ private struct RawSpeakClient {
     func readToEOF(into buffer: inout Data) {
         var tmp = [UInt8](repeating: 0, count: 65_536)
         while true {
-            let n = recv(fd, &tmp, tmp.count, 0)
+            // Safety: as above.
+            let n = unsafe recv(fd, &tmp, tmp.count, 0)
             guard n > 0 else { return }
             buffer.append(contentsOf: tmp[0..<n])
         }
@@ -190,17 +195,19 @@ private func ephemeralPortForStreaming() throws -> UInt16 {
     var addr = sockaddr_in()
     addr.sin_family = sa_family_t(AF_INET)
     addr.sin_port = 0
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+    // Safety: as in ServeTestSupport — the address through its `sockaddr` view with its size
+    // beside it, and the kernel writing at most `length` bytes back.
+    addr.sin_addr.s_addr = unsafe inet_addr("127.0.0.1")
     let bound = withUnsafePointer(to: &addr) {
-        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-            bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+        unsafe $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            unsafe bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
         }
     }
     try #require(bound == 0)
     var assigned = sockaddr_in()
     var length = socklen_t(MemoryLayout<sockaddr_in>.size)
     _ = withUnsafeMutablePointer(to: &assigned) {
-        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &length) }
+        unsafe $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { unsafe getsockname(fd, $0, &length) }
     }
     return UInt16(bigEndian: assigned.sin_port)
 }

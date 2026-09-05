@@ -449,15 +449,19 @@ final class TranscribeServer: @unchecked Sendable {
         guard listenFD >= 0 else { throw ServeError("socket() failed: \(errnoString())") }
 
         var yes: Int32 = 1
-        setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))
+        // Safety: BSD sockets take the option through a pointer to a local whose size is passed
+        // beside it; `yes` outlives the call.
+        unsafe setsockopt(listenFD, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
         addr.sin_port = port.bigEndian
-        addr.sin_addr.s_addr = inet_addr("127.0.0.1")  // localhost only — never the open internet
+        // Safety: `inet_addr` reads a NUL-terminated literal; the `sockaddr` view of `addr` is
+        // the layout `bind` defines, with its size passed beside it.
+        addr.sin_addr.s_addr = unsafe inet_addr("127.0.0.1")  // localhost only — never the open internet
         let bindResult = withUnsafePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                bind(listenFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+            unsafe $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                unsafe bind(listenFD, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
         guard bindResult == 0 else {
@@ -485,7 +489,8 @@ final class TranscribeServer: @unchecked Sendable {
         // process-killing SIGPIPE — routine now that /speak streams and a client may stop
         // listening as soon as it has heard enough.
         var yes: Int32 = 1
-        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
+        // Safety: the option is read from `yes` through a pointer whose size is passed beside it.
+        unsafe setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
         guard let request = readRequest(fd) else {
             sendJSON(fd, status: 400, body: ["error": "bad request"])
             return
@@ -859,7 +864,8 @@ private func readRequest(_ fd: Int32) -> HTTPRequest? {
 /// One `recv` up to 64 KB. Returns nil on error, empty Data on a clean close.
 private func recvChunk(_ fd: Int32) -> Data? {
     var tmp = [UInt8](repeating: 0, count: 65_536)
-    let n = recv(fd, &tmp, tmp.count, 0)
+    // Safety: `recv` writes at most `tmp.count` bytes into the array's own storage.
+    let n = unsafe recv(fd, &tmp, tmp.count, 0)
     if n < 0 { return nil }
     if n == 0 { return Data() }
     return Data(tmp[0..<n])
@@ -986,11 +992,13 @@ func sendChunkedEnd(_ fd: Int32) {
 
 /// Send every byte or report failure (the peer closed / stopped reading).
 private func sendAll(_ fd: Int32, _ data: Data) -> Bool {
-    data.withUnsafeBytes { raw in
+    // Safety: the raw buffer is `data`'s own bytes for the closure, and every `send` reads from
+    // `base + sent` for at most the bytes remaining.
+    unsafe data.withUnsafeBytes { raw in
         var sent = 0
-        let base = raw.bindMemory(to: UInt8.self).baseAddress!
+        let base = unsafe raw.bindMemory(to: UInt8.self).baseAddress!
         while sent < data.count {
-            let n = send(fd, base + sent, data.count - sent, 0)
+            let n = unsafe send(fd, base + sent, data.count - sent, 0)
             if n <= 0 { return false }
             sent += n
         }
@@ -1010,4 +1018,5 @@ private func humanError(_ error: Error) -> String {
     (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
 }
 
-private func errnoString() -> String { String(cString: strerror(errno)) }
+// Safety: `strerror` returns a NUL-terminated string owned by libc.
+private func errnoString() -> String { unsafe String(cString: strerror(errno)) }

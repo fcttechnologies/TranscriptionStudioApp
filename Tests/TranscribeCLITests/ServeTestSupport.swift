@@ -19,17 +19,20 @@ func ephemeralPort() throws -> UInt16 {
     var addr = sockaddr_in()
     addr.sin_family = sa_family_t(AF_INET)
     addr.sin_port = 0
-    addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+    // Safety: BSD sockets read the address through the `sockaddr` view of a local whose size is
+    // passed beside it, and `inet_addr` reads a NUL-terminated literal.
+    addr.sin_addr.s_addr = unsafe inet_addr("127.0.0.1")
     let bound = withUnsafePointer(to: &addr) {
-        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-            bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+        unsafe $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+            unsafe bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
         }
     }
     guard bound == 0 else { throw HarnessFailure(message: "bind(0) failed") }
     var assigned = sockaddr_in()
     var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+    // Safety: the kernel writes at most `length` bytes into the caller-owned struct.
     let named = withUnsafeMutablePointer(to: &assigned) {
-        $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &length) }
+        unsafe $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { unsafe getsockname(fd, $0, &length) }
     }
     guard named == 0 else { throw HarnessFailure(message: "getsockname failed") }
     return UInt16(bigEndian: assigned.sin_port)
