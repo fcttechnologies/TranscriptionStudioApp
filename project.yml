@@ -474,6 +474,7 @@ targets:
           - "BackgroundAssetsExtension.entitlements"
       - path: Sources/App/BackgroundAssets/ModelLayout.swift
       - path: Sources/App/BackgroundAssets/ModelManifest.swift
+      - path: Sources/App/BackgroundAssets/ShippedModelManifest.swift
       - path: Sources/App/ASR/SpeechModel.swift
       - path: Sources/App/SharedItems/AppGroup.swift
     settings:

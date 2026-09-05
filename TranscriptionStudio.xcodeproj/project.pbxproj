@@ -32,6 +32,7 @@
 		095B654FD4ED5B29308FDBEA /* ModelStorageScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FAB64479AEE5CB31AECE556 /* ModelStorageScannerTests.swift */; };
 		098244E205A981ABF0A00F50 /* InspectorAsrTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12DCF5083A2E9487869DDC00 /* InspectorAsrTable.swift */; };
 		0AB8A1E5B00EF3F2581FAE8D /* TranscriptSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA285287DD00762DDDFA4A09 /* TranscriptSpeech.swift */; };
+		0C6E0528B93C16E6C1E73518 /* ShippedModelManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = D863E8E487132EE8C00BBF4D /* ShippedModelManifest.swift */; };
 		0C7AA401AD97AA4BADC5B6E8 /* DebugToolsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC058B75412E60915784E299 /* DebugToolsSection.swift */; };
 		0CF8E2261259A6C5EA02BF3E /* TranscriptionCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB57A9F580D7B2B806D4B5DC /* TranscriptionCounter.swift */; };
 		0E384D6C4B0230B2325E029B /* RecordingLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DD822427258CB4E029F3264 /* RecordingLocationProvider.swift */; };
@@ -2200,6 +2201,7 @@
 				5A6D2D71C06F194F01DBE69A /* ModelDownloaderExtension.swift in Sources */,
 				78E98E7A286F786B607D8EF3 /* ModelLayout.swift in Sources */,
 				32107CE71EFBABAC7B2F05FD /* ModelManifest.swift in Sources */,
+				0C6E0528B93C16E6C1E73518 /* ShippedModelManifest.swift in Sources */,
 				AC9836466A5B0B18ABAFBF7F /* SpeechModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
