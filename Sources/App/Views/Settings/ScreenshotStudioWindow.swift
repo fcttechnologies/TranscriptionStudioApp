@@ -20,7 +20,7 @@ struct ScreenshotStudioWindowContent: View {
             DemoLibrarySeeder.seed(context: context)
         }
         .environment(\.debugDemoStore, TranscriptionDebugStore.demo)
-        .modelContainer(TranscriptionDebugStore.container)
+        .modelContainer(TranscriptionDebugStore.demo.renderContainer)
         .environment(TranscriptionDebugStore.appModel)
     }
 }

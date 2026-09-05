@@ -16,7 +16,7 @@ extension View {
     /// in the environment would redirect. Both together, or the screens render demo rows while
     /// the writes behind them land in the account's library.
     func studioStore() -> some View {
-        modelContainer(TranscriptionDebugStore.container)
+        modelContainer(TranscriptionDebugStore.demo.renderContainer)
             .environment(TranscriptionDebugStore.appModel)
     }
 }

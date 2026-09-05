@@ -16,18 +16,13 @@ enum TranscriptionDebugStore {
     /// The detached store the debug tools seed into and the debug reset erases.
     static let demo = DebugDemoStore(store: AppModelContainer.configuration)
 
-    /// The container a studio scene renders from: the detached one, falling back to the app's own
-    /// only when the detached container cannot be built at all.
-    static var container: ModelContainer {
-        (try? demo.detachedContainer()) ?? AppModelContainer.shared
-    }
-
-    /// The `AppModel` a studio scene writes through, over the same container the scene renders, so
-    /// the two never disagree.
+    /// The `AppModel` a studio scene writes through, over the same container the scene renders —
+    /// `renderContainer`, so an unopenable demo store falls to an empty stand-in rather than to
+    /// the account's library.
     ///
     /// Its engines are the mock stack rather than the routed recognizer: a scene photographs saved
     /// transcripts, and building the real engine here would load a speech model to render a screen
     /// that never asks one a question.
-    static let appModel = AppModel(modelContext: ModelContext(container))
+    static let appModel = AppModel(modelContext: ModelContext(demo.renderContainer))
 }
 #endif
