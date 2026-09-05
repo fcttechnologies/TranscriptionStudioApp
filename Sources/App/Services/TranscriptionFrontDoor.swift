@@ -44,8 +44,9 @@ nonisolated enum FrontDoorStage: Equatable {
     /// The account's library coming down. Nothing of the app is built here.
     case restoring
     case restoreFailed(String)
-    /// The speech model is not on this device yet, and the user is being asked whether to fetch
-    /// it now. Offered once, skippable, and never on the path of a device that already has it.
+    /// The speech models are not all on this device yet: the stage shows the background download
+    /// that started at launch (or the offer, when nothing is coming). Shown once, skippable, and
+    /// never on the path of a device that already has them.
     case offerSpeechModel
     case ready
 }
@@ -162,9 +163,10 @@ final class TranscriptionFrontDoor {
         stage = stageAfterLibrary()
     }
 
-    /// The library is in hand; the only question left is the ~1.6 GB of speech model. Asked only
-    /// when it is genuinely absent and has never been asked, so the common launch — model present,
-    /// or already answered — reaches the app in the same step it always did.
+    /// The library is in hand; the only thing left is the ~1.2 GB of speech models, coming down
+    /// since launch. Shown only when they are genuinely absent and the stage has never been
+    /// passed, so the common launch — models present, or already passed — reaches the app in the
+    /// same step it always did.
     private func stageAfterLibrary() -> FrontDoorStage {
         guard !SpeechModelOfferState.wasOffered(in: defaults), !isSpeechModelInstalled() else {
             return .ready

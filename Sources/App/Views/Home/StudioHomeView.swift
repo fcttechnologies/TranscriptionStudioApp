@@ -118,6 +118,9 @@ struct StudioHomeView: View {
         .onChange(of: app.enginePrewarmState) { old, new in
             ToastCenter.shared.handlePrewarm(from: old, to: new)
         }
+        .onChange(of: SpeechModelDownloader.shared.state) { old, new in
+            ToastCenter.shared.handleSpeechModelDownload(from: old, to: new)
+        }
         .onChange(of: app.recording.lastError) { _, error in
             guard let error else { return }
             ToastCenter.shared.show(.recordingFailed(error.message))

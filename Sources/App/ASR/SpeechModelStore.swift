@@ -12,12 +12,13 @@ import OSLog
 ///    Support (that container isn't shared), so it parks files in the App Group and the app
 ///    moves them the last hop. Idempotent and cheap: safe on every launch.
 /// 2. **Check** — every file of a model present at its exact manifest size.
-/// 3. **Download** — the files still missing, one `URLSession` download task each, verified to
-///    the manifest's byte size before they land. Progress is by bytes across the whole model.
-///    A download interrupted partway leaves the finished files in place and re-fetches only what
-///    is still missing next time. This is the path the Mac always takes and the phone takes when
-///    the extension never ran (a sideloaded or TestFlight build) or the person asked for the model
-///    before it finished.
+/// 3. **Download on demand** — the files still missing, one `URLSession` download task each,
+///    verified to the manifest's byte size before they land, on whatever network the person is on
+///    (they asked for a job). Progress is by bytes across the whole model. A download interrupted
+///    partway leaves the finished files in place and re-fetches only what is still missing next
+///    time. `SpeechModelDownloader` is the other route to the same files: the background session
+///    that starts at launch and keeps going while the app is away; an engine preparing a model
+///    that session is already fetching waits for it here rather than fetching it twice.
 ///
 /// The pure planning (which files still need downloading) lives in `ModelLayout`; this type is
 /// the filesystem and network wiring around it.
@@ -83,12 +84,20 @@ enum SpeechModelStore {
         root: URL = SpeechModel.root(),
         appGroupContainer: URL? = AppGroup.containerURL,
         session: URLSession = .shared,
+        waitInFlight: @escaping @Sendable (SpeechModel) async throws -> Void = { try await SpeechModelDownloader.shared.waitForModel($0) },
         onProgress: @escaping @Sendable (Double) -> Void
     ) async throws {
         guard let manifest else { throw SpeechModelStoreError.noManifest }
         let assets = manifest.assets(of: model)
         guard !assets.isEmpty else { throw SpeechModelStoreError.notInManifest(model) }
         installStagedModels(appGroupContainer: appGroupContainer, root: root)
+        // The background session may already be fetching this model (it starts at launch): wait
+        // for it rather than pulling the same bytes twice. It throws when the model is neither
+        // installed nor in flight, and this path fetches on demand.
+        if (try? await waitInFlight(model)) != nil, isInstalled(model, manifest: manifest, root: root) {
+            onProgress(1)
+            return
+        }
         let pending = ModelLayout.pendingAssets(assets, root: root, appGroupContainer: nil, sizeAt: fileSize)
         let total = assets.reduce(0) { $0 + $1.size }
         var done = total - pending.reduce(0) { $0 + $1.size }

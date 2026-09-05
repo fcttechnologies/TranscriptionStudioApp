@@ -16,6 +16,9 @@ import SwiftUI
 /// relocation — all of which is true whether anyone is signed in or not.
 @main
 struct TranscriptionStudioApp: App {
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    #endif
     @State private var app: AppModel
     /// The shared FCT session — one keychain item for the whole portfolio. The account gate owns
     /// the launch `resume()`, because the gate is what a wrong answer would show.
@@ -121,7 +124,8 @@ struct TranscriptionStudioApp: App {
     /// Process-level launch work: true with or without an account, so it runs beside the gate
     /// rather than behind it. Everything that belongs to the *account* — the sync engine, the
     /// first pull, Spotlight, the companion services, the speech-model warmup — is
-    /// `SignedInRootView.openTheDoor()`.
+    /// `SignedInRootView.openTheDoor()`. The speech models' background download is not: it
+    /// starts here, before any account, so a first launch spends its onboarding minutes fetching.
     @MainActor
     private func launch() async {
         #if os(macOS)
@@ -133,6 +137,10 @@ struct TranscriptionStudioApp: App {
         // the gate finds it on disk and skips the network.
         SpeechModelStore.installStagedModels()
         #endif
+        // Whatever is still missing starts coming down now, in the background, before the door
+        // opens: the system keeps transferring while the app is away and resumes after a
+        // relaunch. The front door shows the progress; nothing asks.
+        SpeechModelDownloader.shared.start()
         AppModelContainer.stampMainContextAuthor()
         // MetricKit consumption is the shared layer's (`TranscriptionDiagnostics.service`), which
         // both uploads and mirrors to OSLog. This app used to run a SECOND MetricManager beside it

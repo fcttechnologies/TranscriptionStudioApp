@@ -12,6 +12,25 @@ import FCTComponentsUI
 extension ToastCenter {
     static let prewarmKey = "engine-prewarm"
 
+    /// Route a background-download transition into the toast layer: the one moment worth a
+    /// sentence is the whole set landing, and only when it lands while the app is open past the
+    /// front door (a set that was already complete before the door opened greets nobody). A
+    /// failure gets its sentence too; progress does not, since the models download unasked and a
+    /// sticky progress notice over the home feed would nag about a thing nobody started.
+    func handleSpeechModelDownload(from old: SpeechModelDownloader.State, to new: SpeechModelDownloader.State) {
+        switch (old, new) {
+        case (.downloading, .complete):
+            show(FCTToast(title: "Speech models ready", systemImage: "checkmark",
+                          style: .success, duration: .seconds(2.5), dedupKey: "speech-models-ready"))
+        case (.downloading, .failed(let message)):
+            show(FCTToast(title: "Couldn't download the speech models", message: message,
+                          systemImage: "exclamationmark.triangle", style: .error,
+                          duration: .seconds(6), dedupKey: "speech-models-failed"))
+        default:
+            break
+        }
+    }
+
     /// Route an `EnginePrewarmState` transition into the toast layer: preparing shows (and
     /// updates in place) a sticky progress notice; ready/failed resolve it. Idempotent per
     /// transition — the home view calls this from `onChange`.
