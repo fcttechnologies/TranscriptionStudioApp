@@ -25,9 +25,9 @@ struct TranscriptionStudioApp: App {
     @State private var sync = TranscriptionSync()
     #if DEBUG
     /// The debug surface's own store. Every session the debug tools seed or delete is a synced
-    /// row, so they act on a second, local-only store file instead — and this points the app at
-    /// it while that demo library is what the screens are meant to show.
-    @State private var debugStore = DebugStoreSwitch(store: AppModelContainer.configuration)
+    /// row, so they act on a second, local-only store file instead. The app's own root keeps its
+    /// own container: nothing the debug tools write can reach the account's library.
+    @State private var debugStore = DebugDemoStore(store: AppModelContainer.configuration)
     #endif
     /// MetricKit production diagnostics — daily metric reports + crash/hang/hitch/launch/memory
     /// events, tagged with the pipeline stage they occurred in. Held for the app's lifetime.
@@ -90,14 +90,10 @@ struct TranscriptionStudioApp: App {
                 }
                 .task { await launch() }
                 #if DEBUG
-                .environment(\.debugStoreSwitch, debugStore)
+                .environment(\.debugDemoStore, debugStore)
                 #endif
         }
-        #if DEBUG
-        .modelContainer(debugStore.container(or: AppModelContainer.shared))
-        #else
         .modelContainer(AppModelContainer.shared)
-        #endif
         #if os(macOS)
         .defaultSize(width: 1140, height: 740)
         .commands { AppCommands(app: app) }

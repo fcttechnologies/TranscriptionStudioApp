@@ -27,25 +27,6 @@ struct RootView: View {
         ) {
             SignedInRootView()
         }
-        // Top-trailing on BOTH platforms, because the bottom is where the gate's own Continue
-        // button lives on both: the iOS gate fills the screen and puts the CTA at the bottom edge,
-        // and the macOS panel is centred with its CTA a few points above the window's. A bar
-        // pinned to the bottom lands on top of the CTA either way — which is what driving each
-        // platform showed, one after the other.
-        .overlay(alignment: .topTrailing) { debugTestAccountBar }
-    }
-
-    /// The one-tap sign-in an agent driving a Debug build uses. It rides over the gate rather than
-    /// inside it — the gate's surfaces belong to the module, not to this app — and goes away the
-    /// moment a session exists. Empty in a release build, and empty in a Debug build that was
-    /// never handed the credential.
-    @ViewBuilder
-    private var debugTestAccountBar: some View {
-        #if DEBUG
-        if !account.state.isSignedIn {
-            DebugTestAccountSignInBar(controller: account)
-        }
-        #endif
     }
 }
 

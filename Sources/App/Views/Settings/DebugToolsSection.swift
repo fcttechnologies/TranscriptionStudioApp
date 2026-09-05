@@ -4,24 +4,23 @@ import FCTScreenshotStudio
 import SwiftData
 import SwiftUI
 
-/// The two affordances an agent driving a Debug build needs and a launch argument cannot give it:
-/// seed the library with presentable content, and put it back to empty — both from inside a
-/// running app, without a relaunch.
-///
-/// `-TSSeedDemoLibrary` still exists and still seeds at launch; it just cannot re-seed an app that
-/// is already open, which is exactly the state a walkthrough is in when it needs content.
+/// Seed the detached demo store, and erase it along with this device's sync caches — both from
+/// inside a running app, without a relaunch.
 ///
 /// **Both act on the detached debug store, never the account's library.** Every `TranscriptSession`
 /// is a synced row: a seed pointed at the app's own store uploads each one, and a delete-everything
 /// sends a tombstone per session to every device on the account. So the seed writes into a second,
-/// local-only store file, the reset can only erase that file, and the toggle below is what puts
-/// that store on screen.
+/// local-only store file and the reset can only erase that file.
+///
+/// The demo store is rendered by whatever carries it — a Screenshot Studio scene, which this app
+/// does not have yet. The app's own screens always render the account's library.
+/// `-TSSeedDemoLibrary` is the separate launch-time path that fills an empty library on screen.
 ///
 /// Deliberately not localized: a Debug-only surface in the shipped catalog is ten translations of
 /// a control no user ever sees.
 struct DebugToolsSection: View {
     @Environment(AccountController.self) private var account
-    @Environment(\.debugStoreSwitch) private var debugStore
+    @Environment(\.debugDemoStore) private var debugStore
 
     @State private var confirmingReset = false
     @State private var lastAction: String?
@@ -29,12 +28,6 @@ struct DebugToolsSection: View {
 
     var body: some View {
         Section {
-            Toggle(isOn: renderDebugStore) {
-                Label { Text(verbatim: "Render debug store") } icon: { Image(systemName: "shippingbox") }
-            }
-            .disabled(debugStore == nil)
-            .accessibilityIdentifier(A11yID.debugRenderStore)
-
             Button {
                 seed()
             } label: {
@@ -59,8 +52,7 @@ struct DebugToolsSection: View {
             Text(verbatim: "Debug tools")
         } footer: {
             Text(verbatim: "Debug builds only. Both act on a detached demo store beside the app's "
-                 + "own — the account's library is a different file and is never written to. Turn "
-                 + "the toggle on to see the demo library in the app.")
+                 + "own — the account's library is a different file and is never written to.")
         }
         .confirmationDialog(Text(verbatim: "Erase the debug store?"),
                             isPresented: $confirmingReset, titleVisibility: .visible) {
@@ -82,33 +74,9 @@ struct DebugToolsSection: View {
         }
     }
 
-    /// Whether the app is rendering the detached demo store rather than the account's library.
-    private var renderDebugStore: Binding<Bool> {
-        Binding(
-            get: { debugStore?.isEngaged ?? false },
-            set: { shouldEngage in
-                guard let debugStore else {
-                    lastAction = DebugStoreSwitch.missingSwitchMessage
-                    return
-                }
-                guard shouldEngage else {
-                    debugStore.disengage()
-                    lastAction = "Rendering the account's own library."
-                    return
-                }
-                do {
-                    try debugStore.engage()
-                    lastAction = "Rendering the detached debug store."
-                } catch {
-                    lastAction = "Debug store unavailable: \(error.localizedDescription)"
-                }
-            }
-        )
-    }
-
     private func seed() {
         guard let debugStore else {
-            lastAction = DebugStoreSwitch.missingSwitchMessage
+            lastAction = DebugDemoStore.missingStoreMessage
             return
         }
         do {
@@ -124,7 +92,7 @@ struct DebugToolsSection: View {
     /// built to survive.
     private func reset() {
         guard let debugStore else {
-            lastAction = DebugStoreSwitch.missingSwitchMessage
+            lastAction = DebugDemoStore.missingStoreMessage
             return
         }
         let caches = [

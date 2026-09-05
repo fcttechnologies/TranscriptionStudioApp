@@ -434,7 +434,6 @@
 		D9C17493FC769D9F6B5DE602 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = B47D456BF67B407F6EF93CEF /* AppShortcuts.xcstrings */; };
 		DAD13DBDE017FBA418007176 /* SpotlightReindexDecisionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4AD757BAE9BBEDFCBC7D76F /* SpotlightReindexDecisionTests.swift */; };
 		DB83A728DF40B41436BFA505 /* FCTServerSync in Frameworks */ = {isa = PBXBuildFile; productRef = B996D1010DD2520B372EA859 /* FCTServerSync */; };
-		DBAC06DF3055A510E66EC703 /* DebugTestAccountSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098F861D9F58A3C69B50BAD5 /* DebugTestAccountSignIn.swift */; };
 		DBC38F71C7B7BEA47D1CF338 /* FCTContacts in Frameworks */ = {isa = PBXBuildFile; productRef = FB9A7E2052D6FF4635A480B7 /* FCTContacts */; };
 		DC8A29EA6074E1AA11D6D045 /* ShareIngest.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC93CA138E75A5A95A917ED /* ShareIngest.swift */; };
 		DC9294E7E78D9BB4F5BDFCAA /* InspectorEventFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFB8632388BEA619A02BAF60 /* InspectorEventFeed.swift */; };
@@ -598,7 +597,6 @@
 		083C38C488221AAE2F91013C /* TranscriptionServiceIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionServiceIntegrationTests.swift; sourceTree = "<group>"; };
 		0865901343EA72CE36BD8A0C /* SpotlightIndexObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexObserver.swift; sourceTree = "<group>"; };
 		0966D0B8003D2D5886ED6709 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		098F861D9F58A3C69B50BAD5 /* DebugTestAccountSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugTestAccountSignIn.swift; sourceTree = "<group>"; };
 		09EBF4993B48EF966E782A2D /* TranscriptRenderingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptRenderingTests.swift; sourceTree = "<group>"; };
 		0A64AE973F63C52A15679508 /* SessionRelevance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRelevance.swift; sourceTree = "<group>"; };
 		0A7CF21023799F8555C2E42E /* InspectorLatency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorLatency.swift; sourceTree = "<group>"; };
@@ -1616,7 +1614,6 @@
 		E638552B6C73C7F80D2AE428 /* Root */ = {
 			isa = PBXGroup;
 			children = (
-				098F861D9F58A3C69B50BAD5 /* DebugTestAccountSignIn.swift */,
 				0D73AAC434335E641CC2CD6D /* FrontDoorStageViews.swift */,
 				8889DE19A8BBAD0AA178A868 /* RootView.swift */,
 				10C78D60EE36F9042ED89E9D /* TranscriptionOnboardingCarousel.swift */,
@@ -2044,7 +2041,6 @@
 				6B75928C90F244920D7365C3 /* Confidence.swift in Sources */,
 				EB06ADEEFC04B76C433676B3 /* ConfidenceWordsText.swift in Sources */,
 				159166AA22707ACF5C54CAE6 /* Data+LittleEndian.swift in Sources */,
-				DBAC06DF3055A510E66EC703 /* DebugTestAccountSignIn.swift in Sources */,
 				0C7AA401AD97AA4BADC5B6E8 /* DebugToolsSection.swift in Sources */,
 				D7612018EF52F84AEC2E3307 /* DeleteTranscriptIntent.swift in Sources */,
 				9E42845D705B34AEF40E91FB /* DemoLibrarySeeder.swift in Sources */,

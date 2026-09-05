@@ -19,11 +19,8 @@ enum A11yID {
     static let frontDoorSpeechModel = "frontDoor.speechModel"
     static let frontDoorSpeechModelDownload = "frontDoor.speechModel.download"
     static let frontDoorSpeechModelSkip = "frontDoor.speechModel.skip"
-    static let debugTestAccountSignIn = "debug.testAccount.signIn"
-    static let debugTestAccountStatus = "debug.testAccount.status"
 
     // MARK: Debug tools (Settings, Debug builds only)
-    static let debugRenderStore = "debug.renderStore"
     static let debugSeedLibrary = "debug.seedLibrary"
     static let debugResetLibrary = "debug.resetLibrary"
     static let debugToolsStatus = "debug.tools.status"
