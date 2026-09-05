@@ -246,7 +246,8 @@ struct UploadJobTests {
         let started = try await upload(base, bytes: try mediaBytes(), fields: ["language": "es-MX"])
         _ = try await pollJob(base, try #require(started.json?["job_id"] as? String))
 
-        #expect(engine.lastLanguage == "es")
+        // The tag reaches the engine whole; the route reads its primary subtag.
+        #expect(engine.lastLanguage == "es-MX")
     }
 
     @Test func noLanguageLeavesTheDecoderOnAutoDetect() async throws {
